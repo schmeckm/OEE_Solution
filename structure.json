@@ -1,0 +1,13 @@
+{
+  "Plant": "Basel",
+  "Area": "Packaging",
+  "Line": "Falcon11",
+  "Device": {
+    "Falcon11": {
+      "metadata": {
+        "shiftCount": 3,
+        "lineManager": "John Doe"
+      }
+    }
+  }
+}

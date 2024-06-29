@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OEE Configuration Editor</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+
+<body>
+    <div class="container">
+        <h1>OEE Configuration Editor</h1>
+        <h2>structure.json</h2>
+        <textarea id="structureJson"></textarea>
+        <button onclick="saveStructure()">Save structure.json</button>
+        <h2>oeeConfig.json</h2>
+        <textarea id="oeeConfigJson"></textarea>
+        <button onclick="saveOeeConfig()">Save oeeConfig.json</button>
+    </div>
+    <script>
+        async function loadFile(url, elementId) {
+            const response = await fetch(url);
+            const data = await response.text();
+            document.getElementById(elementId).value = JSON.stringify(JSON.parse(data), null, 2);
+        }
+
+        async function saveFile(url, elementId) {
+            const data = document.getElementById(elementId).value;
+            try {
+                JSON.parse(data); // Verify JSON format
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: data
+                });
+                const result = await response.json();
+                alert(result.message);
+            } catch (error) {
+                alert('Invalid JSON format');
+            }
+        }
+
+        function saveStructure() {
+            saveFile('/structure', 'structureJson');
+        }
+
+        function saveOeeConfig() {
+            saveFile('/oeeConfig', 'oeeConfigJson');
+        }
+
+        loadFile('/structure', 'structureJson');
+        loadFile('/oeeConfig', 'oeeConfigJson');
+    </script>
+</body>
+
+</html>

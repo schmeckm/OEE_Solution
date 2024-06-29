@@ -1,0 +1,16 @@
+version: '3.8'
+
+services:
+  oee-calculator:
+    build: .
+    ports:
+      - "3000:3000"
+    environment:
+      - PORT=3000
+      - MQTT_USERNAME=your-username
+      - MQTT_PASSWORD=your-password
+      - TLS_KEY=./certs/client.key
+      - TLS_CERT=./certs/client.crt
+      - TLS_CA=./certs/ca.crt
+    volumes:
+      - ./certs:/usr/src/app/certs
