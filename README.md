@@ -1,8 +1,4 @@
-<<<<<<< HEAD
-# OEE Calculator
-=======
 # Event Driven IT-OT Architecture Concept- Micro Services to calculate OEE based on incoming MQTT topics
->>>>>>> ec7267caa8e6b8f7abc4a380dff340b545dfc84b
 
 [![GitHub license](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/schmeckm/OEE_calculator/blob/main/LICENSE)
 [![GitHub issues](https://img.shields.io/github/issues/schmeckm/OEE_calculator.svg)](https://github.com/schmeckm/OEE_calculator/issues)
@@ -43,3 +39,28 @@ To get started with the OEE Calculator, follow these steps:
    ```sh
    git clone https://github.com/schmeckm/OEE_calculator.git
    cd OEE_calculator
+
+
+2. Install dependencies:
+
+npm install
+
+3.Configure the environment variables by creating a .env file in the root directory and adding the necessary variables:
+
+MQTT_BROKER_URL=mqtt://broker.hivemq.com
+MQTT_BROKER_PORT=1883
+MQTT_USERNAME=your_mqtt_username
+MQTT_PASSWORD=your_mqtt_password
+TLS_KEY=null
+TLS_CERT=null
+TLS_CA=null
+METHOD=parris
+PORT=3000
+LOG_RETENTION_DAYS=2
+OEE_AS_PERCENT=true
+INFLUXDB_URL=http://your_influxdb_url:8086
+INFLUXDB_TOKEN=your_influxdb_token
+INFLUXDB_ORG=your_influxdb_org
+INFLUXDB_BUCKET=your_influxdb_bucket
+
+
