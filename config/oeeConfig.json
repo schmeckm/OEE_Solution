@@ -1,0 +1,50 @@
+{
+    "plannedProduction": {
+        "alias": "Planned Production Time",
+        "type": "number",
+        "metadata": {
+            "unit": "hours",
+            "description": "Total time planned for production"
+        }
+    },
+    "runtime": {
+        "alias": "Runtime",
+        "type": "number",
+        "metadata": {
+            "unit": "hours",
+            "description": "Actual runtime"
+        }
+    },
+    "actualPerformance": {
+        "alias": "Actual Performance",
+        "type": "number",
+        "metadata": {
+            "unit": "units",
+            "description": "Total units produced"
+        }
+    },
+    "targetPerformance": {
+        "alias": "Target Performance",
+        "type": "number",
+        "metadata": {
+            "unit": "units",
+            "description": "Target units to be produced"
+        }
+    },
+    "goodProducts": {
+        "alias": "Good Products",
+        "type": "number",
+        "metadata": {
+            "unit": "units",
+            "description": "Total units without defects"
+        }
+    },
+    "totalProduction": {
+        "alias": "Total Production",
+        "type": "number",
+        "metadata": {
+            "unit": "units",
+            "description": "Total units produced including defects"
+        }
+    }
+}
