@@ -1,7 +1,7 @@
 {
     "name": "oee-calculator",
     "version": "1.0.0",
-    "description": "A simple OEE calculator API using MQTT and InfluxDB",
+    "description": "A simple OEE calculator API",
     "main": "index.js",
     "scripts": {
         "start": "node index.js",
@@ -9,22 +9,18 @@
     },
     "repository": {
         "type": "git",
-        "url": "https://github.com/schmeckm/oee-calculator.git"
+        "url": "https://github.com/schmeckm/OEE_calculator.git"
     },
-    "keywords": [
-        "OEE",
-        "calculator",
-        "API",
-        "MQTT",
-        "InfluxDB",
-        "Sparkplug"
-    ],
-    "author": "Markus Schmeckenbecher <markus.schmeckenbecher@gmail.com>",
-    "license": "ISC",
+    "author": {
+        "name": "Markus Schmeckenbecher",
+        "email": "markus.schmeckenbecher@gmail.com",
+        "url": "https://github.com/schmeckm"
+    },
+    "license": "MIT",
     "bugs": {
-        "url": "https://github.com/schmeckm/oee-calculator/issues"
+        "url": "https://github.com/schmeckm/OEE_calculator/issues"
     },
-    "homepage": "https://github.com/schmeckm/oee-calculator#readme",
+    "homepage": "https://github.com/schmeckm/OEE_calculator#readme",
     "dependencies": {
         "@influxdata/influxdb-client": "^1.33.2",
         "body-parser": "^1.20.2",
