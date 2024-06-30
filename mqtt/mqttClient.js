@@ -5,6 +5,7 @@ const { mqtt: mqttConfig, oeeAsPercent, influxdb, structure, topicFormat } = req
 const { calculateOEE, writeOEEToInfluxDB } = require('./oeeCalculator');
 const oeeConfig = require('../config/oeeConfig.json'); // Load oeeConfig
 
+// Initialize OEE data structure with default values
 let oeeData = {
     plannedProduction: 0,
     runtime: 0,
@@ -18,7 +19,11 @@ let oeeData = {
     oee: 0
 };
 
+/**
+ * Setup MQTT client to subscribe to topics and handle messages
+ */
 function setupMqttClient() {
+    // Connect to MQTT broker with the specified configuration
     const client = mqtt.connect(mqttConfig.brokers.area.url, {
         username: mqttConfig.auth.username,
         password: mqttConfig.auth.password,
@@ -27,6 +32,7 @@ function setupMqttClient() {
         ca: mqttConfig.tls.ca
     });
 
+    // On successful connection, subscribe to the configured topics
     client.on('connect', () => {
         Object.keys(oeeConfig).forEach(metric => {
             const topic = `${topicFormat
@@ -43,6 +49,7 @@ function setupMqttClient() {
         });
     });
 
+    // On receiving a message, decode the payload and update OEE data
     client.on('message', (topic, message) => {
         try {
             const sparkplug = getSparkplugPayload('spBv1.0');
@@ -78,7 +85,7 @@ function setupMqttClient() {
             client.publish(`spBv1.0/${group_id}/DDATA/${edge_node_id}/OEE`, sparkplug.encodePayload(oeePayload));
             logger.info(`Published OEE payload: ${JSON.stringify(oeePayload)}`);
 
-            // Write to InfluxDB
+            // Write to InfluxDB if configuration is available
             if (influxdb.url && influxdb.token && influxdb.org && influxdb.bucket) {
                 const metadata = structure.device_id[edge_node_id].metadata || {};
                 writeOEEToInfluxDB(oee, availability, performance, quality, { group_id, edge_node_id, ...metadata });

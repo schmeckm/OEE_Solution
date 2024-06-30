@@ -1,102 +1,204 @@
+/* Define styles for the body element */
+
 body {
     font-family: Arial, sans-serif;
+    /* Set the font family for the entire document */
     background-color: #121212;
+    /* Set the background color of the body */
     color: #ffffff;
+    /* Set the text color */
     margin: 20px;
+    /* Add a margin around the body */
 }
+
+
+/* Define styles for the container class */
 
 .container {
     max-width: 800px;
+    /* Set the maximum width of the container */
     margin: auto;
+    /* Center the container horizontally */
     padding: 20px;
+    /* Add padding inside the container */
     background-color: #1e1e1e;
+    /* Set the background color of the container */
     border-radius: 10px;
+    /* Round the corners of the container */
     box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+    /* Add a shadow effect to the container */
 }
+
+
+/* Define styles for h1 elements */
 
 h1 {
     text-align: center;
+    /* Center align the text */
     color: #1605ff;
+    /* Set the text color */
 }
+
+
+/* Define styles for h2 elements */
 
 h2 {
     color: #1605ff;
+    /* Set the text color */
 }
+
+
+/* Define styles for the box class */
 
 .box {
     width: 100%;
+    /* Set the width to 100% of the parent element */
     height: 300px;
-    background-color: #2e2e2e;
+    /* Set the height */
+    background-color: #000000;
+    /* Set the background color */
     color: #ffffff;
+    /* Set the text color */
     border: 1px solid #1605ff;
+    /* Set the border color and width */
     border-radius: 5px;
+    /* Round the corners of the box */
     padding: 10px;
+    /* Add padding inside the box */
     margin-bottom: 10px;
+    /* Add margin at the bottom */
     font-family: Arial, sans-serif;
+    /* Set the font family */
     font-size: 14px;
+    /* Set the font size */
     overflow-y: auto;
+    /* Add vertical scrollbar if content overflows */
 }
+
+
+/* Define styles for button elements */
 
 button {
     display: block;
+    /* Make the button a block element */
     width: 100%;
+    /* Set the width to 100% of the parent element */
     padding: 10px;
+    /* Add padding inside the button */
     margin-top: 10px;
+    /* Add margin at the top */
     font-size: 16px;
+    /* Set the font size */
     color: #000000;
+    /* Set the text color */
     background-color: #ffffff;
+    /* Set the background color */
     border: none;
+    /* Remove the border */
     border-radius: 5px;
+    /* Round the corners of the button */
     cursor: pointer;
+    /* Change the cursor to a pointer on hover */
     transition: background-color 0.3s;
+    /* Add a transition effect for background color */
 }
+
+
+/* Define styles for button hover state */
 
 button:hover {
     background-color: #ff8b7d;
+    /* Change the background color on hover */
 }
+
+
+/* Define styles for footer elements */
 
 footer {
     text-align: center;
+    /* Center align the text */
     margin-top: 20px;
+    /* Add margin at the top */
 }
+
+
+/* Define styles for footer paragraph elements */
 
 footer p {
     margin: 0;
+    /* Remove the default margin */
 }
+
+
+/* Define styles for the notification class */
 
 .notification {
     position: fixed;
+    /* Position the element fixed to the viewport */
     top: 20px;
+    /* Set the top position */
     right: 20px;
+    /* Set the right position */
     background-color: #4caf50;
+    /* Set the background color */
     color: white;
+    /* Set the text color */
     padding: 15px;
+    /* Add padding inside the notification */
     border-radius: 5px;
+    /* Round the corners */
     box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+    /* Add a shadow effect */
     display: none;
+    /* Hide the element by default */
     z-index: 1000;
+    /* Set the z-index */
 }
+
+
+/* Define styles for error notifications */
 
 .notification.error {
     background-color: #f44336;
+    /* Set the background color for error notifications */
 }
+
+
+/* Define styles for success notifications */
 
 .notification.success {
     background-color: #4caf50;
+    /* Set the background color for success notifications */
 }
 
+
+/* Define styles for the log-entry class */
+
 .log-entry {
-    background-color: #3e3e3e;
+    background-color: #000000;
+    /* Set the background color */
     margin-bottom: 10px;
-    padding: 10px;
+    /* Add margin at the bottom */
+    padding: 5px;
+    /* Add padding inside the log entry */
     border-radius: 5px;
+    /* Round the corners */
     white-space: pre-wrap;
+    /* Preserve whitespace formatting */
     font-family: Arial, sans-serif;
+    /* Set the font family */
     font-size: 14px;
+    /* Set the font size */
     color: #ffffff;
+    /* Set the text color */
 }
+
+
+/* Define styles for paragraph elements inside log-entry */
 
 .log-entry p {
     margin: 0;
+    /* Remove the default margin */
     line-height: 1.5;
+    /* Set the line height */
 }
