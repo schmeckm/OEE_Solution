@@ -1,7 +1,6 @@
 # OEE Calculator
 
 # Event Driven IT-OT Architecture Concept- Micro Services to calculate OEE based on incoming MQTT topics
->>>>>>> ec7267caa8e6b8f7abc4a380dff340b545dfc84b
 
 [![GitHub license](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/schmeckm/OEE_calculator/blob/main/LICENSE)
 [![GitHub issues](https://img.shields.io/github/issues/schmeckm/OEE_calculator.svg)](https://github.com/schmeckm/OEE_calculator/issues)
