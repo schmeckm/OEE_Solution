@@ -1,4 +1,4 @@
-# OEE Calculator for Event Driven IT-OT Architecture Concept to calculate OEE in Realtime based on MQTT topics
+# Event Driven IT-OT Architecture Concept- Micro Services to calculate OEE in Realtime based on MQTT topics
 
 A Node.js application to calculate Overall Equipment Effectiveness (OEE) with support for secure MQTT messaging (TLS and authentication).
 
