@@ -46,5 +46,37 @@
             "unit": "units",
             "description": "Total units produced including defects"
         }
+    },
+    "availability": {
+        "alias": "Availability",
+        "type": "number",
+        "metadata": {
+            "unit": "percent",
+            "description": "Availability percentage"
+        }
+    },
+    "performance": {
+        "alias": "Performance",
+        "type": "number",
+        "metadata": {
+            "unit": "percent",
+            "description": "Performance percentage"
+        }
+    },
+    "quality": {
+        "alias": "Quality",
+        "type": "number",
+        "metadata": {
+            "unit": "percent",
+            "description": "Quality percentage"
+        }
+    },
+    "oee": {
+        "alias": "Overall Equipment Effectiveness",
+        "type": "number",
+        "metadata": {
+            "unit": "percent",
+            "description": "Overall Equipment Effectiveness"
+        }
     }
 }

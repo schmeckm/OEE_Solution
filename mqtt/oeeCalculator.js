@@ -1,45 +1,54 @@
-const { get: getSparkplugPayload } = require('sparkplug-payload');
+const { InfluxDB, Point } = require('@influxdata/influxdb-client');
 const logger = require('../utils/logger');
+const { influxdb, oeeAsPercent } = require('../config/config');
 
-const calculateOEE = (data, mqttClient) => {
-    try {
-        const availability = data.runtime / data.plannedProduction;
-        const performance = data.actualPerformance / data.targetPerformance;
-        const quality = data.goodProducts / data.totalProduction;
-        const oee = availability * performance * quality * 100;
+let writeApi = null;
 
-        const oeeData = {
-            oee: oee,
-            availability: availability,
-            performance: performance,
-            quality: quality
-        };
+if (influxdb.url && influxdb.token && influxdb.org && influxdb.bucket) {
+    const influxDB = new InfluxDB({ url: influxdb.url, token: influxdb.token });
+    writeApi = influxDB.getWriteApi(influxdb.org, influxdb.bucket);
+}
 
-        logger.info(`Calculated OEE: ${oee}%`);
-        logger.info(`Availability: ${availability}, Performance: ${performance}, Quality: ${quality}`);
+function calculateOEE(data) {
+    const availability = data.runtime / data.plannedProduction;
+    const performance = data.actualPerformance / data.targetPerformance;
+    const quality = data.goodProducts / data.totalProduction;
+    const oee = availability * performance * quality * 100;
 
-        const sparkplug = getSparkplugPayload('spBv1.0');
-        const payload = {
-            timestamp: new Date().getTime(),
-            metrics: [
-                { name: 'OEE', value: oee, type: 'Float' },
-                { name: 'availability', value: availability, type: 'Float' },
-                { name: 'performance', value: performance, type: 'Float' },
-                { name: 'quality', value: quality, type: 'Float' }
-            ]
-        };
-        const encoded = sparkplug.encodePayload(payload);
+    data.oee = oee;
+    data.availability = availability;
+    data.performance = performance;
+    data.quality = quality;
 
-        const publishTopic = `spBv1.0/Basel/DDATA/Falcon11/OEE`;
-        mqttClient.publish(publishTopic, encoded);
+    return { oee, availability, performance, quality };
+}
 
-        logger.info(`Published OEE data to topic: ${publishTopic}`);
-        logger.info(`Published OEE payload: ${JSON.stringify(payload)}`);
-    } catch (error) {
-        logger.error(`Error calculating OEE: ${error}`);
+function writeOEEToInfluxDB(oee, availability, performance, quality, metadata) {
+    if (writeApi) {
+        const point = new Point('oee')
+            .tag('plant', metadata.group_id)
+            .tag('area', 'Packaging')
+            .tag('line', metadata.edge_node_id);
+
+        // Dynamisch Metadaten als Tags hinzufügen
+        Object.keys(metadata).forEach(key => {
+            if (typeof metadata[key] !== 'object') {
+                point.tag(key, metadata[key]);
+            }
+        });
+
+        point
+            .floatField('oee', oeeAsPercent ? oee : oee / 100)
+            .floatField('availability', oeeAsPercent ? availability * 100 : availability)
+            .floatField('performance', oeeAsPercent ? performance * 100 : performance)
+            .floatField('quality', oeeAsPercent ? quality * 100 : quality);
+
+        writeApi.writePoint(point);
+
+        writeApi.flush().catch(err => {
+            logger.error(`Error writing to InfluxDB: ${err}`);
+        });
     }
-};
+}
 
-module.exports = {
-    calculateOEE
-};
+module.exports = { calculateOEE, writeOEEToInfluxDB };

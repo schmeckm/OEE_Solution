@@ -1,10 +1,6 @@
 const Joi = require('joi');
-const dotenv = require('dotenv');
+
 const structure = require('./structure.json');
-
-// Laden Sie Umgebungsvariablen aus der .env-Datei
-dotenv.config();
-
 const envSchema = Joi.object({
     MQTT_BROKER_URL: Joi.string().uri().required(),
     MQTT_BROKER_PORT: Joi.number().integer().default(1883),
@@ -15,16 +11,19 @@ const envSchema = Joi.object({
     TLS_CA: Joi.string().allow(null),
     METHOD: Joi.string().default('parris'),
     PORT: Joi.number().integer().default(3000),
-    LOG_RETENTION_DAYS: Joi.number().integer().default(2)
+    LOG_RETENTION_DAYS: Joi.number().integer().default(2),
+    OEE_AS_PERCENT: Joi.boolean().default(true),
+    INFLUXDB_URL: Joi.string().allow(null),
+    INFLUXDB_TOKEN: Joi.string().allow(null),
+    INFLUXDB_ORG: Joi.string().allow(null),
+    INFLUXDB_BUCKET: Joi.string().allow(null),
+    TOPIC_FORMAT: Joi.string().default('spBv1.0/group_id/message_type/edge_node_id') // Add topic format here
 }).unknown().required();
 
 const { error, value: envVars } = envSchema.validate(process.env);
 if (error) {
     throw new Error(`Config validation error: ${error.message}`);
 }
-
-// Debugging-Ausgabe für Umgebungsvariablen
-console.log("Environment Variables:", process.env);
 
 const tlsKey = envVars.TLS_KEY === 'null' ? null : envVars.TLS_KEY;
 const tlsCert = envVars.TLS_CERT === 'null' ? null : envVars.TLS_CERT;
@@ -53,5 +52,13 @@ module.exports = {
     },
     method: envVars.METHOD,
     structure,
-    logRetentionDays: envVars.LOG_RETENTION_DAYS
+    logRetentionDays: envVars.LOG_RETENTION_DAYS,
+    oeeAsPercent: envVars.OEE_AS_PERCENT,
+    influxdb: {
+        url: envVars.INFLUXDB_URL,
+        token: envVars.INFLUXDB_TOKEN,
+        org: envVars.INFLUXDB_ORG,
+        bucket: envVars.INFLUXDB_BUCKET
+    },
+    topicFormat: envVars.TOPIC_FORMAT // Add the topic format here
 };

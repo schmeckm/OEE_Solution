@@ -1,8 +1,9 @@
+const dotenv = require('dotenv');
+dotenv.config(); // Laden Sie die Umgebungsvariablen sofort zu Beginn
 const express = require('express');
 const path = require('path');
 const bodyParser = require('body-parser');
 const fs = require('fs');
-const dotenv = require('dotenv');
 const cron = require('node-cron');
 const { logRetentionDays } = require('./config/config');
 const { setupMqttClient } = require('./mqtt/mqttClient');
