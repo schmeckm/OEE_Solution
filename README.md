@@ -47,6 +47,7 @@ npm install
 
 3.Configure the environment variables by creating a .env file in the root directory and adding the necessary variables:
 
+   ```sh
 MQTT_BROKER_URL=mqtt://broker.hivemq.com
 MQTT_BROKER_PORT=1883
 MQTT_USERNAME=your_mqtt_username
