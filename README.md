@@ -1,51 +1,41 @@
-# OEE Calculator for Event Driven IT-OT Architecture Concept to calculate OEE in Realtime based on MQTT topics
+# OEE Calculator
 
-A Node.js application to calculate Overall Equipment Effectiveness (OEE) with support for secure MQTT messaging (TLS and authentication).
+[![GitHub license](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/schmeckm/OEE_calculator/blob/main/LICENSE)
+[![GitHub issues](https://img.shields.io/github/issues/schmeckm/OEE_calculator.svg)](https://github.com/schmeckm/OEE_calculator/issues)
+
+## Table of Contents
+
+- [Introduction](#introduction)
+- [Features](#features)
+- [Installation](#installation)
+- [Usage](#usage)
+- [Configuration](#configuration)
+- [Endpoints](#endpoints)
+- [Contributing](#contributing)
+- [License](#license)
+- [References](#references)
+
+## Introduction
+
+OEE Calculator is a simple API for calculating Overall Equipment Effectiveness (OEE). This project provides an easy way to calculate OEE based on data received from MQTT topics, store the results in an InfluxDB, and serve the calculated OEE values via a RESTful API.
+
+### Unified Namespace (UNS)
+
+This project implements concepts from the Unified Namespace (UNS), which is a comprehensive structure for organizing data within an industrial context. For more details on UNS, you can refer to [HiveMQ's blog on implementing UNS with MQTT and Sparkplug](https://www.hivemq.com/blog/implementing-unified-namespace-uns-mqtt-sparkplug/).
 
 ## Features
 
-- Calculates OEE based on incoming MQTT messages
-- Supports secure MQTT connections with TLS
-- Optional username/password authentication for MQTT
-- Logs information to both console and file
+- **MQTT Integration**: Subscribe to MQTT topics to receive real-time data.
+- **OEE Calculation**: Calculate OEE based on received data.
+- **InfluxDB Integration**: Store OEE data in InfluxDB for historical analysis.
+- **RESTful API**: Serve calculated OEE values via a RESTful API.
+- **Configurable Topics**: Flexible configuration for subscribing to different MQTT topics.
 
-## Requirements
+## Installation
 
-- Node.js
-- Docker (optional, for containerized deployment)
-- MQTT broker supporting TLS and authentication
-
-## Setup
+To get started with the OEE Calculator, follow these steps:
 
 1. Clone the repository:
-    ```sh
-    git clone https://github.com/yourusername/oee-calculator.git
-    cd oee-calculator
-    ```
-
-2. Install dependencies:
-    ```sh
-    yarn install
-    ```
-
-3. Create a `.env` file with your configuration:
-    ```plaintext
-    PORT=3000
-    MQTT_BROKER_URL=mqtt://your-mqtt-broker-url
-    MQTT_BROKER_PORT=1883
-    MQTT_USERNAME=your-username
-    MQTT_PASSWORD=your-password
-    TLS_KEY=./certs/client.key
-    TLS_CERT=./certs/client.crt
-    TLS_CA=./certs/ca.crt
-    METHOD=parris
-    ```
-
-4. Place your TLS certificates in the `certs` directory.
-
-## Running the Application
-
-### Locally
-
-```sh
-yarn start
+   ```sh
+   git clone https://github.com/schmeckm/OEE_calculator.git
+   cd OEE_calculator
