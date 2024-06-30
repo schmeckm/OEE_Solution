@@ -15,11 +15,6 @@ function calculateOEE(data) {
     const quality = data.goodProducts / data.totalProduction;
     const oee = availability * performance * quality * 100;
 
-    data.oee = oee;
-    data.availability = availability;
-    data.performance = performance;
-    data.quality = quality;
-
     return { oee, availability, performance, quality };
 }
 
@@ -30,7 +25,6 @@ function writeOEEToInfluxDB(oee, availability, performance, quality, metadata) {
             .tag('area', 'Packaging')
             .tag('line', metadata.edge_node_id);
 
-        // Dynamisch Metadaten als Tags hinzufügen
         Object.keys(metadata).forEach(key => {
             if (typeof metadata[key] !== 'object') {
                 point.tag(key, metadata[key]);
