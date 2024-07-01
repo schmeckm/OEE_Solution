@@ -1,16 +1,20 @@
 const fs = require('fs');
 const path = require('path');
-const axios = require('axios');
-const { api } = require('../config/config');
+const axios = require('axios'); // Import axios for HTTP requests
 
 // Load planned downtime from a JSON file
-function loadPlannedDowntime(jsonFilePath) {
-    const fullPath = path.resolve(jsonFilePath);
-    const data = fs.readFileSync(fullPath, 'utf-8');
-    return JSON.parse(data);
+function loadPlannedDowntime() {
+    const jsonFilePath = path.resolve(__dirname, 'plannedDowntime.json');
+    try {
+        const data = fs.readFileSync(jsonFilePath, 'utf-8');
+        return JSON.parse(data);
+    } catch (error) {
+        console.error(`Error loading planned downtime from JSON file: ${error.message}`);
+        return [];
+    }
 }
 
-// Fetch planned downtime from a REST API
+// Fetch planned downtime from a REST API if apiUrl is provided
 async function fetchPlannedDowntimeFromAPI(apiUrl) {
     try {
         const response = await axios.get(apiUrl);
@@ -23,10 +27,12 @@ async function fetchPlannedDowntimeFromAPI(apiUrl) {
 
 // Get planned downtime from API or JSON file based on config
 async function getPlannedDowntime() {
-    if (api.plannedDowntimeUrl) {
-        return await fetchPlannedDowntimeFromAPI(api.plannedDowntimeUrl);
+    const apiUrl = process.env.PLANNED_DOWNTIME_API_URL;
+
+    if (apiUrl !== null && apiUrl !== 'null') {
+        return await fetchPlannedDowntimeFromAPI(apiUrl);
     } else {
-        return loadPlannedDowntime('./plannedDowntime.json');
+        return loadPlannedDowntime();
     }
 }
 
@@ -36,16 +42,21 @@ function calculateTotalPlannedDowntime(plannedDowntime, processOrderStart, proce
     const orderStart = new Date(processOrderStart);
     const orderEnd = new Date(processOrderEnd);
 
-    return plannedDowntime.reduce((total, downtime) => {
+    const totalMinutes = plannedDowntime.reduce((total, downtime) => {
         const start = new Date(downtime.start);
         const end = new Date(downtime.end);
 
         // Check if the downtime is within the process order period and matches the line code
         if (start >= orderStart && end <= orderEnd && downtime.LineCode === processOrderLineCode && now >= start && now <= end) {
-            return total + (end - start) / (1000 * 60); // Convert milliseconds to minutes
+            const downtimeMinutes = (end - start) / (1000 * 60); // Convert milliseconds to minutes
+            console.log(`Planned downtime from ${start} to ${end}: ${downtimeMinutes} minutes`);
+            return total + downtimeMinutes;
         }
         return total;
     }, 0);
+
+    console.log(`Total planned downtime in minutes: ${totalMinutes}`);
+    return totalMinutes;
 }
 
 module.exports = {

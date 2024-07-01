@@ -22,13 +22,21 @@ async function setupMqttClient() {
 
     // Fetch planned downtime from API or JSON file
     let plannedDowntime = [];
-    try {
-        logger.info('Fetching planned downtime...');
-        plannedDowntime = await getPlannedDowntime();
-        logger.info('Planned downtime fetched successfully');
-    } catch (error) {
-        logger.error(`Error getting planned downtime: ${error.message}`);
+    async function fetchPlannedDowntime() {
+        try {
+            logger.info('Fetching planned downtime...');
+            plannedDowntime = await getPlannedDowntime();
+            logger.info('Planned downtime fetched successfully');
+        } catch (error) {
+            logger.error(`Error fetching planned downtime from API: ${error.message}`);
+            // Optional: Hier kannst du ein erneutes Versuchen der Verbindung implementieren
+            // Beispiel: Versuche es nach 5 Sekunden erneut
+            setTimeout(fetchPlannedDowntime, 5000);
+            return; // Rückkehr aus der Funktion, um erneutes Aufrufen zu vermeiden
+        }
     }
+
+    await fetchPlannedDowntime(); // Initialen Abruf der geplanten Stillstandszeit starten
 
     // Load process order
     let processOrder = {};
@@ -76,6 +84,7 @@ async function setupMqttClient() {
                 processOrder.LineCode
             );
             oeeCalculator.updateData('plannedDowntime', totalPlannedDowntime);
+            console.log(totalPlannedDowntime);
 
             const { goodProducts, totalProduction, targetPerformance } = oeeCalculator.oeeData;
             if (goodProducts > totalProduction || totalProduction > targetPerformance) {
@@ -100,7 +109,7 @@ async function setupMqttClient() {
                         { name: 'quality', value: oeeAsPercent ? quality * 100 : quality, type: 'Float' }
                     ]
                 };
-                client.publish(`spBv1.0/${metadata.group_id}/DDATA/${metadata.edge_node_id}/OEE`, sparkplug.encodePayload(oeePayload));
+                client.publish(`spBv1.0/${metadata.group_id}/DDATA/${metadata.edge_node_id}/OEE`, getSparkplugPayload('spBv1.0').encodePayload(oeePayload));
                 logger.info(`Published OEE payload: ${JSON.stringify(oeePayload)}`);
 
                 if (influxdb.url && influxdb.token && influxdb.org && influxdb.bucket) {
