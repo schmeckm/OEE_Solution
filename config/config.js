@@ -1,6 +1,5 @@
 const Joi = require('joi');
 const dotenv = require('dotenv');
-
 dotenv.config();
 
 const envSchema = Joi.object({

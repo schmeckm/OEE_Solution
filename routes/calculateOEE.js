@@ -1,5 +1,5 @@
 const express = require('express');
-const { calculateOEE } = require('../mqtt/oeeCalculator');
+const { calculateOEE } = require('../utils/oeeCalculator');
 const { validateOEEData } = require('../utils/middleware');
 
 const router = express.Router();
