@@ -163,3 +163,4 @@
 {"level":"info","message":"Server is running on port 3000","timestamp":"2024-07-05T21:52:33.249Z"}
 {"level":"info","message":"Server is running on port 3000","timestamp":"2024-07-05T21:52:55.505Z"}
 {"level":"info","message":"SIGINT signal received: closing HTTP server","timestamp":"2024-07-05T21:53:17.217Z"}
+{"level":"info","message":"Server is running on port 3000","timestamp":"2024-07-05T21:53:54.811Z"}

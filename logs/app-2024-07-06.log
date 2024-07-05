@@ -1,0 +1,47 @@
+{"level":"error","message":"Error during log cleanup job: cleanupLogs is not a function","timestamp":"2024-07-05T22:00:00.498Z"}
+{"level":"info","message":"Server is running on port 3000","timestamp":"2024-07-05T22:02:08.465Z"}
+{"level":"info","message":"Server is running on port 3000","timestamp":"2024-07-05T22:08:04.554Z"}
+{"level":"info","message":"Server is running on port 3000","timestamp":"2024-07-05T22:08:18.845Z"}
+{"level":"info","message":"Server is running on port 3000","timestamp":"2024-07-05T22:08:20.549Z"}
+{"level":"info","message":"Server is running on port 3000","timestamp":"2024-07-05T22:08:56.341Z"}
+{"level":"info","message":"Server is running on port 3000","timestamp":"2024-07-05T22:17:53.229Z"}
+{"level":"info","message":"Server is running on port 3000","timestamp":"2024-07-05T22:18:05.141Z"}
+{"level":"info","message":"Server is running on port 3000","timestamp":"2024-07-05T22:19:47.920Z"}
+{"level":"info","message":"Server is running on port 3000","timestamp":"2024-07-05T22:20:12.642Z"}
+{"level":"info","message":"Server is running on port 3000","timestamp":"2024-07-05T22:20:17.659Z"}
+{"level":"info","message":"Server is running on port 3000","timestamp":"2024-07-05T22:23:40.648Z"}
+{"level":"info","message":"SIGINT signal received: closing HTTP server","timestamp":"2024-07-05T22:24:45.527Z"}
+{"level":"info","message":"Server is running on port 3000","timestamp":"2024-07-05T22:24:49.729Z"}
+{"level":"info","message":"Server is running on port 3000","timestamp":"2024-07-05T22:35:59.421Z"}
+{"level":"info","message":"SIGINT signal received: closing HTTP server","timestamp":"2024-07-05T22:36:51.476Z"}
+{"level":"info","message":"Server is running on port 3000","timestamp":"2024-07-05T22:36:55.530Z"}
+{"level":"info","message":"SIGINT signal received: closing HTTP server","timestamp":"2024-07-05T22:38:00.767Z"}
+{"level":"info","message":"Server is running on port 3000","timestamp":"2024-07-05T22:38:59.950Z"}
+{"level":"info","message":"Server is running on port 3000","timestamp":"2024-07-05T22:41:31.019Z"}
+{"level":"info","message":"SIGINT signal received: closing HTTP server","timestamp":"2024-07-05T22:43:16.999Z"}
+{"level":"info","message":"Server is running on port 3000","timestamp":"2024-07-05T22:43:21.024Z"}
+{"level":"info","message":"SIGINT signal received: closing HTTP server","timestamp":"2024-07-05T22:44:06.966Z"}
+{"level":"info","message":"Server is running on port 3000","timestamp":"2024-07-05T22:44:11.649Z"}
+{"level":"info","message":"Server is running on port 3000","timestamp":"2024-07-05T22:48:49.310Z"}
+{"level":"info","message":"Server is running on port 3000","timestamp":"2024-07-05T22:49:34.208Z"}
+{"level":"info","message":"SIGINT signal received: closing HTTP server","timestamp":"2024-07-05T22:49:35.052Z"}
+{"level":"info","message":"Server is running on port 3000","timestamp":"2024-07-05T22:49:38.676Z"}
+{"level":"info","message":"Server is running on port 3000","timestamp":"2024-07-05T22:55:25.974Z"}
+{"level":"info","message":"SIGINT signal received: closing HTTP server","timestamp":"2024-07-05T22:55:30.585Z"}
+{"level":"info","message":"Server is running on port 3000","timestamp":"2024-07-05T22:55:35.184Z"}
+{"level":"info","message":"SIGINT signal received: closing HTTP server","timestamp":"2024-07-05T22:55:41.602Z"}
+{"level":"info","message":"HTTP server closed","timestamp":"2024-07-05T22:55:41.603Z"}
+{"level":"info","message":"MQTT client disconnected","timestamp":"2024-07-05T22:55:41.637Z"}
+{"level":"info","message":"Server is running on port 3000","timestamp":"2024-07-05T22:55:45.166Z"}
+{"level":"info","message":"Server is running on port 3000","timestamp":"2024-07-05T22:57:01.001Z"}
+{"level":"info","message":"Server is running on port 3000","timestamp":"2024-07-05T22:57:08.788Z"}
+{"level":"info","message":"Server is running on port 3000","timestamp":"2024-07-05T22:57:22.015Z"}
+{"level":"info","message":"Server is running on port 3000","timestamp":"2024-07-05T22:57:28.189Z"}
+{"level":"info","message":"Server is running on port 3000","timestamp":"2024-07-05T22:57:37.663Z"}
+{"level":"info","message":"Server is running on port 3000","timestamp":"2024-07-05T22:57:50.134Z"}
+{"level":"info","message":"Server is running on port 3000","timestamp":"2024-07-05T23:00:47.785Z"}
+{"level":"info","message":"Server is running on port 3000","timestamp":"2024-07-05T23:01:11.824Z"}
+{"level":"info","message":"Server is running on port 3000","timestamp":"2024-07-05T23:01:14.449Z"}
+{"level":"info","message":"Server is running on port 3000","timestamp":"2024-07-05T23:01:30.200Z"}
+{"level":"info","message":"Server is running on port 3000","timestamp":"2024-07-05T23:03:54.107Z"}
+{"level":"info","message":"SIGINT signal received: closing HTTP server","timestamp":"2024-07-05T23:04:27.515Z"}

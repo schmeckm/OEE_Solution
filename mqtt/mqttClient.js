@@ -2,8 +2,8 @@ const mqtt = require('mqtt');
 const { get: getSparkplugPayload } = require('sparkplug-payload');
 const { oeeLogger, errorLogger } = require('../utils/logger');
 const { mqtt: mqttConfig, structure, topicFormat } = require('../config/config');
-const { handleOeeMessage, handleCommandMessage } = require('./messageHandler');
-const oeeConfig = require('../config/oeeConfig.json'); // Stellen Sie sicher, dass der Pfad korrekt ist
+const { handleCommandMessage, handleOeeMessage } = require('./messageHandler');
+const oeeConfig = require('../config/oeeConfig.json');
 
 function setupMqttClient() {
     oeeLogger.info('Setting up MQTT client...');
@@ -25,6 +25,7 @@ function setupMqttClient() {
         try {
             const sparkplug = getSparkplugPayload('spBv1.0');
             const decodedMessage = sparkplug.decodePayload(message);
+            oeeLogger.debug(`Received message on topic ${topic}: ${JSON.stringify(decodedMessage)}`);
             if (topic.includes('DCMD')) {
                 handleCommandMessage(decodedMessage);
             } else {
@@ -54,6 +55,7 @@ function setupMqttClient() {
 function subscribeToTopics(client) {
     Object.keys(oeeConfig).forEach(metric => {
         const topic = `${topicFormat.replace('group_id', structure.Group_id).replace('message_type', 'DDATA').replace('edge_node_id', structure.edge_node_id)}/${metric}`;
+        console.log(`Subscribing to topic: ${topic}`);
         client.subscribe(topic, err => {
             if (!err) {
                 oeeLogger.info(`Successfully subscribed to topic: ${topic}`);
@@ -64,6 +66,7 @@ function subscribeToTopics(client) {
     });
 
     const commandTopic = `${topicFormat.replace('group_id', structure.Group_id).replace('message_type', 'DCMD').replace('edge_node_id', structure.edge_node_id)}/#`;
+    console.log(`Subscribing to command topic: ${commandTopic}`);
     client.subscribe(commandTopic, err => {
         if (!err) {
             oeeLogger.info(`Successfully subscribed to command topic: ${commandTopic}`);
