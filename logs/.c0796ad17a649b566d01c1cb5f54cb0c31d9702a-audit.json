@@ -1,0 +1,15 @@
+{
+    "keep": {
+        "days": true,
+        "amount": 14
+    },
+    "auditLog": "C:\\Users\\marku\\OneDrive\\Dokumente\\markus_data\\Software Development\\Visual_Studio_Projects\\OEE_calculator\\OEE_calculator\\logs\\.c0796ad17a649b566d01c1cb5f54cb0c31d9702a-audit.json",
+    "files": [
+        {
+            "date": 1720304454179,
+            "name": "C:\\Users\\marku\\OneDrive\\Dokumente\\markus_data\\Software Development\\Visual_Studio_Projects\\OEE_calculator\\OEE_calculator\\logs\\error-2024-07-07.log",
+            "hash": "c43669eb2228fb44d37d04fef61193b5d66b7fe66947e3afb622439bbc02a0fe"
+        }
+    ],
+    "hashType": "sha256"
+}

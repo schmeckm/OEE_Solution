@@ -6,7 +6,7 @@ dotenv.config();
 
 const { defaultLogger } = require('./utils/logger');
 const { logRetentionDays } = require('./config/config');
-const { setupMqttClient } = require('./mqtt/mqttClient');
+const { setupMqttClient } = require('./src/mqttClient');
 const { handleErrors } = require('./utils/middleware');
 
 const app = express();

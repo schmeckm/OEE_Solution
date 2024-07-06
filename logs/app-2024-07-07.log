@@ -1,0 +1,35 @@
+{"level":"info","message":"Server is running on port 3000","timestamp":"2024-07-06T22:20:54.557Z"}
+{"level":"info","message":"Server is running on port 3000","timestamp":"2024-07-06T22:21:03.628Z"}
+{"level":"info","message":"SIGINT signal received: closing HTTP server","timestamp":"2024-07-06T22:21:05.058Z"}
+{"level":"info","message":"Server is running on port 3000","timestamp":"2024-07-06T22:21:22.306Z"}
+{"level":"info","message":"SIGINT signal received: closing HTTP server","timestamp":"2024-07-06T22:28:39.410Z"}
+{"level":"info","message":"HTTP server closed","timestamp":"2024-07-06T22:28:39.412Z"}
+{"level":"info","message":"MQTT client disconnected","timestamp":"2024-07-06T22:28:39.433Z"}
+{"level":"info","message":"Server is running on port 3000","timestamp":"2024-07-06T22:28:42.754Z"}
+{"level":"info","message":"SIGINT signal received: closing HTTP server","timestamp":"2024-07-06T22:32:03.105Z"}
+{"level":"info","message":"HTTP server closed","timestamp":"2024-07-06T22:32:03.107Z"}
+{"level":"info","message":"MQTT client disconnected","timestamp":"2024-07-06T22:32:03.131Z"}
+{"level":"info","message":"Server is running on port 3000","timestamp":"2024-07-06T22:32:06.553Z"}
+{"level":"info","message":"SIGINT signal received: closing HTTP server","timestamp":"2024-07-06T22:32:52.534Z"}
+{"level":"info","message":"HTTP server closed","timestamp":"2024-07-06T22:32:52.536Z"}
+{"level":"info","message":"MQTT client disconnected","timestamp":"2024-07-06T22:32:52.574Z"}
+{"level":"info","message":"Server is running on port 3000","timestamp":"2024-07-06T22:32:54.272Z"}
+{"level":"info","message":"SIGINT signal received: closing HTTP server","timestamp":"2024-07-06T22:38:07.761Z"}
+{"level":"info","message":"HTTP server closed","timestamp":"2024-07-06T22:38:07.763Z"}
+{"level":"info","message":"MQTT client disconnected","timestamp":"2024-07-06T22:38:07.780Z"}
+{"level":"info","message":"Server is running on port 3000","timestamp":"2024-07-06T22:38:09.452Z"}
+{"level":"info","message":"SIGINT signal received: closing HTTP server","timestamp":"2024-07-06T22:41:19.527Z"}
+{"level":"info","message":"HTTP server closed","timestamp":"2024-07-06T22:41:19.528Z"}
+{"level":"info","message":"MQTT client disconnected","timestamp":"2024-07-06T22:41:19.547Z"}
+{"level":"info","message":"Server is running on port 3000","timestamp":"2024-07-06T22:42:21.932Z"}
+{"level":"info","message":"SIGINT signal received: closing HTTP server","timestamp":"2024-07-06T22:45:00.692Z"}
+{"level":"info","message":"HTTP server closed","timestamp":"2024-07-06T22:45:00.694Z"}
+{"level":"info","message":"MQTT client disconnected","timestamp":"2024-07-06T22:45:00.716Z"}
+{"level":"info","message":"Server is running on port 3000","timestamp":"2024-07-06T22:45:03.349Z"}
+{"level":"info","message":"SIGINT signal received: closing HTTP server","timestamp":"2024-07-06T22:53:07.887Z"}
+{"level":"info","message":"HTTP server closed","timestamp":"2024-07-06T22:53:07.889Z"}
+{"level":"info","message":"MQTT client disconnected","timestamp":"2024-07-06T22:53:07.908Z"}
+{"level":"info","message":"Server is running on port 3000","timestamp":"2024-07-06T22:53:11.734Z"}
+{"level":"info","message":"SIGINT signal received: closing HTTP server","timestamp":"2024-07-06T22:54:29.463Z"}
+{"level":"info","message":"HTTP server closed","timestamp":"2024-07-06T22:54:29.464Z"}
+{"level":"info","message":"MQTT client disconnected","timestamp":"2024-07-06T22:54:29.487Z"}

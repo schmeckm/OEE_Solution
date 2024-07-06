@@ -1,0 +1,15 @@
+{
+    "keep": {
+        "days": true,
+        "amount": 14
+    },
+    "auditLog": "C:\\Users\\marku\\OneDrive\\Dokumente\\markus_data\\Software Development\\Visual_Studio_Projects\\OEE_calculator\\OEE_calculator\\logs\\.0a789b64af2a5054fd2a488e6c65760e2e876506-audit.json",
+    "files": [
+        {
+            "date": 1720304922408,
+            "name": "C:\\Users\\marku\\OneDrive\\Dokumente\\markus_data\\Software Development\\Visual_Studio_Projects\\OEE_calculator\\OEE_calculator\\logs\\unplannedDowntime-2024-07-07.log",
+            "hash": "4e97c2bcba35bf8cd6c712704eb92c188a46c23e4e9f9cadb16968ec708530e4"
+        }
+    ],
+    "hashType": "sha256"
+}

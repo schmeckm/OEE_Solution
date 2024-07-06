@@ -1,11 +1,12 @@
 {
-    "ProcessOrderStart": "2024-07-01T06:00:00Z",
-    "ProcessOrderEnd": "2024-08-31T14:00:00Z",
-    "setupTime": 30,
-    "processingTime": 120,
-    "teardownTime": 15,
-    "totalPartsToBeProduced": 1000,
-    "UnitOfMeasurement": "EA",
-    "Material": "Steel",
-    "LineCode": "L1"
+  "ProcessOrderNumber": "47111",
+  "ProcessOrderStart": "2024-07-01T06:00:00Z",
+  "ProcessOrderEnd": "2024-08-31T14:00:00Z",
+  "setupTime": 30,
+  "processingTime": 120,
+  "teardownTime": 15,
+  "totalPartsToBeProduced": 1000,
+  "UnitOfMeasurement": "EA",
+  "Material": "Steel",
+  "LineCode": "L1"
 }
