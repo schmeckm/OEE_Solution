@@ -2,7 +2,9 @@ const winston = require('winston');
 const DailyRotateFile = require('winston-daily-rotate-file');
 const path = require('path');
 const fs = require('fs');
+require('dotenv').config(); // Load environment variables
 
+// Define log format
 const logFormat = winston.format.printf(({ level, message, timestamp, ...metadata }) => {
     let logMessage = `${timestamp} ${level}: ${message}`;
     if (Object.keys(metadata).length) {
@@ -11,10 +13,18 @@ const logFormat = winston.format.printf(({ level, message, timestamp, ...metadat
     return logMessage;
 });
 
+// Get log levels from environment variable or default to 'debug'
+const logLevels = (process.env.LOG_LEVELS || 'debug').split(',');
+
+// Custom filter to include only specified log levels
+const customFilter = winston.format((info, opts) => {
+    return logLevels.includes(info.level) ? info : false;
+});
+
 // Function to create a logger with daily rotating file transport
 const createLogger = (logFilename) => {
     return winston.createLogger({
-        level: process.env.NODE_ENV === 'production' ? 'info' : 'debug',
+        level: 'debug', // Set the base level to debug to capture all logs, filtering is done by custom filter
         format: winston.format.combine(
             winston.format.timestamp(),
             winston.format.json()
@@ -22,6 +32,7 @@ const createLogger = (logFilename) => {
         transports: [
             new winston.transports.Console({
                 format: winston.format.combine(
+                    customFilter(), // Apply the custom filter
                     winston.format.colorize(),
                     logFormat
                 )
