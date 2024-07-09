@@ -1,30 +1,23 @@
-// CommandHandler.js
 const fs = require('fs');
 const path = require('path');
-const { oeeLogger, logUnplannedDowntimeFileContent } = require('../utils/logger');
-
-// Define paths to data files
-const dataDirectory = path.join(__dirname, '..', 'data');
-const dbFilePath = path.join(dataDirectory, 'unplannedDowntime.json');
-const processOrderDataPath = path.join(dataDirectory, 'processOrder.json');
+const { oeeLogger, errorLogger, logUnplannedDowntimeFileContent } = require('../utils/logger');
+const { loadProcessOrderData, getPlannedDowntime, unplannedDowntime } = require('../src/dataLoader'); // Importing functions to load process orders and downtime data
 
 let currentHoldStatus = {}; // Track current hold status for each ProcessOrderNumber
-let processOrderData = null; // Store process order data from processOrder.json
+let processOrderData = null;
 
-// Function to load process order data from processOrder.json
-function loadProcessOrderData() {
-    try {
-        const processOrderContent = fs.readFileSync(processOrderDataPath, 'utf8');
-        processOrderData = JSON.parse(processOrderContent);
-        oeeLogger.info(`Process order data loaded from ${processOrderDataPath}`);
-    } catch (error) {
-        errorLogger.error(`Error loading processOrder.json from ${processOrderDataPath}: ${error.message}`);
-        processOrderData = {}; // Set to empty object if loading fails
+// Try to load process order data on module start
+try {
+    processOrderData = loadProcessOrderData();
+    oeeLogger.info(`Process order data loaded: ${JSON.stringify(processOrderData)}`); // Debugging log
+    if (processOrderData && processOrderData.length > 0) {
+        oeeLogger.info(`Loaded ProcessOrderNumber: ${processOrderData[0].ProcessOrderNumber}`);
+    } else {
+        oeeLogger.warn('Process order data is empty or undefined.');
     }
+} catch (error) {
+    errorLogger.error(`Failed to load process order data: ${error.message}`);
 }
-
-// Load process order data on module start
-loadProcessOrderData();
 
 // Handle Hold command
 function handleHoldCommand(value) {
@@ -38,15 +31,16 @@ function handleHoldCommand(value) {
         logEventToDatabase('Hold', timestamp);
         notifyPersonnel('Machine has been put on hold.');
 
-        if (processOrderData && processOrderData.ProcessOrderNumber) {
-            if (!currentHoldStatus[processOrderData.ProcessOrderNumber]) {
-                currentHoldStatus[processOrderData.ProcessOrderNumber] = [];
+        const processOrderNumber = processOrderData && processOrderData[0] && processOrderData[0].ProcessOrderNumber;
+        if (processOrderNumber) {
+            if (!currentHoldStatus[processOrderNumber]) {
+                currentHoldStatus[processOrderNumber] = [];
             }
-            currentHoldStatus[processOrderData.ProcessOrderNumber].push({ timestamp });
+            currentHoldStatus[processOrderNumber].push({ timestamp });
 
             console.log(`Hold signal recorded in MachineData.json at ${timestamp}`);
         } else {
-            console.warn('No valid process order data found. Hold signal ignored.');
+            oeeLogger.warn('No valid process order data found. Hold signal ignored.');
         }
     } else {
         oeeLogger.info('Hold command received, but value is not 1');
@@ -60,20 +54,21 @@ function handleUnholdCommand(value) {
     oeeLogger.debug(`handleUnholdCommand called with value: ${value}`);
 
     if (value === 1) {
-        if (processOrderData && processOrderData.ProcessOrderNumber) {
-            if (currentHoldStatus[processOrderData.ProcessOrderNumber] && currentHoldStatus[processOrderData.ProcessOrderNumber].length > 0) {
+        const processOrderNumber = processOrderData && processOrderData[0] && processOrderData[0].ProcessOrderNumber;
+        if (processOrderNumber) {
+            if (currentHoldStatus[processOrderNumber] && currentHoldStatus[processOrderNumber].length > 0) {
                 oeeLogger.info('Machine is now Unhold');
                 startMachineOperations();
                 logEventToDatabase('Unhold', timestamp);
                 notifyPersonnel('Machine has been unhold and resumed operations.');
 
-                const holdTimestamp = new Date(currentHoldStatus[processOrderData.ProcessOrderNumber][currentHoldStatus[processOrderData.ProcessOrderNumber].length - 1].timestamp);
+                const holdTimestamp = new Date(currentHoldStatus[processOrderNumber][currentHoldStatus[processOrderNumber].length - 1].timestamp);
                 const unholdTimestamp = new Date(timestamp);
 
                 const downtimeMinutes = Math.round((unholdTimestamp - holdTimestamp) / (1000 * 60));
 
                 const machineDataEntry = {
-                    "ProcessOrderNumber": processOrderData.ProcessOrderNumber,
+                    "ProcessOrderNumber": processOrderNumber,
                     "Start": holdTimestamp.toISOString(),
                     "End": unholdTimestamp.toISOString(),
                     "Differenz": downtimeMinutes
@@ -90,24 +85,24 @@ function handleUnholdCommand(value) {
 
                     fs.writeFileSync(dbFilePath, JSON.stringify(machineData, null, 2), 'utf8');
                     console.log(`Unhold signal recorded in MachineData.json at ${timestamp}`);
-                    console.log(`Downtime for Order ${processOrderData.ProcessOrderNumber}: ${downtimeMinutes} minutes`);
+                    console.log(`Downtime for Order ${processOrderNumber}: ${downtimeMinutes} minutes`);
 
                     logUnplannedDowntimeFileContent();
                 } catch (error) {
                     console.error('Error writing MachineData.json:', error.message);
                 }
 
-                currentHoldStatus[processOrderData.ProcessOrderNumber].pop();
+                currentHoldStatus[processOrderNumber].pop();
 
-                if (currentHoldStatus[processOrderData.ProcessOrderNumber].length === 0) {
-                    delete currentHoldStatus[processOrderData.ProcessOrderNumber];
+                if (currentHoldStatus[processOrderNumber].length === 0) {
+                    delete currentHoldStatus[processOrderNumber];
                 }
             } else {
                 oeeLogger.info('Unhold command received, but no previous Hold signal found.');
                 console.log('Current Hold Status:', currentHoldStatus);
             }
         } else {
-            console.warn('No valid process order data found. Unhold signal ignored.');
+            oeeLogger.warn('No valid process order data found. Unhold signal ignored.');
         }
     } else {
         oeeLogger.info('Unhold command received, but value is not 1');
@@ -130,7 +125,7 @@ function logEventToDatabase(event, timestamp) {
 
         oeeLogger.info(`Logging event to database: ${event} at ${timestamp}`);
     } catch (error) {
-        oeeLogger.error(`Error logging event to database: ${error.message}`);
+        errorLogger.error(`Error logging event to database: ${error.message}`);
     }
 }
 

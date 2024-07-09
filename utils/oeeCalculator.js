@@ -2,7 +2,7 @@
 const { InfluxDB, Point } = require('@influxdata/influxdb-client');
 const { oeeLogger, errorLogger } = require('./logger');
 const { influxdb, oeeAsPercent } = require('../config/config');
-const { loadProcessOrderData, loadPlannedDowntimeData } = require('../src/dataLoader');
+const { loadProcessOrderData, loadPlannedDowntimeData } = require('../utils/dataLoader');
 const { unplannedDowntime, getPlannedDowntime, calculateTotalPlannedDowntime } = require('../utils/downtimeManager');
 
 // Constants for OEE calculation and classification levels
