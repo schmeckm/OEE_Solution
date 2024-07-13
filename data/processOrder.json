@@ -1,15 +1,10 @@
-[{
-        "order_id": 1,
-        "ProcessOrderNumber": "47111",
-        "Start": "2024-07-06T22:15:13.507Z",
-        "End": "2024-07-06T22:15:18.427Z",
-        "Differenz": 0
-    },
-    {
-        "order_id": 1,
-        "ProcessOrderNumber": "47111",
-        "Start": "2024-07-06T22:15:25.743Z",
-        "End": "2024-07-06T22:15:30.555Z",
-        "Differenz": 800
-    }
-]
+{
+    "order_id": 1,
+    "ProcessOrderNumber": "47111",
+    "Start": "2024-07-06T22:15:13.507Z",
+    "End": "2024-07-06T22:15:18.427Z",
+    "setupTime": 60,
+    "processingTime": 120,
+    "teardownTime": 30,
+    "totalPartsToBeProduced": 1000
+}

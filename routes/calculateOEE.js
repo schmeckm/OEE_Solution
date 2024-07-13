@@ -1,6 +1,7 @@
 const express = require('express');
 const { calculateOEE } = require('../utils/oeeCalculator');
 const { validateOEEData } = require('../utils/middleware');
+const { oeeLogger, errorLogger } = require('../utils/logger');
 
 const router = express.Router();
 

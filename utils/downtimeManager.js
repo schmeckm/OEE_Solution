@@ -1,50 +1,35 @@
-const fs = require('fs');
+const { loadJsonData } = require('../utils/helper');
+const { oeeLogger, errorLogger } = require('../utils/logger');
 const path = require('path');
-const { oeeLogger, errorLogger } = require('../utils/logger'); // Stellen Sie sicher, dass der Logger korrekt importiert wird
 
-// Module-scoped variables to cache the loaded data
-let unplannedDowntimeCache = null;
-let plannedDowntimeCache = null;
-
-// Pfad zur unplannedDowntime.json Datei
+// Pfade zu den Daten-Dateien
 const unplannedDowntimeFilePath = path.resolve(__dirname, '../data/unplannedDowntime.json');
 const plannedDowntimeFilePath = path.resolve(__dirname, '../data/plannedDowntime.json');
 
-/**
- * Load JSON data from a file.
- * @param {string} filePath - The path to the JSON file.
- * @returns {Object} The parsed JSON data.
- */
-function loadJsonData(filePath) {
-    try {
-        const data = fs.readFileSync(filePath, 'utf8');
-        return JSON.parse(data);
-    } catch (error) {
-        errorLogger.error(`Error loading JSON data from ${filePath}: ${error.message}`);
-        throw error;
-    }
-}
+// Caches für die Daten
+let unplannedDowntimeCache = null;
+let plannedDowntimeCache = null;
 
 /**
- * Load unplanned downtime data once and cache it.
- * @returns {Object} The unplanned downtime data.
+ * Lädt und cached die ungeplanten Ausfallzeiten.
+ * @returns {Object} Die ungeplanten Ausfallzeiten.
  */
-function loadUnplannedDowntimeData() {
+async function loadUnplannedDowntimeData() {
     if (!unplannedDowntimeCache) {
-        unplannedDowntimeCache = loadJsonData(unplannedDowntimeFilePath);
+        unplannedDowntimeCache = await loadJsonData(unplannedDowntimeFilePath);
         oeeLogger.info(`Unplanned downtime data loaded from ${unplannedDowntimeFilePath}`);
     }
     return unplannedDowntimeCache;
 }
 
 /**
- * Load planned downtime data once and cache it.
- * @returns {Object} The planned downtime data.
+ * Lädt und cached die geplanten Ausfallzeiten.
+ * @returns {Object} Die geplanten Ausfallzeiten.
  */
-function loadPlannedDowntimeData() {
+async function loadPlannedDowntimeData() {
     if (!plannedDowntimeCache) {
-        plannedDowntimeCache = loadJsonData(plannedDowntimeFilePath);
-        oeeLogger.info(`Geplante Ausfallzeiten aus ${plannedDowntimeFilePath} geladen`);
+        plannedDowntimeCache = await loadJsonData(plannedDowntimeFilePath);
+        oeeLogger.info(`Planned downtime data loaded from ${plannedDowntimeFilePath}`);
     }
     return plannedDowntimeCache;
 }
@@ -54,9 +39,9 @@ function loadPlannedDowntimeData() {
  * @param {string} processOrderNumber - Die ProcessOrderNumber.
  * @returns {number} Die ungeplante Ausfallzeit in Minuten.
  */
-function unplannedDowntime(processOrderNumber) {
+async function getunplannedDowntime(processOrderNumber) {
     try {
-        const unplannedDowntimeEntries = loadUnplannedDowntimeData();
+        const unplannedDowntimeEntries = await loadUnplannedDowntimeData();
 
         // Differenzen für die angegebene ProcessOrderNumber summieren
         const totalDowntimeMinutes = unplannedDowntimeEntries.reduce((total, entry) => {
@@ -67,32 +52,60 @@ function unplannedDowntime(processOrderNumber) {
         }, 0);
 
         // Akkumulierte Ausfallzeit protokollieren
-        oeeLogger.info(`Gesamte angesammelte ungeplante Ausfallzeit für ProcessOrderNumber ${processOrderNumber}: ${totalDowntimeMinutes} Minuten`);
+        oeeLogger.info(`Total accumulated unplanned downtime for ProcessOrderNumber ${processOrderNumber}: ${totalDowntimeMinutes} minutes`);
 
         return totalDowntimeMinutes;
     } catch (error) {
-        errorLogger.error(`Fehler beim Lesen oder Verarbeiten von unplannedDowntime.json: ${error.message}`);
-        throw error;
-    }
-}
-
-/**
- * Lädt die geplante Ausfallzeit.
- * @returns {Object} Die geplante Ausfallzeitdaten.
- */
-function getPlannedDowntime() {
-    try {
-        const plannedDowntime = loadPlannedDowntimeData();
-        return plannedDowntime;
-    } catch (error) {
-        errorLogger.error(`Fehler beim Laden der geplanten Ausfallzeiten aus ${plannedDowntimeFilePath}: ${error.message}`);
+        errorLogger.error(`Error reading or processing unplannedDowntime.json: ${error.message}`);
         throw error;
     }
 }
 
 /**
  * Berechnet die gesamte geplante Ausfallzeit.
- * @param {Object} plannedDowntime - Die geplante Ausfallzeitdaten.
+ * @param {string} processOrderNumber - Die ProcessOrderNumber.
+ * @param {string} startTime - Der Startzeitpunkt des Prozessauftrags.
+ * @param {string} endTime - Der Endzeitpunkt des Prozessauftrags.
+ * @returns {number} Die gesamte geplante Ausfallzeit in Minuten.
+ */
+async function getPlannedDowntime(processOrderNumber, startTime, endTime) {
+    try {
+        const plannedDowntimeEntries = await loadPlannedDowntimeData();
+        const start = new Date(startTime).getTime();
+        const end = new Date(endTime).getTime();
+
+        const totalDowntimeMinutes = plannedDowntimeEntries.reduce((total, entry) => {
+            if (!entry.Start || !entry.End) {
+                oeeLogger.warn(`Undefined Start or End in entry: ${JSON.stringify(entry)}`);
+                return total; // Skip this entry
+            }
+
+            const entryStart = new Date(entry.Start).getTime();
+            const entryEnd = new Date(entry.End).getTime();
+            oeeLogger.debug(`Processing entry for ProcessOrderNumber ${entry.ProcessOrderNumber}: Start ${entry.Start}, End ${entry.End}`);
+
+            if (entry.ProcessOrderNumber === processOrderNumber && entryStart < end && entryEnd > start) {
+                const overlapStart = Math.max(start, entryStart);
+                const overlapEnd = Math.min(end, entryEnd);
+                const duration = (overlapEnd - overlapStart) / (1000 * 60);
+                oeeLogger.debug(`Overlap found: starts at ${new Date(overlapStart)}, ends at ${new Date(overlapEnd)}, duration ${duration} minutes`);
+                total += duration;
+            }
+            return total;
+        }, 0);
+
+        oeeLogger.info(`Total accumulated planned downtime for ProcessOrderNumber ${processOrderNumber}: ${totalDowntimeMinutes} minutes`);
+
+        return totalDowntimeMinutes;
+    } catch (error) {
+        errorLogger.error(`Error reading or processing plannedDowntime.json: ${error.message}`);
+        throw error;
+    }
+}
+
+/**
+ * Berechnet die gesamte geplante Ausfallzeit (ohne die ProcessOrderNumber).
+ * @param {Array} plannedDowntime - Die geplante Ausfallzeitdaten.
  * @param {string} start - Der Startzeitpunkt.
  * @param {string} end - Der Endzeitpunkt.
  * @param {string} lineCode - Der LineCode.
@@ -100,8 +113,6 @@ function getPlannedDowntime() {
  */
 function calculateTotalPlannedDowntime(plannedDowntime, start, end, lineCode) {
     try {
-        // Implementiere die Logik zur Berechnung der geplanten Ausfallzeit
-        // Beispiel:
         return plannedDowntime.reduce((total, downtime) => {
             if (downtime.lineCode === lineCode && downtime.start >= start && downtime.end <= end) {
                 total += downtime.duration;
@@ -109,9 +120,9 @@ function calculateTotalPlannedDowntime(plannedDowntime, start, end, lineCode) {
             return total;
         }, 0);
     } catch (error) {
-        errorLogger.error(`Fehler bei der Berechnung der geplanten Ausfallzeit: ${error.message}`);
+        errorLogger.error(`Error calculating planned downtime: ${error.message}`);
         throw error;
     }
 }
 
-module.exports = { getPlannedDowntime, calculateTotalPlannedDowntime, unplannedDowntime };
+module.exports = { getunplannedDowntime, getPlannedDowntime, calculateTotalPlannedDowntime };

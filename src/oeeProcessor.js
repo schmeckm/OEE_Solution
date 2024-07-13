@@ -1,8 +1,6 @@
 const { oeeLogger, errorLogger } = require('../utils/logger'); // Importing logger instances for logging
 const { OEECalculator, writeOEEToInfluxDB } = require('../utils/oeeCalculator'); // Importing OEECalculator class and InfluxDB writer
-const { getPlannedDowntime, calculateTotalPlannedDowntime } = require('../utils/downtimeManager'); // Importing functions for managing planned downtime
-const { loadProcessOrderData } = require('../src/dataLoader'); // Importing function to load process orders from dataLoader.js
-const oeeConfig = require('../config/oeeConfig.json'); // Importing OEE configuration settings
+const { getunplannedDowntime, getPlannedDowntime } = require('../utils/downtimeManager'); // Importing functions for managing planned downtime
 const { influxdb, oeeAsPercent, structure } = require('../config/config'); // Importing InfluxDB and other configuration settings
 
 const oeeCalculator = new OEECalculator(); // Creating an instance of OEECalculator
@@ -26,25 +24,14 @@ function updateMetric(name, value) {
  */
 async function processMetrics() {
     try {
-        oeeLogger.debug('Loading process order data...');
-        const processOrder = loadProcessOrderData(); // Load process order data
-        oeeLogger.debug(`Loaded process order: ${JSON.stringify(processOrder)}`);
+        // Initializing the OEECalculator with the loaded process order data
+        await oeeCalculator.init();
 
-        oeeLogger.debug('Loading planned downtime data...');
-        const plannedDowntime = await getPlannedDowntime(); // Load planned downtime data asynchronously
-        oeeLogger.debug(`Loaded planned downtime: ${JSON.stringify(plannedDowntime)}`);
+        //const { ProcessOrderNumber, StartTime, EndTime } = oeeCalculator.oeeData;
 
-        // Calculate total planned downtime for the specified process order
-        const totalPlannedDowntime = calculateTotalPlannedDowntime(
-            plannedDowntime,
-            processOrder.ProcessOrderStart,
-            processOrder.ProcessOrderEnd,
-            processOrder.LineCode
-        );
-
-        // Update planned downtime metric in the OEECalculator instance
-        oeeCalculator.updateData('plannedDowntime', totalPlannedDowntime);
-        oeeLogger.debug(`Total planned downtime: ${totalPlannedDowntime}`);
+        //oeeLogger.debug('Loading planned downtime data...');
+        //const plannedDowntime = await getPlannedDowntime(ProcessOrderNumber, StartTime, EndTime); // Load planned downtime data asynchronously
+        //oeeLogger.debug(`Loaded planned downtime: ${JSON.stringify(plannedDowntime)}`);
 
         await oeeCalculator.calculateMetrics(); // Calculate OEE metrics using OEECalculator instance
         const { oee, availability, performance, quality } = oeeCalculator.getMetrics(); // Get calculated metrics
