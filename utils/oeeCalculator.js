@@ -1,7 +1,6 @@
 const { InfluxDB, Point } = require('@influxdata/influxdb-client');
 const { oeeLogger, errorLogger } = require('../utils/logger');
 const { influxdb, oeeAsPercent } = require('../config/config');
-const { loadJsonData } = require('../utils/helper');
 const { getPlannedDowntime, getunplannedDowntime } = require('../utils/downtimeManager');
 const { loadProcessOrderData } = require('../src/dataLoader');
 const path = require('path');
@@ -15,6 +14,7 @@ const CLASSIFICATION_LEVELS = {
     AVERAGE: 0.4,
 };
 
+// OEECalculator class for calculating Overall Equipment Effectiveness
 class OEECalculator {
     constructor() {
         this.oeeData = {
@@ -33,6 +33,7 @@ class OEECalculator {
         };
     }
 
+    // Initialize the OEECalculator with process order data
     async init() {
         try {
             const processOrderData = await loadProcessOrderData();
@@ -63,15 +64,16 @@ class OEECalculator {
         }
     }
 
+    // Update a specific metric in the OEECalculator
     updateData(metric, value) {
         oeeLogger.debug(`Updating ${metric} with value: ${value}`);
         this.oeeData[metric] = value;
     }
 
+    // Validate the input data for OEE calculation
     validateInput() {
         const { plannedProduction, runtime, actualPerformance, targetPerformance, goodProducts, totalProduction } = this.oeeData;
 
-        // Debugging Informationen hinzufügen
         oeeLogger.debug(`Validating input data: ${JSON.stringify(this.oeeData)}`);
 
         if (runtime <= 0) {
@@ -104,18 +106,19 @@ class OEECalculator {
         }
     }
 
+    // Calculate the OEE metrics
     async calculateMetrics() {
         this.validateInput();
 
         const { plannedProduction, runtime, targetPerformance, goodProducts, totalProduction, ProcessOrderNumber, StartTime, EndTime } = this.oeeData;
         oeeLogger.info(`Calculating metrics for ProcessOrderNumber: ${ProcessOrderNumber}`);
 
-        // Berechne die ungeplante Ausfallzeit
+        // Calculate unplanned downtime
         const unplannedDowntimeMinutes = await getunplannedDowntime(ProcessOrderNumber);
         oeeLogger.debug(`Unplanned downtime minutes: ${unplannedDowntimeMinutes}`);
         const actualUnplannedDowntime = unplannedDowntimeMinutes !== undefined ? unplannedDowntimeMinutes : 10;
 
-        // Berechne die geplante Ausfallzeit
+        // Calculate planned downtime
         const plannedDowntimeMinutes = await getPlannedDowntime(ProcessOrderNumber, StartTime, EndTime);
         oeeLogger.debug(`Planned downtime minutes: ${plannedDowntimeMinutes}`);
         const actualPlannedDowntime = plannedDowntimeMinutes !== undefined ? plannedDowntimeMinutes : 10;
@@ -134,6 +137,7 @@ class OEECalculator {
         this.oeeData.classification = this.classifyOEE(this.oeeData.oee / 100);
     }
 
+    // Classify the OEE score
     classifyOEE(score) {
         if (score > VALID_SCORE_THRESHOLD || score < MINIMUM_SCORE_THRESHOLD) {
             throw new Error(`Invalid input: score must be between ${MINIMUM_SCORE_THRESHOLD} and ${VALID_SCORE_THRESHOLD}`);
@@ -145,6 +149,7 @@ class OEECalculator {
         return "Poor";
     }
 
+    // Get the calculated OEE metrics
     getMetrics() {
         return this.oeeData;
     }
@@ -152,6 +157,7 @@ class OEECalculator {
 
 let writeApi = null;
 
+// Initialize InfluxDB write API if the configuration is complete
 try {
     if (influxdb.url && influxdb.token && influxdb.org && influxdb.bucket) {
         const influxDB = new InfluxDB({ url: influxdb.url, token: influxdb.token });
@@ -163,6 +169,7 @@ try {
     errorLogger.error(`InfluxDB initialization error: ${error.message}`);
 }
 
+// Function to write OEE metrics to InfluxDB
 async function writeOEEToInfluxDB(oee, availability, performance, quality, metadata) {
     if (!writeApi) {
         errorLogger.error('InfluxDB write API is not initialized.');
