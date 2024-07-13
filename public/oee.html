@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OEE Metrics</title>
+    <script>
+        document.addEventListener("DOMContentLoaded", () => {
+            const ws = new WebSocket(`ws://${window.location.host}`);
+
+            ws.onopen = () => {
+                console.log("WebSocket connection opened");
+                document.getElementById("status").innerText = "WebSocket Status: Connected";
+            };
+
+            ws.onmessage = (event) => {
+                const data = JSON.parse(event.data);
+                document.getElementById("oee").innerText = `OEE: ${data.oee.toFixed(2)}%`;
+                document.getElementById("availability").innerText = `Availability: ${data.availability.toFixed(2)}%`;
+                document.getElementById("performance").innerText = `Performance: ${data.performance.toFixed(2)}%`;
+                document.getElementById("quality").innerText = `Quality: ${data.quality.toFixed(2)}%`;
+            };
+
+            ws.onclose = () => {
+                console.log("WebSocket connection closed");
+                document.getElementById("status").innerText = "WebSocket Status: Disconnected";
+            };
+
+            ws.onerror = (error) => {
+                console.error(`WebSocket error: ${error.message}`);
+                document.getElementById("status").innerText = "WebSocket Status: Error";
+            };
+        });
+    </script>
+</head>
+
+<body>
+    <h1>OEE Metrics</h1>
+    <div id="status">WebSocket Status: Connecting...</div>
+    <div id="oee">OEE: N/A</div>
+    <div id="availability">Availability: N/A</div>
+    <div id="performance">Performance: N/A</div>
+    <div id="quality">Quality: N/A</div>
+</body>
+
+</html>

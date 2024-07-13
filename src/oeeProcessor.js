@@ -1,69 +1,60 @@
-const { oeeLogger, errorLogger } = require('../utils/logger'); // Importing logger instances for logging
-const { OEECalculator, writeOEEToInfluxDB } = require('../utils/oeeCalculator'); // Importing OEECalculator class and InfluxDB writer
-const { getunplannedDowntime, getPlannedDowntime } = require('../utils/downtimeManager'); // Importing functions for managing planned downtime
-const { influxdb, oeeAsPercent, structure } = require('../config/config'); // Importing InfluxDB and other configuration settings
+const { oeeLogger, errorLogger } = require('../utils/logger');
+const { OEECalculator, writeOEEToInfluxDB } = require('../utils/oeeCalculator');
+const { getunplannedDowntime, getPlannedDowntime } = require('../utils/downtimeManager');
+const { influxdb, oeeAsPercent, structure } = require('../config/config');
+const WebSocket = require('ws'); // Import WebSocket
 
-const oeeCalculator = new OEECalculator(); // Creating an instance of OEECalculator
-let receivedMetrics = {}; // Object to store received metrics
+const oeeCalculator = new OEECalculator();
+let receivedMetrics = {};
+let wss = null; // WebSocket server instance
 
-/**
- * Updates a metric in the receivedMetrics object and in the OEECalculator instance.
- * 
- * @param {string} name - The name of the metric to update
- * @param {number} value - The new value of the metric
- */
-function updateMetric(name, value) {
-    receivedMetrics[name] = value; // Update receivedMetrics object
-    oeeCalculator.updateData(name, value); // Update metric in OEECalculator instance
-    oeeLogger.debug(`Metric updated: ${name} = ${value}`); // Log metric update
+// Function to set the WebSocket server instance
+function setWebSocketServer(server) {
+    wss = server;
 }
 
-/**
- * Processes metrics including loading process order, calculating downtime,
- * calculating OEE metrics, logging results, and optionally writing to InfluxDB.
- */
+function updateMetric(name, value) {
+    receivedMetrics[name] = value;
+    oeeCalculator.updateData(name, value);
+    oeeLogger.debug(`Metric updated: ${name} = ${value}`);
+}
+
 async function processMetrics() {
     try {
-        // Initializing the OEECalculator with the loaded process order data
         await oeeCalculator.init();
+        await oeeCalculator.calculateMetrics();
+        const { oee, availability, performance, quality } = oeeCalculator.getMetrics();
+        const level = oeeCalculator.classifyOEE(oee / 100);
 
-        //const { ProcessOrderNumber, StartTime, EndTime } = oeeCalculator.oeeData;
-
-        //oeeLogger.debug('Loading planned downtime data...');
-        //const plannedDowntime = await getPlannedDowntime(ProcessOrderNumber, StartTime, EndTime); // Load planned downtime data asynchronously
-        //oeeLogger.debug(`Loaded planned downtime: ${JSON.stringify(plannedDowntime)}`);
-
-        await oeeCalculator.calculateMetrics(); // Calculate OEE metrics using OEECalculator instance
-        const { oee, availability, performance, quality } = oeeCalculator.getMetrics(); // Get calculated metrics
-        const level = oeeCalculator.classifyOEE(oee / 100); // Classify OEE level based on score
-
-        // Log calculated metrics and OEE level
         oeeLogger.info(`Calculated Availability: ${availability}`);
         oeeLogger.info(`Calculated Performance: ${performance}`);
         oeeLogger.info(`Calculated Quality: ${quality}`);
         oeeLogger.info(`Calculated OEE: ${oee}% (Level: ${level})`);
 
-        // Prepare payload for MQTT or other communication protocols
-        const oeePayload = {
-            timestamp: Date.now(),
-            metrics: [
-                { name: 'oee', value: oeeAsPercent ? oee : oee / 100, type: 'Float' },
-                { name: 'availability', value: oeeAsPercent ? availability * 100 : availability, type: 'Float' },
-                { name: 'performance', value: oeeAsPercent ? performance * 100 : performance, type: 'Float' },
-                { name: 'quality', value: oeeAsPercent ? quality * 100 : quality, type: 'Float' }
-            ]
+        // Round values to two decimal places and convert to percentage
+        const roundedMetrics = {
+            oee: Math.round(oee * 100) / 100,
+            availability: Math.round(availability * 10000) / 100,
+            performance: Math.round(performance * 10000) / 100,
+            quality: Math.round(quality * 10000) / 100,
         };
 
-        // Publish OEE payload via MQTT (assumed implementation)
-        // client.publish(`spBv1.0/${metadata.group_id}/DDATA/${metadata.edge_node_id}/OEE`, getSparkplugPayload('spBv1.0').encodePayload(oeePayload));
+        // Send metrics to all connected WebSocket clients
+        if (wss) {
+            const payload = JSON.stringify(roundedMetrics);
+            wss.clients.forEach((client) => {
+                if (client.readyState === WebSocket.OPEN) {
+                    client.send(payload);
+                }
+            });
+        }
 
-        // Write metrics to InfluxDB if InfluxDB configuration is provided
         if (influxdb.url && influxdb.token && influxdb.org && influxdb.bucket) {
             await writeOEEToInfluxDB(oee, availability, performance, quality, { group_id: structure.Group_id, edge_node_id: structure.edge_node_id });
         }
     } catch (error) {
-        errorLogger.error(`Error calculating metrics: ${error.message}`); // Log error if metric calculation fails
+        errorLogger.error(`Error calculating metrics: ${error.message}`);
     }
 }
 
-module.exports = { updateMetric, processMetrics }; // Export updateMetric and processMetrics functions
+module.exports = { updateMetric, processMetrics, setWebSocketServer };

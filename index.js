@@ -2,32 +2,28 @@ const express = require('express');
 const path = require('path');
 const cron = require('node-cron');
 const dotenv = require('dotenv');
+const { Server } = require('ws'); // WebSocket Server
+
 dotenv.config();
 
 const { defaultLogger, errorLogger } = require('./utils/logger');
 const { logRetentionDays } = require('./config/config');
 const { setupMqttClient } = require('./src/mqttClient');
 const { handleErrors } = require('./utils/middleware');
+const { setWebSocketServer } = require('./src/oeeProcessor'); // Import WebSocket setter
 
 const app = express();
 const port = process.env.PORT || 3000;
 
-// Handle uncaught exceptions and log the error
-process.on('uncaughtException', function(err) {
-    errorLogger.error('Uncaught Exception:', err.message);
-    errorLogger.error(err.stack);
-    process.exit(1); // Optional: Exit the process after logging the error
-});
-
-// Handle unhandled promise rejections and log the reason
-process.on('unhandledRejection', function(reason, p) {
-    errorLogger.error('Unhandled Rejection:', reason);
-});
-
 // Middleware to parse incoming JSON and URL-encoded payloads
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-app.use(express.static(path.join(__dirname, 'public'))); // Serve static files from the 'public' directory
+app.use(express.static(path.join(__dirname, 'public')));
+
+// Serve oee.html at the root
+app.get('/', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'oee.html'));
+});
 
 // Define routes for different functionalities
 app.use('/structure', require('./routes/structure'));
@@ -37,7 +33,7 @@ app.use('/calculateOEE', require('./routes/calculateOEE'));
 // Error handling middleware
 app.use(handleErrors);
 
-defaultLogger.info('Logger initialized successfully.'); // Debugging statement
+defaultLogger.info('Logger initialized successfully.');
 
 // Schedule a cron job to clean up old logs daily at midnight
 cron.schedule('0 0 * * *', async() => {
@@ -46,7 +42,7 @@ cron.schedule('0 0 * * *', async() => {
         await cleanupLogs(logRetentionDays);
         defaultLogger.info('Old logs cleanup job completed successfully.');
     } catch (error) {
-        errorLogger.error('Error during log cleanup job:', error.message); // Detailed error logging
+        errorLogger.error('Error during log cleanup job:', error.message);
     }
 });
 
@@ -64,6 +60,19 @@ const server = app.listen(port, () => {
     defaultLogger.info(`Server is running on port ${port}`);
 });
 
+// Initialize WebSocket server
+const wss = new Server({ server });
+
+wss.on('connection', (ws) => {
+    defaultLogger.info('WebSocket connection established');
+    ws.on('message', (message) => {
+        defaultLogger.info(`Received message: ${message}`);
+    });
+});
+
+// Set the WebSocket server instance in oeeProcessor
+setWebSocketServer(wss);
+
 // Function to handle graceful shutdown of the server
 function gracefulShutdown(signal) {
     defaultLogger.info(`${signal} signal received: closing HTTP server`);
@@ -72,10 +81,10 @@ function gracefulShutdown(signal) {
         if (mqttClient) {
             mqttClient.end(() => {
                 defaultLogger.info('MQTT client disconnected');
-                process.exit(0); // Exit the process after closing the MQTT client
+                process.exit(0);
             });
         } else {
-            process.exit(0); // Exit the process immediately if there is no MQTT client
+            process.exit(0);
         }
     });
 }

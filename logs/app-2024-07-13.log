@@ -465,3 +465,29 @@
 {"level":"info","message":"MQTT client initialized successfully.","timestamp":"2024-07-13T20:06:38.271Z"}
 {"level":"info","message":"Server is running on port 3000","timestamp":"2024-07-13T20:06:38.277Z"}
 {"level":"info","message":"SIGINT signal received: closing HTTP server","timestamp":"2024-07-13T20:07:08.843Z"}
+{"level":"info","message":"Logger initialized successfully.","timestamp":"2024-07-13T21:18:49.454Z"}
+{"level":"info","message":"MQTT client initialized successfully.","timestamp":"2024-07-13T21:18:49.491Z"}
+{"level":"info","message":"Server is running on port 3000","timestamp":"2024-07-13T21:18:49.497Z"}
+{"level":"info","message":"SIGINT signal received: closing HTTP server","timestamp":"2024-07-13T21:23:35.582Z"}
+{"level":"info","message":"Logger initialized successfully.","timestamp":"2024-07-13T21:24:01.185Z"}
+{"level":"info","message":"MQTT client initialized successfully.","timestamp":"2024-07-13T21:24:01.223Z"}
+{"level":"info","message":"Server is running on port 3000","timestamp":"2024-07-13T21:24:01.230Z"}
+{"level":"info","message":"Logger initialized successfully.","timestamp":"2024-07-13T21:27:10.514Z"}
+{"level":"info","message":"MQTT client initialized successfully.","timestamp":"2024-07-13T21:27:10.552Z"}
+{"level":"info","message":"Server is running on port 3000","timestamp":"2024-07-13T21:27:10.560Z"}
+{"level":"info","message":"WebSocket connection established","timestamp":"2024-07-13T21:27:55.758Z"}
+{"level":"info","message":"Logger initialized successfully.","timestamp":"2024-07-13T21:30:54.161Z"}
+{"level":"info","message":"MQTT client initialized successfully.","timestamp":"2024-07-13T21:30:54.200Z"}
+{"level":"info","message":"Server is running on port 3000","timestamp":"2024-07-13T21:30:54.206Z"}
+{"level":"info","message":"WebSocket connection established","timestamp":"2024-07-13T21:31:31.888Z"}
+{"level":"info","message":"WebSocket connection established","timestamp":"2024-07-13T21:31:37.553Z"}
+{"level":"info","message":"Logger initialized successfully.","timestamp":"2024-07-13T21:32:35.657Z"}
+{"level":"info","message":"MQTT client initialized successfully.","timestamp":"2024-07-13T21:32:35.700Z"}
+{"level":"info","message":"Server is running on port 3000","timestamp":"2024-07-13T21:32:35.707Z"}
+{"level":"info","message":"WebSocket connection established","timestamp":"2024-07-13T21:32:38.859Z"}
+{"level":"info","message":"Logger initialized successfully.","timestamp":"2024-07-13T21:33:19.790Z"}
+{"level":"info","message":"MQTT client initialized successfully.","timestamp":"2024-07-13T21:33:19.830Z"}
+{"level":"info","message":"Server is running on port 3000","timestamp":"2024-07-13T21:33:19.837Z"}
+{"level":"info","message":"WebSocket connection established","timestamp":"2024-07-13T21:33:22.595Z"}
+{"level":"info","message":"WebSocket connection established","timestamp":"2024-07-13T21:33:44.066Z"}
+{"level":"info","message":"SIGINT signal received: closing HTTP server","timestamp":"2024-07-13T21:34:22.658Z"}
