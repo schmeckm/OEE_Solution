@@ -1,10 +1,12 @@
 {
     "order_id": 1,
     "ProcessOrderNumber": "47111",
-    "Start": "2024-07-06T22:15:13.507Z",
-    "End": "2024-07-06T22:15:18.427Z",
+    "Start": "2024-07-14T08:15:13.507Z",
+    "End": "2024-07-14T10:15:18.427Z",
     "setupTime": 60,
     "processingTime": 120,
     "teardownTime": 30,
-    "totalPartsToBeProduced": 1000
+    "totalPartsToBeProduced": 1000,
+    "machine_id": "M001",
+    "name": "Machine 1"
 }

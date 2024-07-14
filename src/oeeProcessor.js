@@ -23,7 +23,7 @@ async function processMetrics() {
     try {
         await oeeCalculator.init();
         await oeeCalculator.calculateMetrics();
-        const { oee, availability, performance, quality, ProcessOrderNumber, StartTime, EndTime, plannedProduction } = oeeCalculator.getMetrics();
+        const { oee, availability, performance, quality, ProcessOrderNumber, StartTime, EndTime, plannedProduction, machine_id } = oeeCalculator.getMetrics();
         const level = oeeCalculator.classifyOEE(oee / 100);
 
         oeeLogger.info(`Calculated Availability: ${availability}`);
@@ -48,7 +48,8 @@ async function processMetrics() {
                 EndTime,
                 plannedProduction,
                 plannedDowntime,
-                unplannedDowntime
+                unplannedDowntime,
+                machine_id // Include machine_id in the payload
             }
         };
 

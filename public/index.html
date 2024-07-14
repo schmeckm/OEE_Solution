@@ -4,36 +4,80 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>OEE Metrics</title>
+    <title>Eventdriven OEE 0.1</title>
     <link rel="stylesheet" href="styles.css">
     <!-- Link to your CSS file -->
+    <script src="https://cdn.jsdelivr.net/npm/gaugeJS@1.3.7/dist/gauge.min.js"></script>
+    <!-- Include Gauge.js library -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <!-- Include Chart.js library -->
+    <script src="https://momentjs.com/downloads/moment.js"></script>
+    <!-- Include Moment.js library -->
+    <script src="https://momentjs.com/downloads/moment-timezone-with-data.js"></script>
+    <!-- Include Moment Timezone.js library -->
+    <script src="app.js" defer></script>
+    <!-- Include your app.js script -->
 </head>
 
 <body>
-    <div class="container">
-        <div class="left-column">
-            <div id="status">WebSocket Status: Connected</div>
-            <div class="gauge-container"><canvas id="oeeGauge"></canvas></div>
-            <div class="gauge-container"><canvas id="availabilityGauge"></canvas></div>
-            <div class="gauge-container"><canvas id="performanceGauge"></canvas></div>
-            <div class="gauge-container"><canvas id="qualityGauge"></canvas></div>
+    <div class="header">
+        <div class="description">Eventdriven OEE 0.1</div>
+        <div class="status">
+            WebSocket Status: <span id="status">Connecting...</span>
         </div>
-        <div class="right-column">
-            <div id="processData">
-                <p>Order Number: <span id="orderNumber">N/A</span></p>
-                <p>Start Time: <span id="startTime">N/A</span></p>
-                <p>End Time: <span id="endTime">N/A</span></p>
-                <p>Planned Quantity: <span id="plannedQuantity">N/A</span></p>
-                <p>Planned Downtime: <span id="plannedDowntime">N/A</span></p>
-                <p>Unplanned Downtime: <span id="unplannedDowntime">N/A</span></p>
-            </div>
-            <canvas id="timelineChart"></canvas>
+        <div class="line-code">
+            Line Code: <span id="lineCode">N/A</span>
+        </div>
+        <div class="current-time">
+            <span id="currentTime">N/A</span>
+            <select id="timeZone">
+                <option value="UTC">UTC</option>
+                <option value="Europe/Berlin">CEST</option>
+                <!-- Add more time zones as needed -->
+            </select>
         </div>
     </div>
-    <script src="app.js"></script>
-    <!-- Link to your JavaScript file -->
+    <div class="main">
+        <div class="left-column">
+            <div class="gauge-wrapper large">
+                <canvas id="oeeGauge" height="200" width="200"></canvas>
+                <div class="gauge-label">OEE</div>
+                <div class="gauge-value" id="oeeValue">0%</div>
+            </div>
+            <div class="gauge-container">
+                <div class="gauge-wrapper small">
+                    <canvas id="availabilityGauge" height="150" width="150"></canvas>
+                    <div class="gauge-label">Availability</div>
+                    <div class="gauge-value" id="availabilityValue">0%</div>
+                </div>
+                <div class="gauge-wrapper small">
+                    <canvas id="performanceGauge" height="150" width="150"></canvas>
+                    <div class="gauge-label">Performance</div>
+                    <div class="gauge-value" id="performanceValue">0%</div>
+                </div>
+                <div class="gauge-wrapper small">
+                    <canvas id="qualityGauge" height="150" width="150"></canvas>
+                    <div class="gauge-label">Quality</div>
+                    <div class="gauge-value" id="qualityValue">0%</div>
+                </div>
+            </div>
+        </div>
+        <div class="right-column">
+            <div class="top-section">
+                <div>Order Number: <span id="orderNumber">N/A</span></div>
+                <div>Start Time: <span id="startTime">N/A</span></div>
+                <div>End Time: <span id="endTime">N/A</span></div>
+                <div>Planned Quantity: <span id="plannedQuantity">N/A</span></div>
+                <div>Planned Downtime: <span id="plannedDowntime">N/A</span></div>
+                <div>Unplanned Downtime: <span id="unplannedDowntime">N/A</span></div>
+            </div>
+            <div class="bottom-section">
+                <canvas id="timelineChart" height="130" width="524"></canvas>
+                <!-- Placeholder for the table -->
+                <div id="tablePlaceholder">Table will be displayed here.</div>
+            </div>
+        </div>
+    </div>
 </body>
 
 </html>

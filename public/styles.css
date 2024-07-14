@@ -1,7 +1,4 @@
-/* Existing styles */
-
-
-/* Define styles for the body element */
+/* Base styles for the body element */
 
 body {
     font-family: Arial, sans-serif;
@@ -10,201 +7,156 @@ body {
     margin: 20px;
 }
 
-
-/* Define styles for h1 elements */
-
-h1 {
-    text-align: center;
-    color: #1605ff;
-}
-
-
-/* Define styles for h2 elements */
-
-h2 {
-    color: #1605ff;
-}
-
-
-/* Define styles for the box class */
-
-.box {
-    width: 100%;
-    height: 300px;
-    background-color: #000000;
-    color: #ffffff;
-    border: 1px solid #1605ff;
-    border-radius: 5px;
-    padding: 10px;
-    margin-bottom: 10px;
-    font-family: Arial, sans-serif;
-    font-size: 14px;
-    overflow-y: auto;
-}
-
-
-/* Define styles for button elements */
-
-button {
-    display: block;
-    width: 100%;
-    padding: 10px;
-    margin-top: 10px;
-    font-size: 16px;
-    color: #000000;
-    background-color: #ffffff;
-    border: none;
-    border-radius: 5px;
-    cursor: pointer;
-    transition: background-color 0.3s;
-}
-
-
-/* Define styles for button hover state */
-
-button:hover {
-    background-color: #ff8b7d;
-}
-
-
-/* Define styles for footer elements */
-
-footer {
-    text-align: center;
-    margin-top: 20px;
-}
-
-
-/* Define styles for footer paragraph elements */
-
-footer p {
-    margin: 0;
-}
-
-
-/* Define styles for the notification class */
-
-.notification {
-    position: fixed;
-    top: 20px;
-    right: 20px;
-    background-color: #4caf50;
-    color: white;
-    padding: 15px;
-    border-radius: 5px;
-    box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
-    display: none;
-    z-index: 1000;
-}
-
-
-/* Define styles for error notifications */
-
-.notification.error {
-    background-color: #f44336;
-}
-
-
-/* Define styles for success notifications */
-
-.notification.success {
-    background-color: #4caf50;
-}
-
-
-/* Define styles for the log-entry class */
-
-.log-entry {
-    background-color: #000000;
-    margin-bottom: 10px;
-    padding: 5px;
-    border-radius: 5px;
-    white-space: pre-wrap;
-    font-family: Arial, sans-serif;
-    font-size: 14px;
-    color: #ffffff;
-}
-
-
-/* Define styles for paragraph elements inside log-entry */
-
-.log-entry p {
-    margin: 0;
-    line-height: 1.5;
-}
-
-
-/* New styles for the OEE dashboard */
-
-
-/* Define styles for the main container */
-
-.container {
+.header {
     display: flex;
+    /* Use flexbox for layout */
     justify-content: space-between;
-    padding: 20px;
+    /* Space out child elements */
+    align-items: center;
+    /* Align items vertically */
     background-color: #1e1e1e;
+    /* Header background color */
+    padding: 10px;
+    /* Padding inside the header */
     border-radius: 10px;
+    /* Rounded corners */
     box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+    /* Shadow effect */
+    margin-bottom: 20px;
+    /* Space below the header */
+}
+
+.description,
+.status,
+.line-code,
+.current-time {
+    margin: 0 10px;
+    /* Space around individual elements */
 }
 
 
-/* Define styles for the left column */
+/* Main content area layout */
+
+.main {
+    display: flex;
+    /* Use flexbox for layout */
+    height: calc(100vh - 100px);
+    /* Full height minus header space */
+}
 
 .left-column {
     width: 40%;
+    /* 40% width of the main area */
     display: flex;
+    /* Use flexbox for layout */
     flex-direction: column;
+    /* Stack children vertically */
     align-items: center;
-    /* Center gauges horizontally */
+    /* Center children horizontally */
 }
-
-
-/* Define styles for the right column */
 
 .right-column {
-    width: 55%;
+    width: 60%;
+    /* 60% width of the main area */
+    display: flex;
+    /* Use flexbox for layout */
+    flex-direction: column;
+    /* Stack children vertically */
 }
 
+.top-section {
+    padding: 10px;
+    /* Inner padding */
+    background-color: #2e2e2e;
+    /* Background color */
+    border-bottom: 1px solid #444;
+    /* Bottom border */
+    display: flex;
+    /* Use flexbox for layout */
+    flex-wrap: wrap;
+    /* Allow wrapping of children */
+    gap: 10px;
+    /* Space between children */
+    margin-bottom: 10px;
+    /* Space below this section */
+}
 
-/* Define styles for canvas elements */
+.bottom-section {
+    flex: 1;
+    /* Take up remaining space */
+    padding: 20px;
+    /* Inner padding */
+    background-color: #2e2e2e;
+    /* Background color */
+}
+
+.gauge-wrapper.large {
+    margin-bottom: 20px;
+    /* Space below the gauge */
+}
+
+.gauge-container {
+    display: flex;
+    /* Use flexbox for layout */
+    justify-content: space-between;
+    /* Space out children */
+    width: 100%;
+    /* Full width of the container */
+}
+
+.gauge-wrapper.small {
+    display: flex;
+    /* Use flexbox for layout */
+    flex-direction: column;
+    /* Stack children vertically */
+    align-items: center;
+    /* Center children horizontally */
+    margin-bottom: 20px;
+    /* Space below each gauge */
+    width: 30%;
+    /* 30% width of the container */
+    height: 200px;
+    /* Height to fit canvas, label, and value */
+    margin-right: 10px;
+    /* Right margin for spacing */
+}
+
+.gauge-wrapper .gauge-label {
+    margin-top: 10px;
+    /* Space above the label */
+    font-size: 16px;
+    /* Font size of the label */
+    font-weight: bold;
+    /* Bold font weight */
+    text-align: center;
+    /* Center the text */
+}
+
+.gauge-wrapper .gauge-value {
+    margin-top: 5px;
+    /* Space above the value */
+    font-size: 14px;
+    /* Font size of the value */
+    color: #ffffff;
+    /* Text color */
+    text-align: center;
+    /* Center the text */
+}
 
 canvas {
-    margin-bottom: 20px;
+    display: block;
+    /* Block display to respect width and height */
+    margin: auto;
+    /* Center the canvas horizontally */
+    margin-bottom: 10px;
+    /* Space below the canvas */
 }
-
-
-/* Define styles for the process data section */
-
-#processData {
-    margin-bottom: 20px;
-}
-
-
-/* Define styles for the timeline chart */
 
 #timelineChart {
     width: 100%;
-    /* Ensure the chart fills the width of its container */
-    height: 150px;
-    /* Set a specific height for the chart */
-    display: block;
-    box-sizing: border-box;
-}
-
-
-/* Define gauge container */
-
-.gauge-container {
-    width: 100px;
-    /* Ensure the gauge is smaller */
-    height: 100px;
-    /* Ensure the gauge is smaller */
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    margin-bottom: 20px;
-    /* Space between gauges */
+    /* Full width of the container */
+    height: 130px;
+    /* Height of the chart */
 }
 
 
@@ -223,7 +175,7 @@ canvas {
 }
 
 
-/* Custom gauge colors */
+/* Custom gauge colors for different value ranges */
 
 .chartjs-render-monitor .gauge .value[data-value='low'] {
     stroke: #f44336;

@@ -1,139 +1,171 @@
-// app.js
-
-// Wait until the DOM is fully loaded before executing the script
 document.addEventListener("DOMContentLoaded", async() => {
-    // Create a new WebSocket connection to the server
     const ws = new WebSocket(`ws://${window.location.host}`);
 
-    // Event handler for when the WebSocket connection is opened
     ws.onopen = () => {
         console.log("WebSocket connection opened");
         document.getElementById("status").innerText = "WebSocket Status: Connected";
     };
 
-    // Event handler for when a message is received from the WebSocket server
     ws.onmessage = (event) => {
-        const data = JSON.parse(event.data); // Parse the JSON data from the server
+        const data = JSON.parse(event.data);
 
-        // Ensure data is properly structured
         if (data && data.processData) {
-            // Safely update the process data if it exists
-            document.getElementById("orderNumber").innerText = data.processData.ProcessOrderNumber || 'N/A';
-            document.getElementById("startTime").innerText = data.processData.StartTime || 'N/A';
-            document.getElementById("endTime").innerText = data.processData.EndTime || 'N/A';
-            document.getElementById("plannedQuantity").innerText = data.processData.plannedProduction || 'N/A';
-            document.getElementById("plannedDowntime").innerText = data.processData.plannedDowntime || 'N/A';
-            document.getElementById("unplannedDowntime").innerText = data.processData.unplannedDowntime || 'N/A';
-
-            // Update the gauges
-            updateGauge(oeeGauge, data.oee);
-            updateGauge(availabilityGauge, data.availability);
-            updateGauge(performanceGauge, data.performance);
-            updateGauge(qualityGauge, data.quality);
-
-            // Update the timeline
+            updateProcessData(data.processData);
+            updateGauge(oeeGauge, data.oee, 'oeeValue');
+            updateGauge(availabilityGauge, data.availability, 'availabilityValue');
+            updateGauge(performanceGauge, data.performance, 'performanceValue');
+            updateGauge(qualityGauge, data.quality, 'qualityValue');
             updateTimelineChart(timelineChart, data.processData);
         } else {
             console.error("Invalid data received from WebSocket:", data);
         }
     };
 
-    // Event handler for when the WebSocket connection is closed
     ws.onclose = () => {
         console.log("WebSocket connection closed");
         document.getElementById("status").innerText = "WebSocket Status: Disconnected";
     };
 
-    // Event handler for when there is an error with the WebSocket connection
     ws.onerror = (error) => {
         console.error(`WebSocket error: ${error.message}`);
         document.getElementById("status").innerText = "WebSocket Status: Error";
     };
 
-    // Initialize Chart.js gauges
     const oeeGauge = initGauge('oeeGauge', 'OEE');
     const availabilityGauge = initGauge('availabilityGauge', 'Availability');
     const performanceGauge = initGauge('performanceGauge', 'Performance');
     const qualityGauge = initGauge('qualityGauge', 'Quality');
-
-    // Initialize Chart.js timeline
     const timelineChart = initTimelineChart('timelineChart');
+
+    document.getElementById("timeZone").addEventListener("change", (event) => {
+        updateTimeZone(event.target.value);
+    });
+
+    updateCurrentTime();
+    setInterval(updateCurrentTime, 1000); // Update the current time every second
 });
 
-// Function to initialize a Chart.js gauge
+function updateProcessData(processData) {
+    const timeZone = document.getElementById("timeZone").value;
+
+    document.getElementById("orderNumber").innerText = processData.ProcessOrderNumber;
+    document.getElementById("startTime").innerText = moment.tz(processData.StartTime, timeZone).format("YYYY-MM-DD HH:mm:ss");
+    document.getElementById("endTime").innerText = moment.tz(processData.EndTime, timeZone).format("YYYY-MM-DD HH:mm:ss");
+    document.getElementById("plannedQuantity").innerText = processData.plannedProduction;
+    document.getElementById("plannedDowntime").innerText = processData.plannedDowntime;
+    document.getElementById("unplannedDowntime").innerText = processData.unplannedDowntime;
+    document.getElementById("lineCode").innerText = processData.LineCode || 'N/A'; // Set the Line Code
+}
+
 function initGauge(elementId, label) {
-    return new Chart(document.getElementById(elementId), {
-        type: 'doughnut',
-        data: {
-            labels: [label],
-            datasets: [{
-                data: [0, 100],
-                backgroundColor: ['#4caf50', '#ccc'],
-                borderWidth: 0
-            }]
+    const opts = {
+        angle: 0.15,
+        lineWidth: 0.2,
+        radiusScale: 0.7, // Adjust radius scale to control gauge size
+        pointer: {
+            length: 0.6,
+            strokeWidth: 0.035,
+            color: '#000000'
         },
-        options: {
-            circumference: 180,
-            rotation: 270,
-            cutout: '70%',
-            plugins: {
-                tooltip: { enabled: false }
-            },
-            animation: { animateRotate: false, animateScale: true }
-        }
-    });
+        staticLabels: {
+            font: "10px sans-serif",
+            labels: [0, 50, 70, 100],
+            color: "#ffffff",
+            fractionDigits: 0
+        },
+        staticZones: [
+            { strokeStyle: "#F03E3E", min: 0, max: 50 },
+            { strokeStyle: "#FFDD00", min: 50, max: 70 },
+            { strokeStyle: "#30B32D", min: 70, max: 100 }
+        ],
+        limitMax: false,
+        limitMin: false,
+        highDpiSupport: true
+    };
+
+    const target = document.getElementById(elementId);
+    const gauge = new Gauge(target).setOptions(opts);
+    gauge.maxValue = 100;
+    gauge.setMinValue(0);
+    gauge.animationSpeed = 32;
+
+    return gauge;
 }
 
-// Function to update a Chart.js gauge
-function updateGauge(chart, value) {
-    chart.data.datasets[0].data[0] = value;
-    chart.data.datasets[0].data[1] = 100 - value;
-    chart.update();
+function updateGauge(gauge, value, valueElementId) {
+    gauge.set(value);
+    const valueElement = document.getElementById(valueElementId);
+    if (valueElement) {
+        valueElement.innerText = value + '%';
+    } else {
+        console.error(`Element with ID ${valueElementId} not found`);
+    }
 }
 
-// Function to initialize a Chart.js timeline
 function initTimelineChart(elementId) {
     return new Chart(document.getElementById(elementId), {
         type: 'bar',
         data: {
-            labels: ['Timeline'],
+            labels: ['08:00', '09:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00', '17:00', '18:00'],
             datasets: [{
                     label: 'Planned Downtime',
                     backgroundColor: '#f44336',
-                    data: [0]
+                    data: Array(11).fill(0)
                 },
                 {
                     label: 'Unplanned Downtime',
                     backgroundColor: '#ffeb3b',
-                    data: [0]
+                    data: Array(11).fill(0)
                 },
                 {
                     label: 'Production',
                     backgroundColor: '#4caf50',
-                    data: [0]
+                    data: Array(11).fill(0)
                 }
             ]
         },
         options: {
-            indexAxis: 'y',
             scales: {
                 x: {
                     stacked: true,
-                    min: 8,
-                    max: 17
+                    beginAtZero: true,
+                    title: {
+                        display: true,
+                        text: 'Time'
+                    }
                 },
                 y: {
-                    stacked: true
+                    stacked: true,
+                    title: {
+                        display: true,
+                        text: 'Duration (minutes)'
+                    }
                 }
             }
         }
     });
 }
 
-// Function to update the timeline chart
 function updateTimelineChart(chart, processData) {
-    chart.data.datasets[0].data[0] = processData.plannedDowntime;
-    chart.data.datasets[1].data[0] = processData.unplannedDowntime;
-    chart.data.datasets[2].data[0] = processData.plannedProduction - processData.plannedDowntime - processData.unplannedDowntime;
+    chart.data.datasets[0].data = processData.plannedDowntime; // Assuming processData has an array of downtime values
+    chart.data.datasets[1].data = processData.unplannedDowntime; // Assuming processData has an array of downtime values
+    chart.data.datasets[2].data = processData.production; // Assuming processData has an array of production values
     chart.update();
+}
+
+function updateTimeZone(timeZone) {
+    const startTimeElement = document.getElementById("startTime");
+    const endTimeElement = document.getElementById("endTime");
+
+    const startTime = startTimeElement.innerText;
+    const endTime = endTimeElement.innerText;
+
+    startTimeElement.innerText = moment.tz(startTime, timeZone).format("YYYY-MM-DD HH:mm:ss");
+    endTimeElement.innerText = moment.tz(endTime, timeZone).format("YYYY-MM-DD HH:mm:ss");
+}
+
+function updateCurrentTime() {
+    const timeZone = document.getElementById("timeZone").value;
+    const currentTimeElement = document.getElementById("currentTime");
+    currentTimeElement.innerText = moment().tz(timeZone).format("YYYY-MM-DD HH:mm:ss");
 }
