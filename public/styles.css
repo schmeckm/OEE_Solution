@@ -1,32 +1,13 @@
+/* Existing styles */
+
+
 /* Define styles for the body element */
 
 body {
     font-family: Arial, sans-serif;
-    /* Set the font family for the entire document */
     background-color: #121212;
-    /* Set the background color of the body */
     color: #ffffff;
-    /* Set the text color */
     margin: 20px;
-    /* Add a margin around the body */
-}
-
-
-/* Define styles for the container class */
-
-.container {
-    max-width: 800px;
-    /* Set the maximum width of the container */
-    margin: auto;
-    /* Center the container horizontally */
-    padding: 20px;
-    /* Add padding inside the container */
-    background-color: #1e1e1e;
-    /* Set the background color of the container */
-    border-radius: 10px;
-    /* Round the corners of the container */
-    box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
-    /* Add a shadow effect to the container */
 }
 
 
@@ -34,9 +15,7 @@ body {
 
 h1 {
     text-align: center;
-    /* Center align the text */
     color: #1605ff;
-    /* Set the text color */
 }
 
 
@@ -44,7 +23,6 @@ h1 {
 
 h2 {
     color: #1605ff;
-    /* Set the text color */
 }
 
 
@@ -52,27 +30,16 @@ h2 {
 
 .box {
     width: 100%;
-    /* Set the width to 100% of the parent element */
     height: 300px;
-    /* Set the height */
     background-color: #000000;
-    /* Set the background color */
     color: #ffffff;
-    /* Set the text color */
     border: 1px solid #1605ff;
-    /* Set the border color and width */
     border-radius: 5px;
-    /* Round the corners of the box */
     padding: 10px;
-    /* Add padding inside the box */
     margin-bottom: 10px;
-    /* Add margin at the bottom */
     font-family: Arial, sans-serif;
-    /* Set the font family */
     font-size: 14px;
-    /* Set the font size */
     overflow-y: auto;
-    /* Add vertical scrollbar if content overflows */
 }
 
 
@@ -80,27 +47,16 @@ h2 {
 
 button {
     display: block;
-    /* Make the button a block element */
     width: 100%;
-    /* Set the width to 100% of the parent element */
     padding: 10px;
-    /* Add padding inside the button */
     margin-top: 10px;
-    /* Add margin at the top */
     font-size: 16px;
-    /* Set the font size */
     color: #000000;
-    /* Set the text color */
     background-color: #ffffff;
-    /* Set the background color */
     border: none;
-    /* Remove the border */
     border-radius: 5px;
-    /* Round the corners of the button */
     cursor: pointer;
-    /* Change the cursor to a pointer on hover */
     transition: background-color 0.3s;
-    /* Add a transition effect for background color */
 }
 
 
@@ -108,7 +64,6 @@ button {
 
 button:hover {
     background-color: #ff8b7d;
-    /* Change the background color on hover */
 }
 
 
@@ -116,9 +71,7 @@ button:hover {
 
 footer {
     text-align: center;
-    /* Center align the text */
     margin-top: 20px;
-    /* Add margin at the top */
 }
 
 
@@ -126,7 +79,6 @@ footer {
 
 footer p {
     margin: 0;
-    /* Remove the default margin */
 }
 
 
@@ -134,25 +86,15 @@ footer p {
 
 .notification {
     position: fixed;
-    /* Position the element fixed to the viewport */
     top: 20px;
-    /* Set the top position */
     right: 20px;
-    /* Set the right position */
     background-color: #4caf50;
-    /* Set the background color */
     color: white;
-    /* Set the text color */
     padding: 15px;
-    /* Add padding inside the notification */
     border-radius: 5px;
-    /* Round the corners */
     box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
-    /* Add a shadow effect */
     display: none;
-    /* Hide the element by default */
     z-index: 1000;
-    /* Set the z-index */
 }
 
 
@@ -160,7 +102,6 @@ footer p {
 
 .notification.error {
     background-color: #f44336;
-    /* Set the background color for error notifications */
 }
 
 
@@ -168,7 +109,6 @@ footer p {
 
 .notification.success {
     background-color: #4caf50;
-    /* Set the background color for success notifications */
 }
 
 
@@ -176,21 +116,13 @@ footer p {
 
 .log-entry {
     background-color: #000000;
-    /* Set the background color */
     margin-bottom: 10px;
-    /* Add margin at the bottom */
     padding: 5px;
-    /* Add padding inside the log entry */
     border-radius: 5px;
-    /* Round the corners */
     white-space: pre-wrap;
-    /* Preserve whitespace formatting */
     font-family: Arial, sans-serif;
-    /* Set the font family */
     font-size: 14px;
-    /* Set the font size */
     color: #ffffff;
-    /* Set the text color */
 }
 
 
@@ -198,7 +130,112 @@ footer p {
 
 .log-entry p {
     margin: 0;
-    /* Remove the default margin */
     line-height: 1.5;
-    /* Set the line height */
+}
+
+
+/* New styles for the OEE dashboard */
+
+
+/* Define styles for the main container */
+
+.container {
+    display: flex;
+    justify-content: space-between;
+    padding: 20px;
+    background-color: #1e1e1e;
+    border-radius: 10px;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+}
+
+
+/* Define styles for the left column */
+
+.left-column {
+    width: 40%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    /* Center gauges horizontally */
+}
+
+
+/* Define styles for the right column */
+
+.right-column {
+    width: 55%;
+}
+
+
+/* Define styles for canvas elements */
+
+canvas {
+    margin-bottom: 20px;
+}
+
+
+/* Define styles for the process data section */
+
+#processData {
+    margin-bottom: 20px;
+}
+
+
+/* Define styles for the timeline chart */
+
+#timelineChart {
+    width: 100%;
+    /* Ensure the chart fills the width of its container */
+    height: 150px;
+    /* Set a specific height for the chart */
+    display: block;
+    box-sizing: border-box;
+}
+
+
+/* Define gauge container */
+
+.gauge-container {
+    width: 100px;
+    /* Ensure the gauge is smaller */
+    height: 100px;
+    /* Ensure the gauge is smaller */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin-bottom: 20px;
+    /* Space between gauges */
+}
+
+
+/* Define gauge color customization */
+
+.chartjs-render-monitor .gauge .background {
+    stroke: #eee;
+}
+
+.chartjs-render-monitor .gauge .needle {
+    stroke: #333;
+}
+
+.chartjs-render-monitor .gauge .value {
+    stroke: #333;
+}
+
+
+/* Custom gauge colors */
+
+.chartjs-render-monitor .gauge .value[data-value='low'] {
+    stroke: #f44336;
+    /* Red for low values */
+}
+
+.chartjs-render-monitor .gauge .value[data-value='medium'] {
+    stroke: #ffeb3b;
+    /* Yellow for medium values */
+}
+
+.chartjs-render-monitor .gauge .value[data-value='high'] {
+    stroke: #4caf50;
+    /* Green for high values */
 }
