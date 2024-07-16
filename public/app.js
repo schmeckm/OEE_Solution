@@ -1,36 +1,44 @@
 document.addEventListener("DOMContentLoaded", async() => {
-    const ws = new WebSocket(`ws://${window.location.host}`);
+    let ws;
+    let reconnectInterval = 5000; // Zeit in Millisekunden, nach der eine erneute Verbindung versucht wird
 
-    ws.onopen = () => {
-        console.log("WebSocket connection opened");
-        document.getElementById("status").innerText = "WebSocket Status: Connected";
+    const connectWebSocket = () => {
+        ws = new WebSocket(`ws://${window.location.host}`);
+
+        ws.onopen = () => {
+            console.log("WebSocket connection opened");
+            document.getElementById("status").innerText = "WebSocket Status: Connected";
+        };
+
+        ws.onmessage = (event) => {
+            const data = JSON.parse(event.data);
+
+            if (data && data.processData) {
+                console.log("Received data:", data); // Debugging-Log
+                updateProcessData(data.processData);
+                updateGauge(oeeGauge, data.oee, 'oeeValue');
+                updateGauge(availabilityGauge, data.availability, 'availabilityValue');
+                updateGauge(performanceGauge, data.performance, 'performanceValue');
+                updateGauge(qualityGauge, data.quality, 'qualityValue');
+                updateTimelineChart(timelineChart, data.processData);
+            } else {
+                console.error("Invalid data received from WebSocket:", data);
+            }
+        };
+
+        ws.onclose = () => {
+            console.log("WebSocket connection closed. Attempting to reconnect...");
+            document.getElementById("status").innerText = "WebSocket Status: Disconnected";
+            setTimeout(connectWebSocket, reconnectInterval); // Versuch, die Verbindung nach einem Intervall wiederherzustellen
+        };
+
+        ws.onerror = (error) => {
+            console.error(`WebSocket error: ${error.message}`);
+            document.getElementById("status").innerText = "WebSocket Status: Error";
+        };
     };
 
-    ws.onmessage = (event) => {
-        const data = JSON.parse(event.data);
-
-        if (data && data.processData) {
-            console.log("Received data:", data); // Debugging-Log
-            updateProcessData(data.processData);
-            updateGauge(oeeGauge, data.oee, 'oeeValue');
-            updateGauge(availabilityGauge, data.availability, 'availabilityValue');
-            updateGauge(performanceGauge, data.performance, 'performanceValue');
-            updateGauge(qualityGauge, data.quality, 'qualityValue');
-            updateTimelineChart(timelineChart, data.processData);
-        } else {
-            console.error("Invalid data received from WebSocket:", data);
-        }
-    };
-
-    ws.onclose = () => {
-        console.log("WebSocket connection closed");
-        document.getElementById("status").innerText = "WebSocket Status: Disconnected";
-    };
-
-    ws.onerror = (error) => {
-        console.error(`WebSocket error: ${error.message}`);
-        document.getElementById("status").innerText = "WebSocket Status: Error";
-    };
+    connectWebSocket();
 
     const oeeGauge = initGauge('oeeGauge', 'OEE');
     const availabilityGauge = initGauge('availabilityGauge', 'Availability');
@@ -74,7 +82,7 @@ function initGauge(elementId, label) {
     const opts = {
         angle: 0.15,
         lineWidth: 0.2,
-        radiusScale: 0.7, // Adjust radius scale to control gauge size
+        radiusScale: 0.7,
         pointer: {
             length: 0.6,
             strokeWidth: 0.035,
