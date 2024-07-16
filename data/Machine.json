@@ -1,13 +1,11 @@
-{
-    "machines": [{
-            "machine_id": "M001",
-            "name": "Machine 1",
-            "description": "Description of Machine 1"
-        },
-        {
-            "machine_id": "M002",
-            "name": "Machine 2",
-            "description": "Description of Machine 2"
-        }
-    ]
-}
+[{
+        "machine_id": "1",
+        "name": "Machine 1",
+        "description": "Description of Machine 1"
+    },
+    {
+        "machine_id": "2",
+        "name": "Machine 2",
+        "description": "Description of Machine 2"
+    }
+]

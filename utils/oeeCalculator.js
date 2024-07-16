@@ -39,11 +39,12 @@ class OEECalculator {
             const processOrderData = await loadProcessOrderData();
             oeeLogger.info(`Loaded process order data: ${JSON.stringify(processOrderData)}`);
 
-            if (!processOrderData) {
+            if (!processOrderData || !Array.isArray(processOrderData) || processOrderData.length === 0) {
                 throw new Error('Process order data is null or undefined');
             }
 
-            const { ProcessOrderNumber, setupTime, processingTime, teardownTime, totalPartsToBeProduced, Start, End } = processOrderData;
+            const data = processOrderData[0]; // Assuming single process order data for now
+            const { ProcessOrderNumber, setupTime, processingTime, teardownTime, totalPartsToBeProduced, Start, End } = data;
 
             if (!ProcessOrderNumber) {
                 throw new Error('Invalid process order data: ProcessOrderNumber is missing.');

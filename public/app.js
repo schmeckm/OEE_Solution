@@ -10,6 +10,7 @@ document.addEventListener("DOMContentLoaded", async() => {
         const data = JSON.parse(event.data);
 
         if (data && data.processData) {
+            console.log("Received data:", data); // Debugging-Log
             updateProcessData(data.processData);
             updateGauge(oeeGauge, data.oee, 'oeeValue');
             updateGauge(availabilityGauge, data.availability, 'availabilityValue');
@@ -43,6 +44,18 @@ document.addEventListener("DOMContentLoaded", async() => {
 
     updateCurrentTime();
     setInterval(updateCurrentTime, 1000); // Update the current time every second
+
+    const accordion = document.querySelector('.accordion');
+    const panel = document.querySelector('.panel');
+
+    accordion.addEventListener('click', function() {
+        this.classList.toggle('active');
+        if (panel.style.display === 'block') {
+            panel.style.display = 'none';
+        } else {
+            panel.style.display = 'block';
+        }
+    });
 });
 
 function updateProcessData(processData) {
@@ -54,7 +67,7 @@ function updateProcessData(processData) {
     document.getElementById("plannedQuantity").innerText = processData.plannedProduction;
     document.getElementById("plannedDowntime").innerText = processData.plannedDowntime;
     document.getElementById("unplannedDowntime").innerText = processData.unplannedDowntime;
-    document.getElementById("lineCode").innerText = processData.LineCode || 'N/A'; // Set the Line Code
+    document.getElementById("lineCode").innerText = processData.LineCode || 'N/A';
 }
 
 function initGauge(elementId, label) {
@@ -147,10 +160,14 @@ function initTimelineChart(elementId) {
 }
 
 function updateTimelineChart(chart, processData) {
-    chart.data.datasets[0].data = processData.plannedDowntime; // Assuming processData has an array of downtime values
-    chart.data.datasets[1].data = processData.unplannedDowntime; // Assuming processData has an array of downtime values
-    chart.data.datasets[2].data = processData.production; // Assuming processData has an array of production values
-    chart.update();
+    if (processData.plannedDowntime && processData.unplannedDowntime && processData.production) {
+        chart.data.datasets[0].data = processData.plannedDowntime; // Assuming processData has an array of downtime values
+        chart.data.datasets[1].data = processData.unplannedDowntime; // Assuming processData has an array of downtime values
+        chart.data.datasets[2].data = processData.production; // Assuming processData has an array of production values
+        chart.update();
+    } else {
+        console.error("Missing data in processData:", processData);
+    }
 }
 
 function updateTimeZone(timeZone) {

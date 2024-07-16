@@ -1,6 +1,7 @@
 const winston = require('winston');
 const DailyRotateFile = require('winston-daily-rotate-file');
 const path = require('path');
+require('dotenv').config(); // Load the .env file
 
 const logFormat = winston.format.printf(({ level, message, timestamp, ...metadata }) => {
     let logMessage = `${timestamp} ${level}: ${message}`;
@@ -11,61 +12,71 @@ const logFormat = winston.format.printf(({ level, message, timestamp, ...metadat
 });
 
 const logLevels = (process.env.LOG_LEVELS || 'debug').split(',').map(level => level.trim());
+const retentionDays = process.env.LOG_RETENTION_DAYS || 14;
+const logToConsole = process.env.LOG_TO_CONSOLE === 'true';
+const logToFile = process.env.LOG_TO_FILE === 'true';
 
-const customFilter = winston.format((info) => {
-    return logLevels.includes(info.level) ? info : false;
-});
+const customFilter = winston.format((info) => logLevels.includes(info.level) ? info : false);
 
 const createLogger = (logFilename) => {
+    const logDirectory = path.join(__dirname, '../logs');
+    const transports = [];
+
+    if (logToConsole) {
+        transports.push(new winston.transports.Console({
+            format: winston.format.combine(
+                customFilter(),
+                winston.format.colorize(),
+                winston.format.timestamp(),
+                logFormat
+            )
+        }));
+    }
+
+    if (logToFile) {
+        transports.push(new DailyRotateFile({
+            filename: path.join(logDirectory, `${logFilename}-%DATE%.log`),
+            datePattern: 'YYYY-MM-DD',
+            maxSize: '20m',
+            maxFiles: `${retentionDays}d`,
+            format: winston.format.combine(
+                customFilter(),
+                winston.format.timestamp(),
+                logFormat
+            )
+        }));
+    }
+
     return winston.createLogger({
         level: 'debug',
         format: winston.format.combine(
             winston.format.timestamp(),
             winston.format.json()
         ),
-        transports: [
-            new winston.transports.Console({
-                format: winston.format.combine(
-                    customFilter(),
-                    winston.format.colorize(),
-                    logFormat
-                )
-            }),
-            new DailyRotateFile({
-                filename: path.join(__dirname, '../logs', `${logFilename}-%DATE%.log`),
-                datePattern: 'YYYY-MM-DD',
-                maxSize: '20m',
-                maxFiles: `${process.env.LOG_RETENTION_DAYS || 14}d`,
-                format: winston.format.combine(
-                    customFilter(),
-                    winston.format.timestamp(),
-                    winston.format.json()
-                )
-            })
-        ],
+        transports,
         exceptionHandlers: [
             new DailyRotateFile({
-                filename: path.join(__dirname, '../logs', 'exceptions-%DATE%.log'),
+                filename: path.join(logDirectory, 'exceptions-%DATE%.log'),
                 datePattern: 'YYYY-MM-DD',
                 maxSize: '20m',
-                maxFiles: `${process.env.LOG_RETENTION_DAYS || 14}d`,
+                maxFiles: `${retentionDays}d`,
                 format: winston.format.combine(
                     customFilter(),
                     winston.format.timestamp(),
-                    winston.format.json()
+                    logFormat
                 )
             })
         ],
         rejectionHandlers: [
             new DailyRotateFile({
-                filename: path.join(__dirname, '../logs', 'rejections-%DATE%.log'),
+                filename: path.join(logDirectory, 'rejections-%DATE%.log'),
                 datePattern: 'YYYY-MM-DD',
                 maxSize: '20m',
-                maxFiles: `${process.env.LOG_RETENTION_DAYS || 14}d`,
+                maxFiles: `${retentionDays}d`,
                 format: winston.format.combine(
                     customFilter(),
                     winston.format.timestamp(),
-                    winston.format.json()
+                    logFormat
                 )
             })
         ]
