@@ -9,21 +9,13 @@ body {
 
 .header {
     display: flex;
-    /* Use flexbox for layout */
     justify-content: space-between;
-    /* Space out child elements */
     align-items: center;
-    /* Align items vertically */
     background-color: #1e1e1e;
-    /* Header background color */
     padding: 10px;
-    /* Padding inside the header */
     border-radius: 10px;
-    /* Rounded corners */
     box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
-    /* Shadow effect */
     margin-bottom: 20px;
-    /* Space below the header */
 }
 
 .description,
@@ -31,136 +23,86 @@ body {
 .line-code,
 .current-time {
     margin: 0 10px;
-    /* Space around individual elements */
 }
-
-
-/* Main content area layout */
 
 .main {
     display: flex;
-    /* Use flexbox for layout */
     height: calc(100vh - 100px);
-    /* Full height minus header space */
 }
 
 .left-column {
     width: 40%;
-    /* 40% width of the main area */
     display: flex;
-    /* Use flexbox for layout */
     flex-direction: column;
-    /* Stack children vertically */
     align-items: center;
-    /* Center children horizontally */
 }
 
 .right-column {
     width: 50%;
-    /* 50% width of the main area */
     display: flex;
-    /* Use flexbox for layout */
     flex-direction: column;
-    /* Stack children vertically */
 }
 
 .top-section {
     padding: 10px;
-    /* Inner padding */
     background-color: #2e2e2e;
-    /* Background color */
     border-bottom: 1px solid #444;
-    /* Bottom border */
     display: flex;
-    /* Use flexbox for layout */
     flex-wrap: wrap;
-    /* Allow wrapping of children */
     gap: 10px;
-    /* Space between children */
     margin-bottom: 10px;
-    /* Space below this section */
 }
 
 .bottom-section {
     flex: 1;
-    /* Take up remaining space */
     padding: 20px;
-    /* Inner padding */
     background-color: #2e2e2e;
-    /* Background color */
 }
 
 .gauge-wrapper.large {
     margin-bottom: 20px;
-    /* Space below the gauge */
 }
 
 .gauge-container {
     display: flex;
-    /* Use flexbox for layout */
     justify-content: space-between;
-    /* Space out children */
     width: 100%;
-    /* Full width of the container */
 }
 
 .gauge-wrapper.small {
     display: flex;
-    /* Use flexbox for layout */
     flex-direction: column;
-    /* Stack children vertically */
     align-items: center;
-    /* Center children horizontally */
     margin-bottom: 20px;
-    /* Space below each gauge */
     width: 30%;
-    /* 30% width of the container */
     height: 200px;
-    /* Height to fit canvas, label, and value */
     margin-right: 10px;
-    /* Right margin for spacing */
 }
 
 .gauge-wrapper .gauge-label {
     margin-top: 10px;
-    /* Space above the label */
     font-size: 16px;
-    /* Font size of the label */
     font-weight: bold;
-    /* Bold font weight */
     text-align: center;
-    /* Center the text */
 }
 
 .gauge-wrapper .gauge-value {
     margin-top: 5px;
-    /* Space above the value */
     font-size: 14px;
-    /* Font size of the value */
     color: #ffffff;
-    /* Text color */
     text-align: center;
-    /* Center the text */
 }
 
 canvas {
     display: block;
-    /* Block display to respect width and height */
     margin: auto;
-    /* Center the canvas horizontally */
     margin-bottom: 10px;
-    /* Space below the canvas */
 }
 
 #timelineChart {
     width: 100%;
-    /* Full width of the container */
     height: 130px;
-    /* Height of the chart */
 }
-
-
-/* Define gauge color customization */
 
 .chartjs-render-monitor .gauge .background {
     stroke: #eee;
@@ -174,22 +116,16 @@ canvas {
     stroke: #333;
 }
 
-
-/* Custom gauge colors for different value ranges */
-
 .chartjs-render-monitor .gauge .value[data-value='low'] {
     stroke: #f44336;
-    /* Red for low values */
 }
 
 .chartjs-render-monitor .gauge .value[data-value='medium'] {
     stroke: #ffeb3b;
-    /* Yellow for medium values */
 }
 
 .chartjs-render-monitor .gauge .value[data-value='high'] {
     stroke: #4caf50;
-    /* Green for high values */
 }
 
 
