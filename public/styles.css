@@ -56,8 +56,8 @@ body {
 }
 
 .right-column {
-    width: 60%;
-    /* 60% width of the main area */
+    width: 50%;
+    /* 50% width of the main area */
     display: flex;
     /* Use flexbox for layout */
     flex-direction: column;
@@ -190,4 +190,57 @@ canvas {
 .chartjs-render-monitor .gauge .value[data-value='high'] {
     stroke: #4caf50;
     /* Green for high values */
+}
+
+
+/* Menu styles */
+
+.menu {
+    width: 10%;
+    background-color: #1e1e1e;
+    padding: 10px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    border-radius: 10px;
+}
+
+.accordion {
+    background-color: #333;
+    color: #fff;
+    cursor: pointer;
+    padding: 10px;
+    width: 100%;
+    border: none;
+    text-align: left;
+    outline: none;
+    font-size: 18px;
+    transition: 0.4s;
+    border-radius: 5px;
+}
+
+.panel {
+    padding: 0 10px;
+    display: none;
+    background-color: #1e1e1e;
+    overflow: hidden;
+    border-radius: 5px;
+    margin-top: 10px;
+}
+
+.menu ul {
+    list-style-type: none;
+    padding: 0;
+}
+
+.menu ul li {
+    margin: 10px 0;
+}
+
+.menu ul li a {
+    text-decoration: none;
+    color: #fff;
+    font-weight: bold;
+}
+
+.menu ul li a:hover {
+    color: #007BFF;
 }
