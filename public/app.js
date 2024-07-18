@@ -7,34 +7,40 @@ document.addEventListener("DOMContentLoaded", async() => {
 
         ws.onopen = () => {
             console.log("WebSocket connection opened");
-            document.getElementById("status").innerText = "WebSocket Status: Connected";
+            document.getElementById("status").innerText = "Connected";
         };
 
         ws.onmessage = (event) => {
-            const data = JSON.parse(event.data);
+            try {
+                const data = JSON.parse(event.data);
 
-            if (data && data.processData) {
-                console.log("Received data:", data); // Debugging-Log
-                updateProcessData(data.processData);
-                updateGauge(oeeGauge, data.oee, 'oeeValue');
-                updateGauge(availabilityGauge, data.availability, 'availabilityValue');
-                updateGauge(performanceGauge, data.performance, 'performanceValue');
-                updateGauge(qualityGauge, data.quality, 'qualityValue');
-                updateTimelineChart(timelineChart, data.processData);
-            } else {
-                console.error("Invalid data received from WebSocket:", data);
+                if (data && data.type === 'chartData') {
+                    console.log("Received chart data:", data.data); // Debugging-Log
+                    updateTimelineChart(timelineChart, data.data);
+                } else if (data && data.processData) {
+                    console.log("Received process data:", data); // Debugging-Log
+                    updateProcessData(data.processData);
+                    updateGauge(oeeGauge, data.oee, 'oeeValue');
+                    updateGauge(availabilityGauge, data.availability, 'availabilityValue');
+                    updateGauge(performanceGauge, data.performance, 'performanceValue');
+                    updateGauge(qualityGauge, data.quality, 'qualityValue');
+                } else {
+                    console.error("Invalid data received from WebSocket:", data);
+                }
+            } catch (error) {
+                console.error("Error processing WebSocket message:", error);
             }
         };
 
         ws.onclose = () => {
             console.log("WebSocket connection closed. Attempting to reconnect...");
-            document.getElementById("status").innerText = "WebSocket Status: Disconnected";
+            document.getElementById("status").innerText = "Disconnected";
             setTimeout(connectWebSocket, reconnectInterval); // Versuch, die Verbindung nach einem Intervall wiederherzustellen
         };
 
         ws.onerror = (error) => {
             console.error(`WebSocket error: ${error.message}`);
-            document.getElementById("status").innerText = "WebSocket Status: Error";
+            document.getElementById("status").innerText = "Error";
         };
     };
 
@@ -127,29 +133,18 @@ function initTimelineChart(elementId) {
     return new Chart(document.getElementById(elementId), {
         type: 'bar',
         data: {
-            labels: ['08:00', '09:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00', '17:00', '18:00'],
-            datasets: [{
-                    label: 'Planned Downtime',
-                    backgroundColor: '#f44336',
-                    data: Array(11).fill(0)
-                },
-                {
-                    label: 'Unplanned Downtime',
-                    backgroundColor: '#ffeb3b',
-                    data: Array(11).fill(0)
-                },
-                {
-                    label: 'Production',
-                    backgroundColor: '#4caf50',
-                    data: Array(11).fill(0)
-                }
+            labels: [],
+            datasets: [
+                { label: 'Production', data: [], backgroundColor: 'green' },
+                { label: 'Break', data: [], backgroundColor: 'blue' },
+                { label: 'Unplanned Downtime', data: [], backgroundColor: 'red' },
+                { label: 'Planned Downtime', data: [], backgroundColor: 'orange' }
             ]
         },
         options: {
             scales: {
                 x: {
                     stacked: true,
-                    beginAtZero: true,
                     title: {
                         display: true,
                         text: 'Time'
@@ -157,6 +152,7 @@ function initTimelineChart(elementId) {
                 },
                 y: {
                     stacked: true,
+                    beginAtZero: true,
                     title: {
                         display: true,
                         text: 'Duration (minutes)'
@@ -167,14 +163,16 @@ function initTimelineChart(elementId) {
     });
 }
 
-function updateTimelineChart(chart, processData) {
-    if (processData.plannedDowntime && processData.unplannedDowntime && processData.production) {
-        chart.data.datasets[0].data = processData.plannedDowntime; // Assuming processData has an array of downtime values
-        chart.data.datasets[1].data = processData.unplannedDowntime; // Assuming processData has an array of downtime values
-        chart.data.datasets[2].data = processData.production; // Assuming processData has an array of production values
+function updateTimelineChart(chart, data) {
+    if (data.labels && data.datasets) {
+        chart.data.labels = data.labels;
+        chart.data.datasets[0].data = data.datasets[0].data.map(Math.round); // Round to nearest minute
+        chart.data.datasets[1].data = data.datasets[1].data.map(Math.round); // Round to nearest minute
+        chart.data.datasets[2].data = data.datasets[2].data.map(Math.round); // Round to nearest minute
+        chart.data.datasets[3].data = data.datasets[3].data.map(Math.round); // Round to nearest minute
         chart.update();
     } else {
-        console.error("Missing data in processData:", processData);
+        console.error("Invalid data format for timeline chart:", data);
     }
 }
 

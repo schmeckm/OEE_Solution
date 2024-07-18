@@ -1,29 +1,48 @@
 const { oeeLogger, errorLogger } = require('../utils/logger');
 const { OEECalculator, writeOEEToInfluxDB } = require('../utils/oeeCalculator');
-const { getunplannedDowntime, getPlannedDowntime } = require('../utils/downtimeManager');
+const { getunplannedDowntime, getPlannedDowntime, loadDataAndPrepareChart } = require('../utils/downtimeManager');
 const { influxdb, oeeAsPercent, structure } = require('../config/config');
-const WebSocket = require('ws'); // Import WebSocket
+const WebSocket = require('ws');
 
 const oeeCalculator = new OEECalculator();
 let receivedMetrics = {};
-let wss = null; // WebSocket server instance
+let wss = null;
 
-// Function to set the WebSocket server instance
+/**
+ * Set the WebSocket server instance.
+ * @param {Object} server - The WebSocket server instance.
+ */
 function setWebSocketServer(server) {
     wss = server;
 }
 
+/**
+ * Update a metric with a new value.
+ * @param {string} name - The metric name.
+ * @param {number} value - The metric value.
+ */
 function updateMetric(name, value) {
     receivedMetrics[name] = value;
     oeeCalculator.updateData(name, value);
     oeeLogger.debug(`Metric updated: ${name} = ${value}`);
 }
 
+/**
+ * Process metrics, calculate OEE, and send data via WebSocket.
+ */
 async function processMetrics() {
     try {
+        oeeLogger.info('Starting metrics processing.');
         await oeeCalculator.init();
         await oeeCalculator.calculateMetrics();
-        const { oee, availability, performance, quality, ProcessOrderNumber, StartTime, EndTime, plannedProduction, machine_id } = oeeCalculator.getMetrics();
+
+        const metrics = oeeCalculator.getMetrics();
+        const { oee, availability, performance, quality, ProcessOrderNumber, StartTime, EndTime, plannedProduction, machine_id } = metrics;
+
+        if (!metrics) {
+            throw new Error('Metrics could not be calculated or are undefined.');
+        }
+
         const level = oeeCalculator.classifyOEE(oee / 100);
 
         oeeLogger.info(`Calculated Availability: ${availability}`);
@@ -32,8 +51,16 @@ async function processMetrics() {
         oeeLogger.info(`Calculated OEE: ${oee}% (Level: ${level})`);
 
         // Calculate downtime
-        const plannedDowntime = await getPlannedDowntime(ProcessOrderNumber, StartTime, EndTime);
-        const unplannedDowntime = await getunplannedDowntime(ProcessOrderNumber);
+        let plannedDowntime;
+        let unplannedDowntime;
+        try {
+            plannedDowntime = await getPlannedDowntime(ProcessOrderNumber, StartTime, EndTime);
+            unplannedDowntime = await getunplannedDowntime(ProcessOrderNumber);
+        } catch (downtimeError) {
+            errorLogger.error(`Error calculating downtime: ${downtimeError.message}`);
+            plannedDowntime = 0;
+            unplannedDowntime = 0;
+        }
 
         // Prepare payload
         const roundedMetrics = {
@@ -49,9 +76,13 @@ async function processMetrics() {
                 plannedProduction,
                 plannedDowntime,
                 unplannedDowntime,
-                machine_id // Include machine_id in the payload
+                machine_id
             }
         };
+
+        // Log summary
+        oeeLogger.info(`OEE Metrics Summary: OEE=${roundedMetrics.oee}%, Availability=${roundedMetrics.availability}%, Performance=${roundedMetrics.performance}%, Quality=${roundedMetrics.quality}%, Level=${roundedMetrics.level}`);
+        oeeLogger.info(`Process Data: ${JSON.stringify(roundedMetrics.processData)}`);
 
         // Send metrics to all connected WebSocket clients
         if (wss) {
@@ -61,11 +92,36 @@ async function processMetrics() {
                     client.send(payload);
                 }
             });
+            oeeLogger.info('Metrics sent to WebSocket clients.');
         }
 
         if (influxdb.url && influxdb.token && influxdb.org && influxdb.bucket) {
             await writeOEEToInfluxDB(oee, availability, performance, quality, { group_id: structure.Group_id, edge_node_id: structure.edge_node_id });
+            oeeLogger.info('Metrics written to InfluxDB.');
         }
+
+        // Load chart data and send it via WebSocket
+        let chartData;
+        try {
+            chartData = loadDataAndPrepareChart();
+        } catch (chartError) {
+            errorLogger.error(`Error loading or preparing chart data: ${chartError.message}`);
+            return;
+        }
+
+        if (wss) {
+            const chartPayload = JSON.stringify({ type: 'chartData', data: chartData });
+            wss.clients.forEach((client) => {
+                if (client.readyState === WebSocket.OPEN) {
+                    client.send(chartPayload);
+                }
+            });
+            oeeLogger.info('Chart data sent to WebSocket clients.');
+        }
+
+        // Log chart data
+        oeeLogger.info(`Chart Data: ${JSON.stringify(chartData)}`);
+
     } catch (error) {
         errorLogger.error(`Error calculating metrics: ${error.message}`);
     }

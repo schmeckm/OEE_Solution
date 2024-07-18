@@ -6,9 +6,19 @@
     "auditLog": "C:\\Users\\marku\\OneDrive\\Dokumente\\markus_data\\Software Development\\Visual_Studio_Projects\\OEE_calculator\\logs\\.b6ab8ec1930a228547170a9bbb3228651c2cd250-audit.json",
     "files": [
         {
-            "date": 1721169400424,
+            "date": 1721244554100,
             "name": "C:\\Users\\marku\\OneDrive\\Dokumente\\markus_data\\Software Development\\Visual_Studio_Projects\\OEE_calculator\\logs\\rejections-2024-07-17.log",
-            "hash": "7b321ee0f80bf246f7b8734322dc8858f3afd921d806291c9a741d48b1afc5de"
+            "hash": "2821408851b3b4b1879eff0b22c8e25053a182d6c99b51bb38fd0bf86eb591b0"
+        },
+        {
+            "date": 1721326983110,
+            "name": "C:\\Users\\marku\\OneDrive\\Dokumente\\markus_data\\Software Development\\Visual_Studio_Projects\\OEE_calculator\\logs\\rejections-2024-07-18.log",
+            "hash": "685b85a22f1dd5ea772bf578f004e6b3ff0a29908f5dee1275cd47f892da304c"
+        },
+        {
+            "date": 1721340340408,
+            "name": "C:\\Users\\marku\\OneDrive\\Dokumente\\markus_data\\Software Development\\Visual_Studio_Projects\\OEE_calculator\\logs\\rejections-2024-07-19.log",
+            "hash": "0b015e274a0cd048a38c2f3e457e6d722bd3485f8439b0778f30aa2ffb7a6577"
         }
     ],
     "hashType": "sha256"

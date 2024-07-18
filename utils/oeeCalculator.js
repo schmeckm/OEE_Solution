@@ -1,7 +1,7 @@
 const { InfluxDB, Point } = require('@influxdata/influxdb-client');
 const { oeeLogger, errorLogger } = require('../utils/logger');
 const { influxdb, oeeAsPercent } = require('../config/config');
-const { getPlannedDowntime, getunplannedDowntime } = require('../utils/downtimeManager');
+const { getPlannedDowntime, getunplannedDowntime, } = require('../utils/downtimeManager');
 const { loadProcessOrderData } = require('../src/dataLoader');
 const path = require('path');
 
