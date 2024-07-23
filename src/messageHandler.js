@@ -30,6 +30,8 @@ function handleOeeMessage(decodedMessage) {
 
         // Trigger the processing of all updated metrics
         processMetrics();
+
+
     } catch (error) {
         errorLogger.error(`Error in handleOeeMessage: ${error.message}`); // Log error message
         errorLogger.error(error.stack); // Log error stack trace for debugging

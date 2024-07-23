@@ -8,12 +8,14 @@ const unplannedDowntimeFilePath = path.resolve(__dirname, '../data/unplannedDown
 const plannedDowntimeFilePath = path.resolve(__dirname, '../data/plannedDowntime.json');
 const processOrderFilePath = path.resolve(__dirname, '../data/processOrder.json');
 const shiftModelFilePath = path.resolve(__dirname, '../data/shiftModel.json');
+const machineStoppagesFilePath = path.resolve(__dirname, '../data/machineStoppages.json');
 
 // Caches für die Daten
 let unplannedDowntimeCache = null;
 let plannedDowntimeCache = null;
 let processOrderDataCache = null;
 let shiftModelDataCache = null;
+let machineStoppagesCache = null;
 
 /**
  * Load JSON data from a file and log its content.
@@ -79,6 +81,18 @@ function loadShiftModelData() {
         oeeLogger.info(`Shift model data loaded from ${shiftModelFilePath}`);
     }
     return shiftModelDataCache;
+}
+
+/**
+ * Load machine stoppages data once and cache it.
+ * @returns {Object} The machine stoppages data.
+ */
+function loadMachineStoppagesData() {
+    if (!machineStoppagesCache) {
+        machineStoppagesCache = loadJsonData(machineStoppagesFilePath);
+        oeeLogger.info(`Machine stoppages data loaded from ${machineStoppagesFilePath}`);
+    }
+    return machineStoppagesCache;
 }
 
 /**
@@ -180,5 +194,6 @@ module.exports = {
     loadProcessOrderData,
     loadUnplannedDowntimeData,
     loadPlannedDowntimeData,
-    loadShiftModelData
+    loadShiftModelData,
+    loadMachineStoppagesData
 };

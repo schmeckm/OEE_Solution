@@ -11,10 +11,28 @@
     <script src="https://momentjs.com/downloads/moment.js"></script>
     <script src="https://momentjs.com/downloads/moment-timezone-with-data.js"></script>
     <script src="app.js" defer></script>
+    <style>
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background-color: white;
+        }
+        
+        th,
+        td {
+            border: 1px solid black;
+            padding: 8px;
+            text-align: left;
+        }
+        
+        th {
+            background-color: #f2f2f2;
+        }
+    </style>
 </head>
 
 <body>
-    <div class="header">
+    <header class="header">
         <div class="description">Eventdriven OEE 0.1</div>
         <div class="status">
             WebSocket Status: <span id="status">Connecting...</span>
@@ -24,38 +42,39 @@
         </div>
         <div class="current-time">
             <span id="currentTime">N/A</span>
+            <label for="timeZone">Time Zone:</label>
             <select id="timeZone">
                 <option value="UTC">UTC</option>
                 <option value="Europe/Berlin">CEST</option>
             </select>
         </div>
-    </div>
-    <div class="main">
-        <div class="left-column">
+    </header>
+    <main class="main">
+        <section class="left-column">
             <div class="gauge-wrapper large">
-                <canvas id="oeeGauge" height="200" width="200"></canvas>
+                <canvas id="oeeGauge" height="200" width="200" aria-label="OEE Gauge"></canvas>
                 <div class="gauge-label">OEE</div>
                 <div class="gauge-value" id="oeeValue">0%</div>
             </div>
             <div class="gauge-container">
                 <div class="gauge-wrapper small">
-                    <canvas id="availabilityGauge" height="150" width="150"></canvas>
+                    <canvas id="availabilityGauge" height="150" width="150" aria-label="Availability Gauge"></canvas>
                     <div class="gauge-label">Availability</div>
                     <div class="gauge-value" id="availabilityValue">0%</div>
                 </div>
                 <div class="gauge-wrapper small">
-                    <canvas id="performanceGauge" height="150" width="150"></canvas>
+                    <canvas id="performanceGauge" height="150" width="150" aria-label="Performance Gauge"></canvas>
                     <div class="gauge-label">Performance</div>
                     <div class="gauge-value" id="performanceValue">0%</div>
                 </div>
                 <div class="gauge-wrapper small">
-                    <canvas id="qualityGauge" height="150" width="150"></canvas>
+                    <canvas id="qualityGauge" height="150" width="150" aria-label="Quality Gauge"></canvas>
                     <div class="gauge-label">Quality</div>
                     <div class="gauge-value" id="qualityValue">0%</div>
                 </div>
             </div>
-        </div>
-        <div class="right-column">
+        </section>
+        <section class="right-column">
             <div class="top-section">
                 <div>Order Number: <span id="orderNumber">N/A</span></div>
                 <div>Start Time: <span id="startTime">N/A</span></div>
@@ -65,21 +84,40 @@
                 <div>Unplanned Downtime: <span id="unplannedDowntime">N/A</span></div>
             </div>
             <div class="bottom-section">
-                <canvas id="timelineChart" height="130" width="524"></canvas>
-                <div id="tablePlaceholder">Table will be displayed here.</div>
+                <div class="bottom-left">
+                    <canvas id="timelineChart" height="130" width="524" aria-label="Timeline Chart"></canvas>
+                </div>
+                <div class="bottom-right">
+                    <table id="interruptionTable">
+                        <thead>
+                            <tr>
+                                <th>ProcessOrderID</th>
+                                <th>ProcessOrderNumber</th>
+                                <th>Start</th>
+                                <th>End</th>
+                                <th>Differenz</th>
+                                <th>Reason</th>
+                                <th>Manuell Korrektur</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- Dynamisch gefüllte Zeilen -->
+                        </tbody>
+                    </table>
+                </div>
             </div>
+        </section>
+    </main>
+    <nav class="menu">
+        <button class="accordion">Menu</button>
+        <div class="panel">
+            <ul>
+                <li><a href="page1.html">Page 1</a></li>
+                <li><a href="page2.html">Page 2</a></li>
+                <li><a href="page3.html">Page 3</a></li>
+            </ul>
         </div>
-        <div class="menu">
-            <button class="accordion">Menu</button>
-            <div class="panel">
-                <ul>
-                    <li><a href="page1.html">Page 1</a></li>
-                    <li><a href="page2.html">Page 2</a></li>
-                    <li><a href="page3.html">Page 3</a></li>
-                </ul>
-            </div>
-        </div>
-    </div>
+    </nav>
 </body>
 
 </html>

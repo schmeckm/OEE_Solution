@@ -12,20 +12,24 @@ document.addEventListener("DOMContentLoaded", async() => {
 
         ws.onmessage = (event) => {
             try {
-                const data = JSON.parse(event.data);
+                const { type, data } = JSON.parse(event.data);
+                console.log("Data received from WebSocket:", { type, data }); // Debugging-Log
 
-                if (data && data.type === 'chartData') {
-                    console.log("Received chart data:", data.data); // Debugging-Log
-                    updateTimelineChart(timelineChart, data.data);
-                } else if (data && data.processData) {
+                if (type === 'chartData') {
+                    console.log("Received chart data:", data); // Debugging-Log
+                    updateTimelineChart(timelineChart, data);
+                } else if (type === 'oeeData') {
                     console.log("Received process data:", data); // Debugging-Log
                     updateProcessData(data.processData);
                     updateGauge(oeeGauge, data.oee, 'oeeValue');
                     updateGauge(availabilityGauge, data.availability, 'availabilityValue');
                     updateGauge(performanceGauge, data.performance, 'performanceValue');
                     updateGauge(qualityGauge, data.quality, 'qualityValue');
+                } else if (type === 'machineData') {
+                    console.log("Received machine data:", data); // Debugging-Log
+                    updateInterruptionTable(data);
                 } else {
-                    console.error("Invalid data received from WebSocket:", data);
+                    console.error("Invalid data received from WebSocket:", { type, data });
                 }
             } catch (error) {
                 console.error("Error processing WebSocket message:", error);
@@ -191,4 +195,23 @@ function updateCurrentTime() {
     const timeZone = document.getElementById("timeZone").value;
     const currentTimeElement = document.getElementById("currentTime");
     currentTimeElement.innerText = moment().tz(timeZone).format("YYYY-MM-DD HH:mm:ss");
+}
+
+function updateInterruptionTable(data) {
+    const tableBody = document.querySelector("#interruptionTable tbody");
+    tableBody.innerHTML = ""; // Clear existing table data
+
+    data.forEach(entry => {
+        const row = document.createElement("tr");
+        row.innerHTML = `
+            <td>${entry.ProcessOrderID}</td>
+            <td>${entry.ProcessOrderNumber}</td>
+            <td>${entry.Start}</td>
+            <td>${entry.End}</td>
+            <td>${entry.Differenz}</td>
+            <td>${entry.Reason || 'N/A'}</td>
+            <td>${entry.ManuellKorrektur || 'N/A'}</td>
+        `;
+        tableBody.appendChild(row);
+    });
 }

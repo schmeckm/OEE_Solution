@@ -1,15 +1,26 @@
 const fs = require('fs');
 const path = require('path');
-const { oeeLogger, errorLogger, logUnplannedDowntimeFileContent } = require('../utils/logger');
-const { loadProcessOrderData, getPlannedDowntime, unplannedDowntime } = require('../src/dataLoader'); // Importing functions to load process orders and downtime data
+const dotenv = require('dotenv');
+const { oeeLogger, errorLogger } = require('../utils/logger');
+const { loadProcessOrderData, loadMachineStoppagesData } = require('../src/dataLoader');
+const config = require('../config/config'); // Import the config
+const { setWebSocketServer, sendWebSocketMessage } = require('./webSocketUtils'); // Import WebSocket utilities
 
-let currentHoldStatus = {}; // Track current hold status for each ProcessOrderNumber
+dotenv.config(); // Load environment variables from .env file
+
+let currentHoldStatus = {};
 let processOrderData = null;
+
+// Use the threshold value from the config
+const THRESHOLD_SECONDS = config.thresholdSeconds;
+
+// Path to the MachineData.json file
+const dbFilePath = path.join(__dirname, '../data/machineStoppages.json');
 
 // Try to load process order data on module start
 try {
     processOrderData = loadProcessOrderData();
-    oeeLogger.info(`Process order data loaded: ${JSON.stringify(processOrderData)}`); // Debugging log
+    oeeLogger.info(`Process order data loaded: ${JSON.stringify(processOrderData)}`);
     if (processOrderData && processOrderData.length > 0) {
         oeeLogger.info(`Loaded ProcessOrderNumber: ${processOrderData[0].ProcessOrderNumber}`);
     } else {
@@ -17,6 +28,14 @@ try {
     }
 } catch (error) {
     errorLogger.error(`Failed to load process order data: ${error.message}`);
+}
+
+// Send initial machine stoppages data to WebSocket clients
+try {
+    const initialMachineData = loadMachineStoppagesData();
+    sendWebSocketMessage('machineData', initialMachineData);
+} catch (error) {
+    errorLogger.error(`Failed to load initial machine stoppages data: ${error.message}`);
 }
 
 // Handle Hold command
@@ -55,7 +74,9 @@ function handleUnholdCommand(value) {
 
     if (value === 1) {
         const processOrderNumber = processOrderData && processOrderData[0] && processOrderData[0].ProcessOrderNumber;
-        if (processOrderNumber) {
+        const order_id = processOrderData && processOrderData[0] && processOrderData[0].order_id;
+
+        if (processOrderNumber && order_id) {
             if (currentHoldStatus[processOrderNumber] && currentHoldStatus[processOrderNumber].length > 0) {
                 oeeLogger.info('Machine is now Unhold');
                 startMachineOperations();
@@ -65,31 +86,48 @@ function handleUnholdCommand(value) {
                 const holdTimestamp = new Date(currentHoldStatus[processOrderNumber][currentHoldStatus[processOrderNumber].length - 1].timestamp);
                 const unholdTimestamp = new Date(timestamp);
 
-                const downtimeMinutes = Math.round((unholdTimestamp - holdTimestamp) / (1000 * 60));
+                oeeLogger.debug(`holdTimestamp: ${holdTimestamp}`);
+                oeeLogger.debug(`unholdTimestamp: ${unholdTimestamp}`);
 
-                const machineDataEntry = {
-                    "ProcessOrderNumber": processOrderNumber,
-                    "Start": holdTimestamp.toISOString(),
-                    "End": unholdTimestamp.toISOString(),
-                    "Differenz": downtimeMinutes
-                };
+                const downtimeSeconds = Math.round((unholdTimestamp - holdTimestamp) / 1000);
 
-                try {
-                    let machineData = [];
-                    if (fs.existsSync(dbFilePath)) {
-                        const machineDataContent = fs.readFileSync(dbFilePath, 'utf8');
-                        machineData = JSON.parse(machineDataContent);
+                oeeLogger.debug(`Calculated downtimeSeconds: ${downtimeSeconds}`);
+
+                if (downtimeSeconds >= THRESHOLD_SECONDS) {
+                    const machineStoppageEntry = {
+                        "ProcessOrderID": order_id,
+                        "ProcessOrderNumber": processOrderNumber,
+                        "Start": holdTimestamp.toISOString(),
+                        "End": unholdTimestamp.toISOString(),
+                        "Differenz": downtimeSeconds
+                    };
+
+                    try {
+                        let machineData = [];
+                        if (fs.existsSync(dbFilePath)) {
+                            const machineDataContent = fs.readFileSync(dbFilePath, 'utf8');
+                            try {
+                                machineData = JSON.parse(machineDataContent);
+                            } catch (jsonError) {
+                                oeeLogger.warn('MachineData.json is empty or invalid. Initializing with an empty array.');
+                                machineData = [];
+                            }
+                        }
+
+                        machineData.push(machineStoppageEntry);
+
+                        fs.writeFileSync(dbFilePath, JSON.stringify(machineData, null, 2), 'utf8');
+                        console.log(`Unhold signal recorded in MachineData.json at ${timestamp}`);
+                        console.log(`Downtime for Order ${processOrderNumber}: ${downtimeSeconds} seconds`);
+
+                        // Senden der aktualisierten Maschinendaten an WebSocket-Clients
+                        sendWebSocketMessage('machineData', machineData);
+
+                    } catch (error) {
+                        console.error('Error writing MachineData.json:', error.message);
                     }
-
-                    machineData.push(machineDataEntry);
-
-                    fs.writeFileSync(dbFilePath, JSON.stringify(machineData, null, 2), 'utf8');
-                    console.log(`Unhold signal recorded in MachineData.json at ${timestamp}`);
-                    console.log(`Downtime for Order ${processOrderNumber}: ${downtimeMinutes} minutes`);
-
-                    logUnplannedDowntimeFileContent();
-                } catch (error) {
-                    console.error('Error writing MachineData.json:', error.message);
+                } else {
+                    oeeLogger.info(`Downtime of ${downtimeSeconds} seconds did not meet the threshold of ${THRESHOLD_SECONDS} seconds. No entry recorded.`);
                 }
 
                 currentHoldStatus[processOrderNumber].pop();
@@ -109,14 +147,17 @@ function handleUnholdCommand(value) {
     }
 }
 
+// Function to stop machine operations
 function stopMachineOperations() {
     oeeLogger.info('Stopping machine operations...');
 }
 
+// Function to start machine operations
 function startMachineOperations() {
     oeeLogger.info('Starting machine operations...');
 }
 
+// Function to log events to the database
 function logEventToDatabase(event, timestamp) {
     try {
         if (!event || !timestamp) {
@@ -129,8 +170,10 @@ function logEventToDatabase(event, timestamp) {
     }
 }
 
+// Function to notify personnel
 function notifyPersonnel(message) {
     oeeLogger.info(`Notifying personnel: ${message}`);
 }
 
-module.exports = { handleHoldCommand, handleUnholdCommand };
+// Export the functions to be used in other modules
+module.exports = { handleHoldCommand, handleUnholdCommand, setWebSocketServer };

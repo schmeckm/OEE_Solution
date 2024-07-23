@@ -19,7 +19,8 @@ const envSchema = Joi.object({
     INFLUXDB_ORG: Joi.string().allow(null),
     INFLUXDB_BUCKET: Joi.string().allow(null),
     TOPIC_FORMAT: Joi.string().default('spBv1.0/group_id/message_type/edge_node_id'),
-    PLANNED_DOWNTIME_API_URL: Joi.alternatives().try(Joi.string().uri(), Joi.allow(null, ''))
+    PLANNED_DOWNTIME_API_URL: Joi.alternatives().try(Joi.string().uri(), Joi.allow(null, '')),
+    THRESHOLD_SECONDS: Joi.number().integer().default(300) // Add the threshold in seconds here
 }).unknown().required();
 
 const { error, value: envVars } = envSchema.validate(process.env);
@@ -65,5 +66,6 @@ module.exports = {
     topicFormat: envVars.TOPIC_FORMAT,
     api: {
         plannedDowntimeUrl: envVars.PLANNED_DOWNTIME_API_URL
-    }
+    },
+    thresholdSeconds: envVars.THRESHOLD_SECONDS // Add the threshold to the module exports
 };

@@ -2,19 +2,10 @@ const { oeeLogger, errorLogger } = require('../utils/logger');
 const { OEECalculator, writeOEEToInfluxDB } = require('../utils/oeeCalculator');
 const { getunplannedDowntime, getPlannedDowntime, loadDataAndPrepareChart } = require('../utils/downtimeManager');
 const { influxdb, oeeAsPercent, structure } = require('../config/config');
-const WebSocket = require('ws');
+const { setWebSocketServer, sendWebSocketMessage } = require('./webSocketUtils'); // Import the function
 
 const oeeCalculator = new OEECalculator();
 let receivedMetrics = {};
-let wss = null;
-
-/**
- * Set the WebSocket server instance.
- * @param {Object} server - The WebSocket server instance.
- */
-function setWebSocketServer(server) {
-    wss = server;
-}
 
 /**
  * Update a metric with a new value.
@@ -84,16 +75,8 @@ async function processMetrics() {
         oeeLogger.info(`OEE Metrics Summary: OEE=${roundedMetrics.oee}%, Availability=${roundedMetrics.availability}%, Performance=${roundedMetrics.performance}%, Quality=${roundedMetrics.quality}%, Level=${roundedMetrics.level}`);
         oeeLogger.info(`Process Data: ${JSON.stringify(roundedMetrics.processData)}`);
 
-        // Send metrics to all connected WebSocket clients
-        if (wss) {
-            const payload = JSON.stringify(roundedMetrics);
-            wss.clients.forEach((client) => {
-                if (client.readyState === WebSocket.OPEN) {
-                    client.send(payload);
-                }
-            });
-            oeeLogger.info('Metrics sent to WebSocket clients.');
-        }
+        // Send OEE metrics to all connected WebSocket clients
+        sendWebSocketMessage('oeeData', roundedMetrics);
 
         if (influxdb.url && influxdb.token && influxdb.org && influxdb.bucket) {
             await writeOEEToInfluxDB(oee, availability, performance, quality, { group_id: structure.Group_id, edge_node_id: structure.edge_node_id });
@@ -109,15 +92,7 @@ async function processMetrics() {
             return;
         }
 
-        if (wss) {
-            const chartPayload = JSON.stringify({ type: 'chartData', data: chartData });
-            wss.clients.forEach((client) => {
-                if (client.readyState === WebSocket.OPEN) {
-                    client.send(chartPayload);
-                }
-            });
-            oeeLogger.info('Chart data sent to WebSocket clients.');
-        }
+        sendWebSocketMessage('chartData', chartData);
 
         // Log chart data
         oeeLogger.info(`Chart Data: ${JSON.stringify(chartData)}`);

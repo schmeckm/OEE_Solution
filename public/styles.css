@@ -57,6 +57,8 @@ body {
     flex: 1;
     padding: 20px;
     background-color: #2e2e2e;
+    overflow-x: auto;
+    /* Add horizontal scrolling */
 }
 
 .gauge-wrapper.large {
@@ -179,4 +181,40 @@ canvas {
 
 .menu ul li a:hover {
     color: #007BFF;
+}
+
+
+/* Styles for the interruption table */
+
+#interruptionTable {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 20px;
+    min-width: 800px;
+    /* Ensure table is wide enough for content */
+    font-size: 12px;
+    /* Smaller font size for the table */
+}
+
+#interruptionTable th,
+#interruptionTable td {
+    border: 1px solid #444;
+    padding: 8px;
+    /* Smaller padding */
+    text-align: left;
+}
+
+#interruptionTable th {
+    background-color: #333;
+    color: #fff;
+    font-weight: bold;
+    font-size: 12px;
+    /* Smaller font size for the table headers */
+}
+
+#interruptionTable td {
+    background-color: #1e1e1e;
+    color: #fff;
+    font-size: 12px;
+    /* Smaller font size for the table data */
 }
