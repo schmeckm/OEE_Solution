@@ -1,5 +1,6 @@
 const fs = require('fs');
 const path = require('path');
+const moment = require('moment-timezone');
 const dotenv = require('dotenv');
 const { oeeLogger, errorLogger } = require('../utils/logger');
 const { loadProcessOrderData, loadMachineStoppagesData } = require('../src/dataLoader');
@@ -17,6 +18,45 @@ const THRESHOLD_SECONDS = config.thresholdSeconds;
 // Path to the MachineData.json file
 const dbFilePath = path.join(__dirname, '../data/machineStoppages.json');
 
+// Load environment variables
+const DATE_FORMAT = process.env.DATE_FORMAT || 'YYYY-MM-DDTHH:mm:ss.SSSZ';
+const TIMEZONE = process.env.TIMEZONE || 'Europe/Berlin'; // Europe/Berlin wird sowohl für CET als auch für CEST verwendet
+
+/**
+ * Parse a date string into a Moment.js object and convert it to CEST.
+ * @param {string} dateStr - The date string.
+ * @returns {Object} Moment.js object.
+ */
+function parseDate(dateStr) {
+    const date = moment.tz(dateStr, TIMEZONE);
+    if (!date.isValid()) {
+        const errorMsg = `Invalid date: ${dateStr}`;
+        errorLogger.error(errorMsg);
+        throw new Error(errorMsg);
+    }
+    return date;
+}
+
+/**
+ * Load and convert machine stoppages data from JSON.
+ * @returns {Array} The machine stoppages data with converted timestamps.
+ */
+function loadAndConvertMachineStoppagesData() {
+    try {
+        const data = fs.readFileSync(dbFilePath, 'utf8');
+        const machineStoppages = JSON.parse(data);
+
+        return machineStoppages.map(stoppage => ({
+            ...stoppage,
+            Start: moment.tz(stoppage.Start, 'UTC').format(DATE_FORMAT),
+            End: moment.tz(stoppage.End, 'UTC').format(DATE_FORMAT)
+        }));
+    } catch (error) {
+        errorLogger.error(`Failed to load and convert machine stoppages data: ${error.message}`);
+        throw error;
+    }
+}
+
 // Try to load process order data on module start
 try {
     processOrderData = loadProcessOrderData();
@@ -32,7 +72,7 @@ try {
 
 // Send initial machine stoppages data to WebSocket clients
 try {
-    const initialMachineData = loadMachineStoppagesData();
+    const initialMachineData = loadAndConvertMachineStoppagesData();
     sendWebSocketMessage('machineData', initialMachineData);
 } catch (error) {
     errorLogger.error(`Failed to load initial machine stoppages data: ${error.message}`);
@@ -40,7 +80,7 @@ try {
 
 // Handle Hold command
 function handleHoldCommand(value) {
-    const timestamp = new Date().toISOString();
+    const timestamp = moment().tz(TIMEZONE).toISOString();
 
     oeeLogger.debug(`handleHoldCommand called with value: ${value}`);
 
@@ -68,7 +108,7 @@ function handleHoldCommand(value) {
 
 // Handle Unhold command
 function handleUnholdCommand(value) {
-    const timestamp = new Date().toISOString();
+    const timestamp = moment().tz(TIMEZONE).toISOString();
 
     oeeLogger.debug(`handleUnholdCommand called with value: ${value}`);
 
@@ -83,13 +123,13 @@ function handleUnholdCommand(value) {
                 logEventToDatabase('Unhold', timestamp);
                 notifyPersonnel('Machine has been unhold and resumed operations.');
 
-                const holdTimestamp = new Date(currentHoldStatus[processOrderNumber][currentHoldStatus[processOrderNumber].length - 1].timestamp);
-                const unholdTimestamp = new Date(timestamp);
+                const holdTimestamp = parseDate(currentHoldStatus[processOrderNumber][currentHoldStatus[processOrderNumber].length - 1].timestamp);
+                const unholdTimestamp = parseDate(timestamp);
 
                 oeeLogger.debug(`holdTimestamp: ${holdTimestamp}`);
                 oeeLogger.debug(`unholdTimestamp: ${unholdTimestamp}`);
 
-                const downtimeSeconds = Math.round((unholdTimestamp - holdTimestamp) / 1000);
+                const downtimeSeconds = Math.round(unholdTimestamp.diff(holdTimestamp, 'seconds'));
 
                 oeeLogger.debug(`Calculated downtimeSeconds: ${downtimeSeconds}`);
 

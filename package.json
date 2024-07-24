@@ -31,6 +31,7 @@
         "joi": "^17.13.3",
         "jsonwebtoken": "^9.0.2",
         "lowdb": "^7.0.1",
+        "moment-timezone": "^0.5.45",
         "mqtt": "^5.8.0",
         "node-cron": "^3.0.3",
         "sparkplug-client": "^3.2.4",

@@ -289,7 +289,7 @@ function loadDataAndPrepareChart() {
         while (currentTime.isBefore(orderEnd)) {
             const nextTime = currentTime.clone().add(1, 'hour');
 
-            chartData.labels.push(`${currentTime.format("HH:mm")} - ${nextTime.format("HH:mm")}`);
+            chartData.labels.push(currentTime.toISOString()); // Store in ISO format
 
             let productionTime = nextTime.diff(currentTime, 'minutes');
             let breakTime = 0;
@@ -357,6 +357,7 @@ function loadDataAndPrepareChart() {
         throw error;
     }
 }
+
 
 module.exports = {
     getunplannedDowntime,

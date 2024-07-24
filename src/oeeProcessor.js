@@ -1,8 +1,11 @@
 const { oeeLogger, errorLogger } = require('../utils/logger');
 const { OEECalculator, writeOEEToInfluxDB } = require('../utils/oeeCalculator');
-const { getunplannedDowntime, getPlannedDowntime, loadDataAndPrepareChart } = require('../utils/downtimeManager');
-const { influxdb, oeeAsPercent, structure } = require('../config/config');
-const { setWebSocketServer, sendWebSocketMessage } = require('./webSocketUtils'); // Import the function
+const { getUnplannedDowntime, getPlannedDowntime, loadDataAndPrepareChart } = require('../utils/downtimeManager');
+const { influxdb, structure } = require('../config/config');
+const { setWebSocketServer, sendWebSocketMessage } = require('./webSocketUtils');
+const moment = require('moment-timezone');
+
+const TIMEZONE = process.env.TIMEZONE || 'Europe/Berlin'; // Set timezone from .env or default to 'Europe/Berlin'
 
 const oeeCalculator = new OEECalculator();
 let receivedMetrics = {};
@@ -46,12 +49,16 @@ async function processMetrics() {
         let unplannedDowntime;
         try {
             plannedDowntime = await getPlannedDowntime(ProcessOrderNumber, StartTime, EndTime);
-            unplannedDowntime = await getunplannedDowntime(ProcessOrderNumber);
+            unplannedDowntime = await getUnplannedDowntime(ProcessOrderNumber);
         } catch (downtimeError) {
             errorLogger.error(`Error calculating downtime: ${downtimeError.message}`);
             plannedDowntime = 0;
             unplannedDowntime = 0;
         }
+
+        // Convert StartTime and EndTime to the desired timezone
+        const startTimeInTimezone = moment.tz(StartTime, "UTC").tz(TIMEZONE).format();
+        const endTimeInTimezone = moment.tz(EndTime, "UTC").tz(TIMEZONE).format();
 
         // Prepare payload
         const roundedMetrics = {
@@ -62,8 +69,8 @@ async function processMetrics() {
             level: level,
             processData: {
                 ProcessOrderNumber,
-                StartTime,
-                EndTime,
+                StartTime: startTimeInTimezone,
+                EndTime: endTimeInTimezone,
                 plannedProduction,
                 plannedDowntime,
                 unplannedDowntime,

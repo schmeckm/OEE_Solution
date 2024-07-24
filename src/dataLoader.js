@@ -1,7 +1,11 @@
 const fs = require('fs');
 const path = require('path');
-const moment = require('moment');
+const moment = require('moment-timezone');
+const dotenv = require('dotenv');
 const { oeeLogger, errorLogger } = require('../utils/logger');
+
+// Lade Umgebungsvariablen aus der .env Datei
+dotenv.config();
 
 // Pfade zu den Daten-Dateien
 const unplannedDowntimeFilePath = path.resolve(__dirname, '../data/unplannedDowntime.json');
@@ -17,17 +21,34 @@ let processOrderDataCache = null;
 let shiftModelDataCache = null;
 let machineStoppagesCache = null;
 
+// Lese Datumsformat und Zeitzone aus Umgebungsvariablen
+const DATE_FORMAT = process.env.DATE_FORMAT || 'YYYY-MM-DDTHH:mm:ss.SSSZ';
+const TIMEZONE = process.env.TIMEZONE || 'Europe/Berlin'; // Europe/Berlin wird sowohl für CET als auch für CEST verwendet
+
 /**
- * Load JSON data from a file and log its content.
+ * Load JSON data from a file and convert date strings to the specified timezone.
  * @param {string} filePath - The path to the JSON file.
- * @returns {Object} The parsed JSON data.
+ * @param {Array<string>} dateFields - The fields that contain date strings.
+ * @returns {Object} The parsed and converted JSON data.
  */
-function loadJsonData(filePath) {
+function loadJsonData(filePath, dateFields = []) {
     try {
         oeeLogger.debug(`Loading JSON data from ${filePath}`);
         const data = fs.readFileSync(filePath, 'utf8');
         const jsonData = JSON.parse(data);
-        oeeLogger.info(`Content of ${filePath} loaded successfully`);
+
+        // Convert date fields to the specified timezone
+        if (dateFields.length > 0) {
+            jsonData.forEach(item => {
+                dateFields.forEach(field => {
+                    if (item[field]) {
+                        item[field] = moment.tz(item[field], 'UTC').tz(TIMEZONE).format(DATE_FORMAT);
+                    }
+                });
+            });
+        }
+
+        oeeLogger.info(`Content of ${filePath} loaded and converted successfully`);
         return jsonData;
     } catch (error) {
         errorLogger.error(`Error loading JSON data from ${filePath}: ${error.message}`);
@@ -36,12 +57,28 @@ function loadJsonData(filePath) {
 }
 
 /**
+ * Validates process order data.
+ * @param {Array} data - The process order data.
+ * @returns {Array} The validated process order data.
+ */
+function validateProcessOrderData(data) {
+    data.forEach(order => {
+        if (order.goodProducts > order.totalProduction) {
+            const errorMsg = `Invalid input data: goodProducts (${order.goodProducts}) cannot be greater than totalProduction (${order.totalProduction})`;
+            errorLogger.error(errorMsg);
+            throw new Error(errorMsg);
+        }
+    });
+    return data;
+}
+
+/**
  * Lädt und cached die ungeplanten Ausfallzeiten.
  * @returns {Object} Die ungeplanten Ausfallzeiten.
  */
 function loadUnplannedDowntimeData() {
     if (!unplannedDowntimeCache) {
-        unplannedDowntimeCache = loadJsonData(unplannedDowntimeFilePath);
+        unplannedDowntimeCache = loadJsonData(unplannedDowntimeFilePath, ['Start', 'End']);
         oeeLogger.info(`Unplanned downtime data loaded from ${unplannedDowntimeFilePath}`);
     }
     return unplannedDowntimeCache;
@@ -53,7 +90,7 @@ function loadUnplannedDowntimeData() {
  */
 function loadPlannedDowntimeData() {
     if (!plannedDowntimeCache) {
-        plannedDowntimeCache = loadJsonData(plannedDowntimeFilePath);
+        plannedDowntimeCache = loadJsonData(plannedDowntimeFilePath, ['Start', 'End']);
         oeeLogger.info(`Planned downtime data loaded from ${plannedDowntimeFilePath}`);
     }
     return plannedDowntimeCache;
@@ -65,7 +102,9 @@ function loadPlannedDowntimeData() {
  */
 function loadProcessOrderData() {
     if (!processOrderDataCache) {
-        processOrderDataCache = loadJsonData(processOrderFilePath);
+        let processOrderData = loadJsonData(processOrderFilePath, ['Start', 'End']);
+        processOrderData = validateProcessOrderData(processOrderData);
+        processOrderDataCache = processOrderData;
         oeeLogger.info(`Process order data loaded from ${processOrderFilePath}`);
     }
     return processOrderDataCache;
@@ -77,7 +116,7 @@ function loadProcessOrderData() {
  */
 function loadShiftModelData() {
     if (!shiftModelDataCache) {
-        shiftModelDataCache = loadJsonData(shiftModelFilePath);
+        shiftModelDataCache = loadJsonData(shiftModelFilePath, ['Start', 'End']);
         oeeLogger.info(`Shift model data loaded from ${shiftModelFilePath}`);
     }
     return shiftModelDataCache;
@@ -89,19 +128,25 @@ function loadShiftModelData() {
  */
 function loadMachineStoppagesData() {
     if (!machineStoppagesCache) {
-        machineStoppagesCache = loadJsonData(machineStoppagesFilePath);
+        machineStoppagesCache = loadJsonData(machineStoppagesFilePath, ['Start', 'End']);
         oeeLogger.info(`Machine stoppages data loaded from ${machineStoppagesFilePath}`);
     }
     return machineStoppagesCache;
 }
 
 /**
- * Parse a date string into a Moment.js object.
+ * Parse a date string into a Moment.js object and convert it to CEST.
  * @param {string} dateStr - The date string.
  * @returns {Object} Moment.js object.
  */
 function parseDate(dateStr) {
-    return moment(dateStr);
+    const date = moment.tz(dateStr, TIMEZONE);
+    if (!date.isValid()) {
+        const errorMsg = `Invalid date: ${dateStr}`;
+        errorLogger.error(errorMsg);
+        throw new Error(errorMsg);
+    }
+    return date;
 }
 
 /**
@@ -124,7 +169,7 @@ function filterDowntime(downtimes, startTime, endTime) {
  * @param {string} processOrderNumber - Die ProcessOrderNumber.
  * @returns {number} Die ungeplante Ausfallzeit in Minuten.
  */
-function getunplannedDowntime(processOrderNumber) {
+function getUnplannedDowntime(processOrderNumber) {
     try {
         const unplannedDowntimeEntries = loadUnplannedDowntimeData();
 
@@ -156,8 +201,8 @@ function getunplannedDowntime(processOrderNumber) {
 function getPlannedDowntime(processOrderNumber, startTime, endTime) {
     try {
         const plannedDowntimeEntries = loadPlannedDowntimeData();
-        const start = new Date(startTime).getTime();
-        const end = new Date(endTime).getTime();
+        const start = parseDate(startTime);
+        const end = parseDate(endTime);
 
         const totalDowntimeMinutes = plannedDowntimeEntries.reduce((total, entry) => {
             if (!entry.Start || !entry.End) {
@@ -165,15 +210,15 @@ function getPlannedDowntime(processOrderNumber, startTime, endTime) {
                 return total; // Skip this entry
             }
 
-            const entryStart = new Date(entry.Start).getTime();
-            const entryEnd = new Date(entry.End).getTime();
+            const entryStart = parseDate(entry.Start);
+            const entryEnd = parseDate(entry.End);
             oeeLogger.debug(`Processing entry for ProcessOrderNumber ${entry.ProcessOrderNumber}: Start ${entry.Start}, End ${entry.End}`);
 
-            if (entry.ProcessOrderNumber === processOrderNumber && entryStart < end && entryEnd > start) {
-                const overlapStart = Math.max(start, entryStart);
-                const overlapEnd = Math.min(end, entryEnd);
-                const duration = (overlapEnd - overlapStart) / (1000 * 60);
-                oeeLogger.debug(`Overlap found: starts at ${new Date(overlapStart)}, ends at ${new Date(overlapEnd)}, duration ${duration} minutes`);
+            if (entry.ProcessOrderNumber === processOrderNumber && entryStart.isBefore(end) && entryEnd.isAfter(start)) {
+                const overlapStart = moment.max(start, entryStart);
+                const overlapEnd = moment.min(end, entryEnd);
+                const duration = overlapEnd.diff(overlapStart, 'minutes');
+                oeeLogger.debug(`Overlap found: starts at ${overlapStart.format(DATE_FORMAT)}, ends at ${overlapEnd.format(DATE_FORMAT)}, duration ${duration} minutes`);
                 total += duration;
             }
             return total;
@@ -189,7 +234,7 @@ function getPlannedDowntime(processOrderNumber, startTime, endTime) {
 }
 
 module.exports = {
-    getunplannedDowntime,
+    getUnplannedDowntime,
     getPlannedDowntime,
     loadProcessOrderData,
     loadUnplannedDowntimeData,

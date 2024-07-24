@@ -25,6 +25,11 @@ app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
+// Endpoint to get timezone from .env
+app.get('/timezone', (req, res) => {
+    res.send(process.env.TIMEZONE || 'UTC');
+});
+
 // Define routes for different functionalities
 app.use('/structure', require('./routes/structure'));
 app.use('/oee-logs', require('./routes/oeeLogs'));

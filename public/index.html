@@ -12,22 +12,7 @@
     <script src="https://momentjs.com/downloads/moment-timezone-with-data.js"></script>
     <script src="app.js" defer></script>
     <style>
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            background-color: white;
-        }
-        
-        th,
-        td {
-            border: 1px solid black;
-            padding: 8px;
-            text-align: left;
-        }
-        
-        th {
-            background-color: #f2f2f2;
-        }
+        /* Add your CSS here */
     </style>
 </head>
 
@@ -41,11 +26,12 @@
             Line Code: <span id="lineCode">N/A</span>
         </div>
         <div class="current-time">
-            <span id="currentTime">N/A</span>
+            <span id="currentTime" class="date-field">N/A</span>
             <label for="timeZone">Time Zone:</label>
             <select id="timeZone">
                 <option value="UTC">UTC</option>
                 <option value="Europe/Berlin">CEST</option>
+                <!-- Add other time zones as needed -->
             </select>
         </div>
     </header>
@@ -77,8 +63,8 @@
         <section class="right-column">
             <div class="top-section">
                 <div>Order Number: <span id="orderNumber">N/A</span></div>
-                <div>Start Time: <span id="startTime">N/A</span></div>
-                <div>End Time: <span id="endTime">N/A</span></div>
+                <div>Start Time: <span id="startTime" class="date-field">N/A</span></div>
+                <div>End Time: <span id="endTime" class="date-field">N/A</span></div>
                 <div>Planned Quantity: <span id="plannedQuantity">N/A</span></div>
                 <div>Planned Downtime: <span id="plannedDowntime">N/A</span></div>
                 <div>Unplanned Downtime: <span id="unplannedDowntime">N/A</span></div>
