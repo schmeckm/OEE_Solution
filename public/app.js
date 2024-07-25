@@ -28,6 +28,9 @@ document.addEventListener("DOMContentLoaded", async() => {
                 } else if (type === 'machineData') {
                     console.log("Received machine data:", data); // Debugging-Log
                     updateInterruptionTable(data);
+                } else if (type === 'ratingsData') {
+                    console.log("Received ratings data:", data); // Debugging-Log
+                    updateRatings(data);
                 } else {
                     console.error("Invalid data received from WebSocket:", { type, data });
                 }
@@ -85,10 +88,16 @@ document.addEventListener("DOMContentLoaded", async() => {
             panel.style.display = 'block';
         }
     });
+
+    fetch('/ratings')
+        .then(response => response.json())
+        .then(ratings => updateRatings(ratings))
+        .catch(error => console.error('Error fetching ratings:', error));
 });
 
 let currentProcessData = null; // Store the current process data
 let currentMachineData = null; // Store the current machine data
+let currentChartData = null; // Store the current chart data
 
 function updateProcessData(processData) {
     currentProcessData = processData; // Store the data for future reference
@@ -210,7 +219,6 @@ function updateTimelineChart(chart, data) {
     }
 }
 
-
 function updateTimeZone(timeZone) {
     const startTimeElement = document.getElementById("startTime");
     const endTimeElement = document.getElementById("endTime");
@@ -241,9 +249,66 @@ function updateInterruptionTable(data) {
             <td>${moment.tz(entry.Start, "UTC").tz(document.getElementById("timeZone").value).format("YYYY-MM-DD HH:mm:ss")}</td>
             <td>${moment.tz(entry.End, "UTC").tz(document.getElementById("timeZone").value).format("YYYY-MM-DD HH:mm:ss")}</td>
             <td>${entry.Differenz}</td>
-            <td>${entry.Reason || 'N/A'}</td>
+            <td class="droppable" data-id="${entry.ProcessOrderID}" data-value="${entry.ID}">${entry.Reason || 'N/A'}</td>
             <td>${entry.ManuellKorrektur || 'N/A'}</td>
         `;
         tableBody.appendChild(row);
+    });
+
+    document.querySelectorAll('.droppable').forEach(cell => {
+        cell.addEventListener('drop', drop);
+        cell.addEventListener('dragover', allowDrop);
+    });
+}
+
+function updateRatings(ratings) {
+    const ratingsContainer = document.getElementById('ratings');
+    ratingsContainer.innerHTML = ''; // Clear existing ratings
+
+    ratings.forEach(rating => {
+        const label = document.createElement('span');
+        label.className = 'rating-label';
+        label.draggable = true;
+        label.dataset.rating = rating.description;
+        label.style.backgroundColor = rating.color;
+        label.textContent = rating.description;
+        label.addEventListener('dragstart', drag);
+        ratingsContainer.appendChild(label);
+    });
+}
+
+function allowDrop(event) {
+    event.preventDefault();
+}
+
+function drag(event) {
+    event.dataTransfer.setData("text", event.target.getAttribute('data-rating'));
+}
+
+function drop(event) {
+    event.preventDefault();
+    const rating = event.dataTransfer.getData("text");
+    const processOrderId = event.target.getAttribute('data-id');
+    const valueId = event.target.getAttribute('data-value');
+
+    console.log(`Process Order ID: ${processOrderId}, Value ID: ${valueId}, Rating: ${rating}`);
+
+    // Update the Reason cell with the dropped rating
+    event.target.textContent = rating;
+
+    // Send the updated data to the backend via WebSocket
+    const updatedData = {
+        ProcessOrderID: processOrderId,
+        ID: valueId,
+        Reason: rating
+    };
+
+    ws.send(JSON.stringify({ type: 'updateRating', data: updatedData }));
+
+    // Optional: Update the interruption table locally if needed
+    currentMachineData.forEach(entry => {
+        if (entry.ID === valueId) {
+            entry.Reason = rating;
+        }
     });
 }

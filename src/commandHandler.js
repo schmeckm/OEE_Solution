@@ -2,6 +2,7 @@ const fs = require('fs');
 const path = require('path');
 const moment = require('moment-timezone');
 const dotenv = require('dotenv');
+const { v4: uuidv4 } = require('uuid');
 const { oeeLogger, errorLogger } = require('../utils/logger');
 const { loadProcessOrderData, loadMachineStoppagesData } = require('../src/dataLoader');
 const config = require('../config/config'); // Import the config
@@ -134,11 +135,14 @@ function handleUnholdCommand(value) {
                 oeeLogger.debug(`Calculated downtimeSeconds: ${downtimeSeconds}`);
 
                 if (downtimeSeconds >= THRESHOLD_SECONDS) {
+                    // In deiner Funktion, z.B. in handleUnholdCommand
                     const machineStoppageEntry = {
+                        "ID": uuidv4(), // Generiert eine einzigartige ID
                         "ProcessOrderID": order_id,
                         "ProcessOrderNumber": processOrderNumber,
                         "Start": holdTimestamp.toISOString(),
                         "End": unholdTimestamp.toISOString(),
+                        "Reason": "tbd",
                         "Differenz": downtimeSeconds
                     };
 

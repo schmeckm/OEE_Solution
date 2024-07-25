@@ -12,7 +12,19 @@
     <script src="https://momentjs.com/downloads/moment-timezone-with-data.js"></script>
     <script src="app.js" defer></script>
     <style>
-        /* Add your CSS here */
+        .rating-label {
+            display: inline-block;
+            padding: 5px 10px;
+            margin: 5px;
+            background-color: lightgray;
+            cursor: move;
+        }
+        
+        .droppable {
+            min-height: 20px;
+            padding: 5px;
+            border: 1px dashed #ccc;
+        }
     </style>
 </head>
 
@@ -31,7 +43,6 @@
             <select id="timeZone">
                 <option value="UTC">UTC</option>
                 <option value="Europe/Berlin">CEST</option>
-                <!-- Add other time zones as needed -->
             </select>
         </div>
     </header>
@@ -40,25 +51,25 @@
             <div class="gauge-wrapper large">
                 <canvas id="oeeGauge" height="200" width="200" aria-label="OEE Gauge"></canvas>
                 <div class="gauge-label">OEE</div>
-                <div class="gauge-value" id="oeeValue">0%</div>
-            </div>
-            <div class="gauge-container">
-                <div class="gauge-wrapper small">
-                    <canvas id="availabilityGauge" height="150" width="150" aria-label="Availability Gauge"></canvas>
-                    <div class="gauge-label">Availability</div>
-                    <div class="gauge-value" id="availabilityValue">0%</div>
+                <div class="gauge-value" id="oeeValue">0%</ </div>
                 </div>
-                <div class="gauge-wrapper small">
-                    <canvas id="performanceGauge" height="150" width="150" aria-label="Performance Gauge"></canvas>
-                    <div class="gauge-label">Performance</div>
-                    <div class="gauge-value" id="performanceValue">0%</div>
+                <div class="gauge-container">
+                    <div class="gauge-wrapper small">
+                        <canvas id="availabilityGauge" height="150" width="150" aria-label="Availability Gauge"></canvas>
+                        <div class="gauge-label">Availability</div>
+                        <div class="gauge-value" id="availabilityValue">0%</div>
+                    </div>
+                    <div class="gauge-wrapper small">
+                        <canvas id="performanceGauge" height="150" width="150" aria-label="Performance Gauge"></canvas>
+                        <div class="gauge-label">Performance</div>
+                        <div class="gauge-value" id="performanceValue">0%</div>
+                    </div>
+                    <div class="gauge-wrapper small">
+                        <canvas id="qualityGauge" height="150" width="150" aria-label="Quality Gauge"></canvas>
+                        <div class="gauge-label">Quality</div>
+                        <div class="gauge-value" id="qualityValue">0%</div>
+                    </div>
                 </div>
-                <div class="gauge-wrapper small">
-                    <canvas id="qualityGauge" height="150" width="150" aria-label="Quality Gauge"></canvas>
-                    <div class="gauge-label">Quality</div>
-                    <div class="gauge-value" id="qualityValue">0%</div>
-                </div>
-            </div>
         </section>
         <section class="right-column">
             <div class="top-section">
@@ -74,6 +85,7 @@
                     <canvas id="timelineChart" height="130" width="524" aria-label="Timeline Chart"></canvas>
                 </div>
                 <div class="bottom-right">
+                    <div id="ratings"></div>
                     <table id="interruptionTable">
                         <thead>
                             <tr>
@@ -104,6 +116,7 @@
             </ul>
         </div>
     </nav>
+    <script src="app.js"></script>
 </body>
 
 </html>
