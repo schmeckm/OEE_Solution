@@ -5,7 +5,7 @@
     "ProcessOrderNumber": "47111",
     "Start": "2024-07-24T23:28:54+02:00",
     "End": "2024-07-24T23:28:58+02:00",
-    "Reason": "Machine Fault",
+    "Reason": "Operator Error",
     "Differenz": 3
   },
   {
@@ -14,7 +14,7 @@
     "ProcessOrderNumber": "47111",
     "Start": "2024-07-24T23:29:20+02:00",
     "End": "2024-07-24T23:29:23+02:00",
-    "Reason": "Operator Error",
+    "Reason": "Machine Fault",
     "Differenz": 3
   },
   {
@@ -23,7 +23,7 @@
     "ProcessOrderNumber": "47111",
     "Start": "2024-07-24T23:31:36+02:00",
     "End": "2024-07-24T23:31:39+02:00",
-    "Reason": "Unknown",
+    "Reason": "Operator Error",
     "Differenz": 2
   },
   {

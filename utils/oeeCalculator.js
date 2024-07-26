@@ -3,7 +3,6 @@ const { oeeLogger, errorLogger } = require('../utils/logger');
 const { influxdb, oeeAsPercent } = require('../config/config');
 const { getPlannedDowntime, getunplannedDowntime, } = require('../utils/downtimeManager');
 const { loadProcessOrderData } = require('../src/dataLoader');
-const path = require('path');
 
 const VALID_SCORE_THRESHOLD = 1.0;
 const MINIMUM_SCORE_THRESHOLD = 0.0;
