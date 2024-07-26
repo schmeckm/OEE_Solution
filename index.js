@@ -3,7 +3,11 @@ const path = require('path');
 const cron = require('node-cron');
 const dotenv = require('dotenv');
 const { Server } = require('ws'); // WebSocket Server
-const fs = require('fs');
+const {
+    loadMachineStoppagesData,
+    saveMachineStoppageData,
+    getMachineStoppagesCache
+} = require('./src/dataLoader'); // Import the necessary functions
 
 dotenv.config();
 
@@ -45,33 +49,12 @@ app.get('/ratings', (req, res) => {
 // Endpoint to rate a stoppage
 app.post('/rate', (req, res) => {
     const { id, rating } = req.body;
-    const machineStoppagesFilePath = path.resolve(__dirname, 'data/machineStoppages.json');
-
-    fs.readFile(machineStoppagesFilePath, 'utf8', (err, data) => {
-        if (err) {
-            errorLogger.error('Error reading machine stoppages file:', err);
-            return res.status(500).send('Error reading machine stoppages file');
+    saveRating(id, rating, (error, updatedStoppages) => {
+        if (error) {
+            errorLogger.error(`Error in /rate endpoint: ${error.message}`);
+            return res.status(500).send(error.message);
         }
-
-        const machineStoppages = JSON.parse(data);
-        const stoppage = machineStoppages.find(stoppage => stoppage.ProcessOrderID === id);
-
-        if (stoppage) {
-            stoppage.Reason = rating;
-
-            fs.writeFile(machineStoppagesFilePath, JSON.stringify(machineStoppages, null, 2), 'utf8', (err) => {
-                if (err) {
-                    errorLogger.error('Error writing machine stoppages file:', err);
-                    return res.status(500).send('Error writing machine stoppages file');
-                }
-
-                defaultLogger.info(`Rating for stoppage ID ${id} updated to ${rating}`);
-                res.json(machineStoppages);
-            });
-        } else {
-            errorLogger.error(`Stoppage with ID ${id} not found`);
-            res.status(404).send('Stoppage not found');
-        }
+        res.json(updatedStoppages);
     });
 });
 
@@ -123,10 +106,21 @@ wss.on('connection', (ws, req) => {
         const parsedMessage = JSON.parse(message);
         defaultLogger.info(`Received message: ${message}`);
 
-        if (parsedMessage.type === 'rate') {
-            const { id, rating } = parsedMessage;
-            // Process the rating and save it to the appropriate place
-            saveRating(id, rating);
+        if (parsedMessage.type === 'updateRating') {
+            const { ProcessOrderID, ID, Reason } = parsedMessage.data;
+            saveRating(ProcessOrderID, ID, Reason, (error, updatedStoppages) => {
+                if (error) {
+                    errorLogger.error(`Error saving rating: ${error.message}`);
+                    return;
+                }
+
+                // Broadcast the updated data to all connected clients
+                wss.clients.forEach(client => {
+                    if (client.readyState === WebSocket.OPEN) {
+                        client.send(JSON.stringify({ type: 'machineData', data: updatedStoppages }));
+                    }
+                });
+            });
         }
     });
 
@@ -136,17 +130,24 @@ wss.on('connection', (ws, req) => {
 });
 
 // Function to save rating
-function saveRating(id, rating) {
-    const machineStoppagesFilePath = path.resolve(__dirname, 'data/machineStoppages.json');
-    const machineStoppages = JSON.parse(fs.readFileSync(machineStoppagesFilePath, 'utf8'));
+function saveRating(processOrderId, id, rating, callback) {
+    const machineStoppages = getMachineStoppagesCache();
 
-    const stoppage = machineStoppages.find(stoppage => stoppage.ProcessOrderID === id);
+    const stoppage = machineStoppages.find(stoppage => stoppage.ID === id);
     if (stoppage) {
         stoppage.Reason = rating;
-        fs.writeFileSync(machineStoppagesFilePath, JSON.stringify(machineStoppages, null, 2), 'utf8');
-        defaultLogger.info(`Rating for stoppage ID ${id} updated to ${rating}`);
+        saveMachineStoppageData(machineStoppages, (error) => {
+            if (error) {
+                errorLogger.error(`Error saving machine stoppage data: ${error.message}`);
+                return callback(error);
+            }
+            defaultLogger.info(`Rating for stoppage ID ${processOrderId} updated to ${rating}`);
+            callback(null, machineStoppages);
+        });
     } else {
-        errorLogger.error(`Stoppage with ID ${id} not found`);
+        const error = new Error(`Stoppage with ID ${id} not found`);
+        errorLogger.error(error.message);
+        callback(error);
     }
 }
 

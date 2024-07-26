@@ -1,35 +1,47 @@
-document.addEventListener("DOMContentLoaded", async() => {
-    let ws;
-    let reconnectInterval = 5000; // Zeit in Millisekunden, nach der eine erneute Verbindung versucht wird
+let ws; // Declare ws in a global scope
+let reconnectInterval = 5000; // Time in milliseconds to attempt reconnection
+let messageQueue = []; // Queue to hold messages until the WebSocket is open
 
+document.addEventListener("DOMContentLoaded", async() => {
     const connectWebSocket = () => {
         ws = new WebSocket(`ws://${window.location.host}`);
 
         ws.onopen = () => {
             console.log("WebSocket connection opened");
             document.getElementById("status").innerText = "Connected";
+
+            // Send all queued messages
+            while (messageQueue.length > 0) {
+                const message = messageQueue.shift();
+                console.log("Sending queued message:", message);
+                ws.send(message);
+            }
         };
 
         ws.onmessage = (event) => {
             try {
                 const { type, data } = JSON.parse(event.data);
-                console.log("Data received from WebSocket:", { type, data }); // Debugging-Log
+                console.log("Data received from WebSocket:", { type, data });
 
                 if (type === 'chartData') {
-                    console.log("Received chart data:", data); // Debugging-Log
+                    console.log("Received chart data:", data);
                     updateTimelineChart(timelineChart, data);
                 } else if (type === 'oeeData') {
-                    console.log("Received process data:", data); // Debugging-Log
+                    console.log("Received process data:", data);
                     updateProcessData(data.processData);
                     updateGauge(oeeGauge, data.oee, 'oeeValue');
                     updateGauge(availabilityGauge, data.availability, 'availabilityValue');
                     updateGauge(performanceGauge, data.performance, 'performanceValue');
                     updateGauge(qualityGauge, data.quality, 'qualityValue');
                 } else if (type === 'machineData') {
-                    console.log("Received machine data:", data); // Debugging-Log
-                    updateInterruptionTable(data);
+                    if (Array.isArray(data)) {
+                        console.log("Received machine data:", data);
+                        updateInterruptionTable(data);
+                    } else {
+                        console.error("Received machine data is not an array");
+                    }
                 } else if (type === 'ratingsData') {
-                    console.log("Received ratings data:", data); // Debugging-Log
+                    console.log("Received ratings data:", data);
                     updateRatings(data);
                 } else {
                     console.error("Invalid data received from WebSocket:", { type, data });
@@ -39,10 +51,10 @@ document.addEventListener("DOMContentLoaded", async() => {
             }
         };
 
-        ws.onclose = () => {
-            console.log("WebSocket connection closed. Attempting to reconnect...");
+        ws.onclose = (event) => {
+            console.log("WebSocket connection closed. Code:", event.code, "Reason:", event.reason);
             document.getElementById("status").innerText = "Disconnected";
-            setTimeout(connectWebSocket, reconnectInterval); // Versuch, die Verbindung nach einem Intervall wiederherzustellen
+            setTimeout(connectWebSocket, reconnectInterval); // Attempt reconnection after interval
         };
 
         ws.onerror = (error) => {
@@ -53,6 +65,7 @@ document.addEventListener("DOMContentLoaded", async() => {
 
     connectWebSocket();
 
+    // Initialize other components
     const oeeGauge = initGauge('oeeGauge', 'OEE');
     const availabilityGauge = initGauge('availabilityGauge', 'Availability');
     const performanceGauge = initGauge('performanceGauge', 'Performance');
@@ -62,13 +75,11 @@ document.addEventListener("DOMContentLoaded", async() => {
     document.getElementById("timeZone").addEventListener("change", (event) => {
         updateTimeZone(event.target.value);
         updateCurrentTime();
-        // Manually trigger the update of process data to apply the new timezone
-        const processData = getCurrentProcessData(); // Ensure this function gets the current process data
+        const processData = getCurrentProcessData();
         if (processData) {
             updateProcessData(processData);
         }
-        // Manually trigger the update of machine data to apply the new timezone
-        const machineData = getCurrentMachineData(); // Ensure this function gets the current machine data
+        const machineData = getCurrentMachineData();
         if (machineData) {
             updateInterruptionTable(machineData);
         }
@@ -161,7 +172,7 @@ function updateGauge(gauge, value, valueElementId) {
     if (valueElement) {
         valueElement.innerText = value + '%';
     } else {
-        console.error(`Element mit ID ${valueElementId} nicht gefunden`);
+        console.error(`Element with ID ${valueElementId} not found`);
     }
 }
 
@@ -303,7 +314,13 @@ function drop(event) {
         Reason: rating
     };
 
-    ws.send(JSON.stringify({ type: 'updateRating', data: updatedData }));
+    // Make sure ws is defined and open before sending the message
+    if (ws && ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify({ type: 'updateRating', data: updatedData }));
+    } else {
+        console.error("WebSocket is not open. Queueing message.");
+        messageQueue.push(JSON.stringify({ type: 'updateRating', data: updatedData }));
+    }
 
     // Optional: Update the interruption table locally if needed
     currentMachineData.forEach(entry => {
