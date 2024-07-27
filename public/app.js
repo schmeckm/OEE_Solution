@@ -65,7 +65,6 @@ document.addEventListener("DOMContentLoaded", async() => {
 
     connectWebSocket();
 
-    // Initialize other components
     const oeeGauge = initGauge('oeeGauge', 'OEE');
     const availabilityGauge = initGauge('availabilityGauge', 'Availability');
     const performanceGauge = initGauge('performanceGauge', 'Performance');

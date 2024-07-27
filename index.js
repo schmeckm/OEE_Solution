@@ -3,11 +3,12 @@ const path = require('path');
 const cron = require('node-cron');
 const dotenv = require('dotenv');
 const { Server } = require('ws'); // WebSocket Server
+const fs = require('fs');
 const {
     loadMachineStoppagesData,
     saveMachineStoppageData,
     getMachineStoppagesCache
-} = require('./src/dataLoader'); // Import the necessary functions
+} = require('./src/d'); // Import the necessary functions
 
 dotenv.config();
 
@@ -51,7 +52,6 @@ app.post('/rate', (req, res) => {
     const { id, rating } = req.body;
     saveRating(id, rating, (error, updatedStoppages) => {
         if (error) {
-            errorLogger.error(`Error in /rate endpoint: ${error.message}`);
             return res.status(500).send(error.message);
         }
         res.json(updatedStoppages);
@@ -133,19 +133,18 @@ wss.on('connection', (ws, req) => {
 function saveRating(processOrderId, id, rating, callback) {
     const machineStoppages = getMachineStoppagesCache();
 
-    const stoppage = machineStoppages.find(stoppage => stoppage.ID === id);
+    const stoppage = machineStoppages.find(stoppage => stoppage.ProcessOrderID === processOrderId);
     if (stoppage) {
         stoppage.Reason = rating;
         saveMachineStoppageData(machineStoppages, (error) => {
             if (error) {
-                errorLogger.error(`Error saving machine stoppage data: ${error.message}`);
                 return callback(error);
             }
             defaultLogger.info(`Rating for stoppage ID ${processOrderId} updated to ${rating}`);
             callback(null, machineStoppages);
         });
     } else {
-        const error = new Error(`Stoppage with ID ${id} not found`);
+        const error = new Error(`Stoppage with ID ${processOrderId} not found`);
         errorLogger.error(error.message);
         callback(error);
     }
