@@ -3,8 +3,8 @@ const path = require('path');
 const cron = require('node-cron');
 const dotenv = require('dotenv');
 const { Server } = require('ws'); // WebSocket Server
-const fs = require('fs');
 const {
+    loadMachineStoppagesData,
     saveMachineStoppageData,
     getMachineStoppagesCache
 } = require('./src/dataLoader'); // Import the necessary functions
@@ -12,7 +12,7 @@ const {
 dotenv.config();
 
 const { defaultLogger, errorLogger } = require('./utils/logger');
-const { logRetentionDays } = require('./config/config');
+const { logRetentionDays, ratings } = require('./config/config'); // Import ratings from config
 const { setupMqttClient } = require('./src/mqttClient');
 const { handleErrors } = require('./utils/middleware');
 const { setWebSocketServer } = require('./src/oeeProcessor'); // Import WebSocket setter
@@ -37,12 +37,6 @@ app.get('/timezone', (req, res) => {
 
 // Endpoint to get rating labels
 app.get('/ratings', (req, res) => {
-    const ratings = [
-        { id: 1, description: 'Maintenance', color: 'orange' },
-        { id: 2, description: 'Operator Error', color: 'red' },
-        { id: 3, description: 'Machine Fault', color: 'blue' },
-        { id: 4, description: 'Unknown', color: 'gray' }
-    ];
     res.json(ratings);
 });
 
@@ -51,6 +45,7 @@ app.post('/rate', (req, res) => {
     const { id, rating } = req.body;
     saveRating(id, rating, (error, updatedStoppages) => {
         if (error) {
+            errorLogger.error(`Error in /rate endpoint: ${error.message}`);
             return res.status(500).send(error.message);
         }
         res.json(updatedStoppages);
@@ -116,7 +111,7 @@ wss.on('connection', (ws, req) => {
                 // Broadcast the updated data to all connected clients
                 wss.clients.forEach(client => {
                     if (client.readyState === WebSocket.OPEN) {
-                        client.send(JSON.stringify({ type: 'machineData', data: updatedStoppages }));
+                        client.send(JSON.stringify({ type: 'Microstops', data: updatedStoppages }));
                     }
                 });
             });
@@ -132,18 +127,19 @@ wss.on('connection', (ws, req) => {
 function saveRating(processOrderId, id, rating, callback) {
     const machineStoppages = getMachineStoppagesCache();
 
-    const stoppage = machineStoppages.find(stoppage => stoppage.ProcessOrderID === processOrderId);
+    const stoppage = machineStoppages.find(stoppage => stoppage.ID === id);
     if (stoppage) {
         stoppage.Reason = rating;
         saveMachineStoppageData(machineStoppages, (error) => {
             if (error) {
+                errorLogger.error(`Error saving machine stoppage data: ${error.message}`);
                 return callback(error);
             }
             defaultLogger.info(`Rating for stoppage ID ${processOrderId} updated to ${rating}`);
             callback(null, machineStoppages);
         });
     } else {
-        const error = new Error(`Stoppage with ID ${processOrderId} not found`);
+        const error = new Error(`Stoppage with ID ${id} not found`);
         errorLogger.error(error.message);
         callback(error);
     }

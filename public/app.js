@@ -1,8 +1,8 @@
-let ws; // Declare ws in a global scope
-let reconnectInterval = 5000; // Time in milliseconds to attempt reconnection
-let messageQueue = []; // Queue to hold messages until the WebSocket is open
+let ws; // Deklariere ws für den WebSocket-Client im globalen Gültigkeitsbereich
+let reconnectInterval = 5000; // Zeit in Millisekunden für den erneuten Verbindungsaufbau
+let messageQueue = []; // Warteschlange für Nachrichten, bis der WebSocket geöffnet ist
 
-document.addEventListener("DOMContentLoaded", async() => {
+document.addEventListener("DOMContentLoaded", () => {
     const connectWebSocket = () => {
         ws = new WebSocket(`ws://${window.location.host}`);
 
@@ -10,7 +10,7 @@ document.addEventListener("DOMContentLoaded", async() => {
             console.log("WebSocket connection opened");
             document.getElementById("status").innerText = "Connected";
 
-            // Send all queued messages
+            // Sende alle wartenden Nachrichten
             while (messageQueue.length > 0) {
                 const message = messageQueue.shift();
                 console.log("Sending queued message:", message);
@@ -23,7 +23,7 @@ document.addEventListener("DOMContentLoaded", async() => {
                 const { type, data } = JSON.parse(event.data);
                 console.log("Data received from WebSocket:", { type, data });
 
-                if (type === 'chartData') {
+                if (type === 'OEEData') {
                     console.log("Received chart data:", data);
                     updateTimelineChart(timelineChart, data);
                 } else if (type === 'oeeData') {
@@ -33,7 +33,8 @@ document.addEventListener("DOMContentLoaded", async() => {
                     updateGauge(availabilityGauge, data.availability, 'availabilityValue');
                     updateGauge(performanceGauge, data.performance, 'performanceValue');
                     updateGauge(qualityGauge, data.quality, 'qualityValue');
-                } else if (type === 'machineData') {
+                    updateOEELevel(data.level); // Update OEE Level
+                } else if (type === 'Microstops') {
                     if (Array.isArray(data)) {
                         console.log("Received machine data:", data);
                         updateInterruptionTable(data);
@@ -54,7 +55,7 @@ document.addEventListener("DOMContentLoaded", async() => {
         ws.onclose = (event) => {
             console.log("WebSocket connection closed. Code:", event.code, "Reason:", event.reason);
             document.getElementById("status").innerText = "Disconnected";
-            setTimeout(connectWebSocket, reconnectInterval); // Attempt reconnection after interval
+            setTimeout(connectWebSocket, reconnectInterval); // Erneuten Verbindungsaufbau nach einem Intervall versuchen
         };
 
         ws.onerror = (error) => {
@@ -65,6 +66,7 @@ document.addEventListener("DOMContentLoaded", async() => {
 
     connectWebSocket();
 
+    // Initialisiere andere Komponenten
     const oeeGauge = initGauge('oeeGauge', 'OEE');
     const availabilityGauge = initGauge('availabilityGauge', 'Availability');
     const performanceGauge = initGauge('performanceGauge', 'Performance');
@@ -78,14 +80,14 @@ document.addEventListener("DOMContentLoaded", async() => {
         if (processData) {
             updateProcessData(processData);
         }
-        const machineData = getCurrentMachineData();
-        if (machineData) {
-            updateInterruptionTable(machineData);
+        const Microstops = getCurrentMicrostops();
+        if (Microstops) {
+            updateInterruptionTable(Microstops);
         }
     });
 
     updateCurrentTime();
-    setInterval(updateCurrentTime, 1000); // Update the current time every second
+    setInterval(updateCurrentTime, 1000); // Aktualisiere die aktuelle Zeit jede Sekunde
 
     const accordion = document.querySelector('.accordion');
     const panel = document.querySelector('.panel');
@@ -105,15 +107,17 @@ document.addEventListener("DOMContentLoaded", async() => {
         .catch(error => console.error('Error fetching ratings:', error));
 });
 
-let currentProcessData = null; // Store the current process data
-let currentMachineData = null; // Store the current machine data
-let currentChartData = null; // Store the current chart data
+let currentProcessData = null; // Speichere die aktuellen Prozessdaten
+let currentMicrostops = null; // Speichere die aktuellen Maschinendaten
+let currentOEEData = null; // Speichere die aktuellen Diagrammdaten
 
 function updateProcessData(processData) {
-    currentProcessData = processData; // Store the data for future reference
+    currentProcessData = processData; // Speichere die Daten für zukünftige Verwendungen
     const timeZone = document.getElementById("timeZone").value;
 
     document.getElementById("orderNumber").innerText = processData.ProcessOrderNumber;
+    document.getElementById("materialNumber").innerText = processData.MaterialNumber;
+    document.getElementById("materialDescription").innerText = processData.MaterialDescription;
     document.getElementById("startTime").innerText = moment.tz(processData.StartTime, "UTC").tz(timeZone).format("YYYY-MM-DD HH:mm:ss");
     document.getElementById("endTime").innerText = moment.tz(processData.EndTime, "UTC").tz(timeZone).format("YYYY-MM-DD HH:mm:ss");
     document.getElementById("plannedQuantity").innerText = processData.plannedProduction;
@@ -126,8 +130,8 @@ function getCurrentProcessData() {
     return currentProcessData;
 }
 
-function getCurrentMachineData() {
-    return currentMachineData;
+function getCurrentMicrostops() {
+    return currentMicrostops;
 }
 
 function initGauge(elementId, label) {
@@ -171,7 +175,16 @@ function updateGauge(gauge, value, valueElementId) {
     if (valueElement) {
         valueElement.innerText = value + '%';
     } else {
-        console.error(`Element with ID ${valueElementId} not found`);
+        console.error(`Element mit ID ${valueElementId} nicht gefunden`);
+    }
+}
+
+function updateOEELevel(level) {
+    const oeeLevelElement = document.getElementById("oeeLevelValue");
+    if (oeeLevelElement) {
+        oeeLevelElement.innerText = level;
+    } else {
+        console.error("Element mit ID oeeLevelValue nicht gefunden");
     }
 }
 
@@ -210,7 +223,7 @@ function initTimelineChart(elementId) {
 }
 
 function updateTimelineChart(chart, data) {
-    currentChartData = data; // Store the data for future reference
+    currentOEEData = data; // Speichere die Daten für zukünftige Verwendungen
     const timeZone = document.getElementById("timeZone").value;
 
     if (data.labels && data.datasets) {
@@ -219,10 +232,10 @@ function updateTimelineChart(chart, data) {
             const localTime = utcTime.clone().tz(timeZone);
             return localTime.format("HH:mm") + " - " + localTime.clone().add(1, 'hour').format("HH:mm");
         });
-        chart.data.datasets[0].data = data.datasets[0].data.map(Math.round); // Round to nearest minute
-        chart.data.datasets[1].data = data.datasets[1].data.map(Math.round); // Round to nearest minute
-        chart.data.datasets[2].data = data.datasets[2].data.map(Math.round); // Round to nearest minute
-        chart.data.datasets[3].data = data.datasets[3].data.map(Math.round); // Round to nearest minute
+        chart.data.datasets[0].data = data.datasets[0].data.map(Math.round); // Runde auf die nächste Minute
+        chart.data.datasets[1].data = data.datasets[1].data.map(Math.round); // Runde auf die nächste Minute
+        chart.data.datasets[2].data = data.datasets[2].data.map(Math.round); // Runde auf die nächste Minute
+        chart.data.datasets[3].data = data.datasets[3].data.map(Math.round); // Runde auf die nächste Minute
         chart.update();
     } else {
         console.error("Invalid data format for timeline chart:", data);
@@ -247,20 +260,18 @@ function updateCurrentTime() {
 }
 
 function updateInterruptionTable(data) {
-    currentMachineData = data; // Store the data for future reference
+    currentMicrostops = data; // Speichere die Daten für zukünftige Verwendungen
     const tableBody = document.querySelector("#interruptionTable tbody");
-    tableBody.innerHTML = ""; // Clear existing table data
+    tableBody.innerHTML = ""; // Bestehende Tabellendaten löschen
 
     data.forEach(entry => {
         const row = document.createElement("tr");
         row.innerHTML = `
-            <td>${entry.ProcessOrderID}</td>
             <td>${entry.ProcessOrderNumber}</td>
             <td>${moment.tz(entry.Start, "UTC").tz(document.getElementById("timeZone").value).format("YYYY-MM-DD HH:mm:ss")}</td>
             <td>${moment.tz(entry.End, "UTC").tz(document.getElementById("timeZone").value).format("YYYY-MM-DD HH:mm:ss")}</td>
             <td>${entry.Differenz}</td>
             <td class="droppable" data-id="${entry.ProcessOrderID}" data-value="${entry.ID}">${entry.Reason || 'N/A'}</td>
-            <td>${entry.ManuellKorrektur || 'N/A'}</td>
         `;
         tableBody.appendChild(row);
     });
@@ -273,7 +284,7 @@ function updateInterruptionTable(data) {
 
 function updateRatings(ratings) {
     const ratingsContainer = document.getElementById('ratings');
-    ratingsContainer.innerHTML = ''; // Clear existing ratings
+    ratingsContainer.innerHTML = ''; // Bestehende Bewertungen löschen
 
     ratings.forEach(rating => {
         const label = document.createElement('span');
@@ -303,17 +314,14 @@ function drop(event) {
 
     console.log(`Process Order ID: ${processOrderId}, Value ID: ${valueId}, Rating: ${rating}`);
 
-    // Update the Reason cell with the dropped rating
     event.target.textContent = rating;
 
-    // Send the updated data to the backend via WebSocket
     const updatedData = {
         ProcessOrderID: processOrderId,
         ID: valueId,
         Reason: rating
     };
 
-    // Make sure ws is defined and open before sending the message
     if (ws && ws.readyState === WebSocket.OPEN) {
         ws.send(JSON.stringify({ type: 'updateRating', data: updatedData }));
     } else {
@@ -321,8 +329,7 @@ function drop(event) {
         messageQueue.push(JSON.stringify({ type: 'updateRating', data: updatedData }));
     }
 
-    // Optional: Update the interruption table locally if needed
-    currentMachineData.forEach(entry => {
+    currentMicrostops.forEach(entry => {
         if (entry.ID === valueId) {
             entry.Reason = rating;
         }
