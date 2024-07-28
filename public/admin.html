@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Config</title>
+    <link rel="stylesheet" href="styles_admin.css">
+</head>
+
+<body>
+    <header class="header">
+        <h1>Admin Configuration Panel</h1>
+    </header>
+    <main class="main">
+        <form id="configForm">
+            <div class="form-group">
+                <label for="MQTT_BROKER_URL">MQTT Broker URL:</label>
+                <input type="text" id="MQTT_BROKER_URL" name="MQTT_BROKER_URL">
+            </div>
+            <div class="form-group">
+                <label for="MQTT_BROKER_PORT">MQTT Broker Port:</label>
+                <input type="number" id="MQTT_BROKER_PORT" name="MQTT_BROKER_PORT">
+            </div>
+            <div class="form-group">
+                <label for="MQTT_USERNAME">MQTT Username:</label>
+                <input type="text" id="MQTT_USERNAME" name="MQTT_USERNAME">
+            </div>
+            <div class="form-group">
+                <label for="MQTT_PASSWORD">MQTT Password:</label>
+                <input type="password" id="MQTT_PASSWORD" name="MQTT_PASSWORD">
+            </div>
+            <div class="form-group">
+                <label for="TLS_KEY">TLS Key:</label>
+                <input type="text" id="TLS_KEY" name="TLS_KEY">
+            </div>
+            <div class="form-group">
+                <label for="TLS_CERT">TLS Certificate:</label>
+                <input type="text" id="TLS_CERT" name="TLS_CERT">
+            </div>
+            <div class="form-group">
+                <label for="TLS_CA">TLS CA:</label>
+                <input type="text" id="TLS_CA" name="TLS_CA">
+            </div>
+            <div class="form-group">
+                <label for="INFLUXDB_URL">InfluxDB URL:</label>
+                <input type="text" id="INFLUXDB_URL" name="INFLUXDB_URL">
+            </div>
+            <div class="form-group">
+                <label for="INFLUXDB_TOKEN">InfluxDB Token:</label>
+                <input type="text" id="INFLUXDB_TOKEN" name="INFLUXDB_TOKEN">
+            </div>
+            <div class="form-group">
+                <label for="INFLUXDB_ORG">InfluxDB Organization:</label>
+                <input type="text" id="INFLUXDB_ORG" name="INFLUXDB_ORG">
+            </div>
+            <div class="form-group">
+                <label for="INFLUXDB_BUCKET">InfluxDB Bucket:</label>
+                <input type="text" id="INFLUXDB_BUCKET" name="INFLUXDB_BUCKET">
+            </div>
+            <div class="form-group">
+                <label for="LOG_RETENTION_DAYS">Log Retention Days:</label>
+                <input type="number" id="LOG_RETENTION_DAYS" name="LOG_RETENTION_DAYS">
+            </div>
+            <div class="form-group">
+                <label for="THRESHOLD_SECONDS">Threshold Seconds:</label>
+                <input type="number" id="THRESHOLD_SECONDS" name="THRESHOLD_SECONDS">
+            </div>
+            <button type="submit">Save Configuration</button>
+        </form>
+    </main>
+    <script src="admin.js"></script>
+</body>
+
+</html>
