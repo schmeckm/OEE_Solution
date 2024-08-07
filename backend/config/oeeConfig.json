@@ -1,0 +1,96 @@
+{
+    "plannedProduction": {
+        "alias": "Planned Production Time",
+        "type": "number",
+        "metadata": {
+            "unit": "hours",
+            "description": "Total time planned for production"
+        }
+    },
+    "runtime": {
+        "alias": "Runtime",
+        "type": "number",
+        "metadata": {
+            "unit": "hours",
+            "description": "Actual runtime"
+        }
+    },
+    "actualPerformance": {
+        "alias": "Actual Performance",
+        "type": "number",
+        "metadata": {
+            "unit": "units",
+            "description": "Total units produced"
+        }
+    },
+    "targetPerformance": {
+        "alias": "Target Performance",
+        "type": "number",
+        "metadata": {
+            "unit": "units",
+            "description": "Target units to be produced"
+        }
+    },
+    "goodProducts": {
+        "alias": "Good Products",
+        "type": "number",
+        "metadata": {
+            "unit": "units",
+            "description": "Total units without defects"
+        }
+    },
+    "totalProduction": {
+        "alias": "Total Production",
+        "type": "number",
+        "metadata": {
+            "unit": "units",
+            "description": "Total units produced including defects"
+        }
+    },
+    "availability": {
+        "alias": "Availability",
+        "type": "number",
+        "metadata": {
+            "unit": "percent",
+            "description": "Availability percentage"
+        }
+    },
+    "performance": {
+        "alias": "Performance",
+        "type": "number",
+        "metadata": {
+            "unit": "percent",
+            "description": "Performance percentage"
+        }
+    },
+    "quality": {
+        "alias": "Quality",
+        "type": "number",
+        "metadata": {
+            "unit": "percent",
+            "description": "Quality percentage"
+        }
+    },
+    "oee": {
+        "alias": "Overall Equipment Effectiveness",
+        "type": "number",
+        "metadata": {
+            "unit": "percent",
+            "description": "Overall Equipment Effectiveness"
+        }
+    },
+    "Hold": {
+        "alias": "Hold Command",
+        "type": "Int32",
+        "metadata": {
+            "description": "Machine hold command"
+        }
+    },
+    "Unhold": {
+        "alias": "Unhold Command",
+        "type": "Int32",
+        "metadata": {
+            "description": "Machine unhold command"
+        }
+    }
+}
