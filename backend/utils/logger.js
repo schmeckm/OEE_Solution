@@ -3,6 +3,15 @@ const DailyRotateFile = require('winston-daily-rotate-file');
 const path = require('path');
 require('dotenv').config(); // Load the .env file
 
+/**
+ * Log format for Winston.
+ * @param {Object} param0 - Log information.
+ * @param {string} param0.level - Log level.
+ * @param {string} param0.message - Log message.
+ * @param {string} param0.timestamp - Timestamp of the log.
+ * @param {Object} param0.metadata - Additional metadata.
+ * @returns {string} Formatted log message.
+ */
 const logFormat = winston.format.printf(({ level, message, timestamp, ...metadata }) => {
     let logMessage = `${timestamp} ${level}: ${message}`;
     if (Object.keys(metadata).length) {
@@ -16,8 +25,18 @@ const retentionDays = process.env.LOG_RETENTION_DAYS || 14;
 const logToConsole = process.env.LOG_TO_CONSOLE === 'true';
 const logToFile = process.env.LOG_TO_FILE === 'true';
 
+/**
+ * Custom filter for log levels.
+ * @param {Object} info - Log information.
+ * @returns {Object|boolean} Log information or false if the level is not included.
+ */
 const customFilter = winston.format((info) => logLevels.includes(info.level) ? info : false);
 
+/**
+ * Creates a Winston logger.
+ * @param {string} logFilename - Name of the log file.
+ * @returns {Object} Winston logger.
+ */
 const createLogger = (logFilename) => {
     const logDirectory = path.join(__dirname, '../logs');
     const transports = [];

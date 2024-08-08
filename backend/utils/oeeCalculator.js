@@ -17,12 +17,12 @@ const CLASSIFICATION_LEVELS = {
 // OEECalculator class handles the calculation and management of OEE metrics
 class OEECalculator {
     constructor() {
-        this.resetOEEData(); // Initialize OEE data
+        this.oeeData = {}; // Initialize as an empty object
     }
 
     // Reset OEE data to default values
     resetOEEData() {
-        this.oeeData = {
+        return {
             ProcessOrderNumber: null,
             MaterialNumber: null,
             MaterialDescription: null,
@@ -48,7 +48,7 @@ class OEECalculator {
             this.validateProcessOrderData(processOrderData); // Validate the data
             this.setOEEData(processOrderData[0]); // Set the OEE data
         } catch (error) {
-            errorLogger.error(`Error initializing OEECalculator: ${error.message}`);
+            errorLogger.error(`Error initializing OEECalculator and ProcessOrder : ${error.message}`);
             throw error;
         }
     }
@@ -79,15 +79,18 @@ class OEECalculator {
     }
 
     // Update specific OEE metric
-    updateData(metric, value) {
-        oeeLogger.debug(`Updating ${metric} with value: ${value}`);
-        this.oeeData[metric] = value;
+    updateData(metric, value, line) {
+        oeeLogger.debug(`Updating ${metric} with value: ${value} for line: ${line}`);
+        if (!this.oeeData[line]) {
+            this.oeeData[line] = this.resetOEEData(); // Initialize line data if not exists
+        }
+        this.oeeData[line][metric] = value;
     }
 
     // Validate input OEE data before calculation
-    validateInput() {
-        const { plannedProduction, runtime, actualPerformance, targetPerformance, goodProducts, totalProduction } = this.oeeData;
-        oeeLogger.debug(`Validating input data: ${JSON.stringify(this.oeeData)}`);
+    validateInput(line) {
+        const { plannedProduction, runtime, actualPerformance, targetPerformance, goodProducts, totalProduction } = this.oeeData[line];
+        oeeLogger.debug(`Validating input data for line ${line}: ${JSON.stringify(this.oeeData[line])}`);
 
         if (runtime <= 0) throw new Error('Invalid input data: runtime must be greater than 0');
         if (plannedProduction <= 0) throw new Error('Invalid input data: plannedProduction must be greater than 0');
@@ -99,11 +102,11 @@ class OEECalculator {
     }
 
     // Calculate OEE metrics
-    async calculateMetrics() {
-        this.validateInput();
+    async calculateMetrics(line) {
+        this.validateInput(line);
 
-        const { plannedProduction, runtime, targetPerformance, goodProducts, totalProduction, ProcessOrderNumber, StartTime, EndTime, MaterialNumber, MaterialDescription } = this.oeeData;
-        oeeLogger.info(`Calculating metrics for ProcessOrderNumber: ${ProcessOrderNumber}`);
+        const { plannedProduction, runtime, targetPerformance, goodProducts, totalProduction, ProcessOrderNumber, StartTime, EndTime, MaterialNumber, MaterialDescription } = this.oeeData[line];
+        oeeLogger.info(`Calculating metrics for ProcessOrderNumber: ${ProcessOrderNumber} on line: ${line}`);
 
         try {
             const OEEData = loadDataAndPrepareOEE();
@@ -119,33 +122,33 @@ class OEECalculator {
             oeeLogger.info(`Total planned downtime: ${totalPlannedDowntime}`);
 
             // Log input values
-            oeeLogger.info(`Input values - plannedProduction: ${plannedProduction}, runtime: ${runtime}, targetPerformance: ${targetPerformance}, goodProducts: ${goodProducts}, totalProduction: ${totalProduction}, MaterialNumber: ${MaterialNumber}, MaterialDescription: ${MaterialDescription}`);
+            oeeLogger.info(`Input values for line ${line} - plannedProduction: ${plannedProduction}, runtime: ${runtime}, targetPerformance: ${targetPerformance}, goodProducts: ${goodProducts}, totalProduction: ${totalProduction}, MaterialNumber: ${MaterialNumber}, MaterialDescription: ${MaterialDescription}`);
 
             // Perform OEE calculation
-            this.calculateOEE(plannedProduction, runtime, targetPerformance, goodProducts, totalProduction, totalUnplannedDowntime, totalPlannedDowntime + totalBreakTime);
+            this.calculateOEE(plannedProduction, runtime, targetPerformance, goodProducts, totalProduction, totalUnplannedDowntime, totalPlannedDowntime + totalBreakTime, line);
 
             // Log calculated OEE data
-            oeeLogger.info(`Calculated OEE data: ${JSON.stringify(this.oeeData)}`);
+            oeeLogger.info(`Calculated OEE data for line ${line}: ${JSON.stringify(this.oeeData[line])}`);
         } catch (error) {
-            errorLogger.error(`Error calculating metrics: ${error.message}`);
+            errorLogger.error(`Error calculating metrics for line ${line}: ${error.message}`);
             throw error;
         }
     }
 
     // Calculate OEE and its components: availability, performance, and quality
-    calculateOEE(plannedProduction, runtime, targetPerformance, goodProducts, totalProduction, actualUnplannedDowntime, actualPlannedDowntime) {
+    calculateOEE(plannedProduction, runtime, targetPerformance, goodProducts, totalProduction, actualUnplannedDowntime, actualPlannedDowntime, line) {
         const operatingTime = runtime - (actualUnplannedDowntime / 60) - (actualPlannedDowntime / 60);
 
-        this.oeeData.availability = operatingTime / plannedProduction;
-        this.oeeData.performance = targetPerformance > 0 ? totalProduction / targetPerformance : 0;
-        this.oeeData.quality = totalProduction > 0 ? goodProducts / totalProduction : 0;
-        this.oeeData.oee = this.oeeData.availability * this.oeeData.performance * this.oeeData.quality * 100;
+        this.oeeData[line].availability = operatingTime / plannedProduction;
+        this.oeeData[line].performance = targetPerformance > 0 ? totalProduction / targetPerformance : 0;
+        this.oeeData[line].quality = totalProduction > 0 ? goodProducts / totalProduction : 0;
+        this.oeeData[line].oee = this.oeeData[line].availability * this.oeeData[line].performance * this.oeeData[line].quality * 100;
 
-        if (!isFinite(this.oeeData.oee)) {
-            throw new Error(`Calculated OEE is not finite: ${this.oeeData.oee}`);
+        if (!isFinite(this.oeeData[line].oee)) {
+            throw new Error(`Calculated OEE is not finite: ${this.oeeData[line].oee}`);
         }
 
-        this.oeeData.classification = this.classifyOEE(this.oeeData.oee / 100);
+        this.oeeData[line].classification = this.classifyOEE(this.oeeData[line].oee / 100);
     }
 
     // Classify OEE based on predefined levels
@@ -161,8 +164,8 @@ class OEECalculator {
     }
 
     // Get calculated OEE metrics
-    getMetrics() {
-        return this.oeeData;
+    getMetrics(line) {
+        return this.oeeData[line];
     }
 }
 
@@ -191,7 +194,7 @@ async function writeOEEToInfluxDB(metrics) {
         const point = new Point('oee')
             .tag('plant', metrics.processData.group_id)
             .tag('area', 'Packaging')
-            .tag('line', metrics.processData.edge_node_id)
+            .tag('line', metrics.processData.edge_node_id);
 
         // Add all additional tags from metrics.processData
         Object.keys(metrics.processData).forEach(key => {

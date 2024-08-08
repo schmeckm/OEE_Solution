@@ -1,31 +1,33 @@
+/**
+ * Module dependencies.
+ */
 const express = require('express');
 const path = require('path');
 const cron = require('node-cron');
 const dotenv = require('dotenv');
-const { Server } = require('ws'); // WebSocket Server
-const {
-    saveMachineStoppageData,
-    getMachineStoppagesCache
-} = require('./src/dataLoader'); // Import the necessary functions
-
+const { Server } = require('ws');
+/**
+ * Load environment variables from .env file.
+ */
 dotenv.config();
 
 const { defaultLogger, errorLogger } = require('./utils/logger');
-const { logRetentionDays, ratings } = require('./config/config'); // Import ratings from config
+const { logRetentionDays } = require('./config/config');
 const { setupMqttClient } = require('./src/mqttClient');
 const { handleErrors } = require('./utils/middleware');
-const { setWebSocketServer } = require('./src/oeeProcessor'); // Import WebSocket setter
+const { setWebSocketServer } = require('./src/oeeProcessor');
 
 const app = express();
 const port = process.env.PORT || 3000;
 
-// Middleware to parse incoming JSON and URL-encoded payloads
+/**
+ * Middleware to parse incoming JSON and URL-encoded payloads.
+ */
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-app.use(express.static(path.join(__dirname, 'public'))); // Serve static files from the 'public' directory
+app.use(express.static(path.join(__dirname, 'public')));
 
-// Ausgelagerte Routen
-//const settingsRouter = require('./routes/settings');
+// OEE Routes
 const machinesRouter = require('./routes/machines');
 const plannedDowntimeRouter = require('./routes/plannedDowntime');
 const processOrdersRouter = require('./routes/processOrders');
@@ -34,7 +36,7 @@ const unplannedDowntimeRouter = require('./routes/unplannedDowntime');
 const oeeConfigRouter = require('./routes/oeeConfig');
 const microStopsRouter = require('./routes/microstops');
 
-//app.use('/api/settings', settingsRouter);
+// OEE API Endpoints 
 app.use('/api/machines', machinesRouter);
 app.use('/api/planneddowntime', plannedDowntimeRouter);
 app.use('/api/processorders', processOrdersRouter);
@@ -42,46 +44,15 @@ app.use('/api/shiftmodel', shiftModelRouter);
 app.use('/api/unplanneddowntime', unplannedDowntimeRouter);
 app.use('/api/oeeconfig', oeeConfigRouter);
 app.use('/api/microstops', microStopsRouter);
-
-
-// Serve index.html at the root
-app.get('/', (req, res) => {
-    res.sendFile(path.join(__dirname, 'public', 'index.html'));
-});
-
-// Endpoint to get timezone from .env
-app.get('/timezone', (req, res) => {
-    res.send(process.env.TIMEZONE || 'UTC');
-});
-
-// Endpoint to get rating labels
-app.get('/ratings', (req, res) => {
-    res.json(ratings);
-});
-
-// Endpoint to rate a stoppage
-app.post('/rate', (req, res) => {
-    const { id, rating } = req.body;
-    saveRating(id, rating, (error, updatedStoppages) => {
-        if (error) {
-            errorLogger.error(`Error in /rate endpoint: ${error.message}`);
-            return res.status(500).send(error.message);
-        }
-        res.json(updatedStoppages);
-    });
-});
-
-// Define routes for different functionalities
 app.use('/structure', require('./routes/structure'));
 app.use('/oee-logs', require('./routes/oeeLogs'));
 app.use('/calculateOEE', require('./routes/calculateOEE'));
-
-// Error handling middleware
 app.use(handleErrors);
+
 
 defaultLogger.info('Logger initialized successfully.');
 
-// Schedule a cron job to clean up old logs daily at midnight
+// Cron Job for Log Cleanup
 cron.schedule('0 0 * * *', async() => {
     try {
         const { cleanupLogs } = require('./utils/logger');
@@ -92,7 +63,7 @@ cron.schedule('0 0 * * *', async() => {
     }
 });
 
-// Initialize and set up the MQTT client
+// MQTT Client Initialization
 let mqttClient;
 try {
     mqttClient = setupMqttClient();
@@ -101,15 +72,12 @@ try {
     errorLogger.error('Error initializing MQTT client:', error.message);
 }
 
-// Start the HTTP server and listen on the specified port
+// HTTP Server Initialization
 const server = app.listen(port, () => {
     defaultLogger.info(`Server is running on port ${port}`);
 });
 
-// Secret key for JWT
-const SECRET_KEY = 'your_secret_key'; // Replace with your secret key
-
-// Initialize WebSocket server
+// WebSocket Server Setup
 const wss = new Server({ server });
 
 wss.on('connection', (ws, req) => {
@@ -142,32 +110,14 @@ wss.on('connection', (ws, req) => {
     });
 });
 
-// Function to save rating
-function saveRating(processOrderId, id, rating, callback) {
-    const machineStoppages = getMachineStoppagesCache();
-
-    const stoppage = machineStoppages.find(stoppage => stoppage.ID === id);
-    if (stoppage) {
-        stoppage.Reason = rating;
-        saveMachineStoppageData(machineStoppages, (error) => {
-            if (error) {
-                errorLogger.error(`Error saving machine stoppage data: ${error.message}`);
-                return callback(error);
-            }
-            defaultLogger.info(`Rating for stoppage ID ${processOrderId} updated to ${rating}`);
-            callback(null, machineStoppages);
-        });
-    } else {
-        const error = new Error(`Stoppage with ID ${id} not found`);
-        errorLogger.error(error.message);
-        callback(error);
-    }
-}
 
 // Set the WebSocket server instance in oeeProcessor
 setWebSocketServer(wss);
 
-// Function to handle graceful shutdown of the server
+/**
+ * Function to handle graceful shutdown of the server.
+ * @param {string} signal - The signal received
+ */
 function gracefulShutdown(signal) {
     defaultLogger.info(`${signal} signal received: closing HTTP server`);
     server.close(() => {

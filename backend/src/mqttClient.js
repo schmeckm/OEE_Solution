@@ -1,10 +1,16 @@
+// setupMqttClient.js
+
 const mqtt = require('mqtt');
 const { get: getSparkplugPayload } = require('sparkplug-payload');
 const { oeeLogger, errorLogger } = require('../utils/logger');
 const { mqtt: mqttConfig, structure, topicFormat } = require('../config/config');
-const { handleCommandMessage, handleOeeMessage } = require('./messageHandler');
+const { handleCommandMessage, handleOeeMessage } = require('./messageHandler'); // Ensure this path is correct
 const oeeConfig = require('../config/oeeConfig.json');
 
+/**
+ * Sets up the MQTT client, handles connection events, and subscribes to topics.
+ * @returns {Object} The MQTT client instance.
+ */
 function setupMqttClient() {
     oeeLogger.info('Setting up MQTT client...');
 
@@ -23,13 +29,22 @@ function setupMqttClient() {
 
     client.on('message', (topic, message) => {
         try {
+            // Extract the relevant parts of the topic
+            const topicParts = topic.split('/');
+            const [version, location, dataType, line, metric] = topicParts;
+
+            oeeLogger.debug(`Received message on topic ${topic}: line=${line}, metric=${metric}`);
+
             const sparkplug = getSparkplugPayload('spBv1.0');
             const decodedMessage = sparkplug.decodePayload(message);
-            oeeLogger.debug(`Received message on topic ${topic}: ${JSON.stringify(decodedMessage)}`);
-            if (topic.includes('DCMD')) {
-                handleCommandMessage(decodedMessage);
+
+            // Include line or workcenter information in the message processing
+            if (dataType === 'DCMD') {
+                handleCommandMessage(decodedMessage, line, metric);
+            } else if (dataType === 'DDATA') {
+                handleOeeMessage(decodedMessage, line, metric);
             } else {
-                handleOeeMessage(decodedMessage);
+                oeeLogger.warn(`Unknown data type in topic: ${dataType}`);
             }
         } catch (error) {
             errorLogger.error(`Error processing message on topic ${topic}: ${error.message}`);
@@ -37,7 +52,7 @@ function setupMqttClient() {
         }
     });
 
-    client.on('error', error => {
+    client.on('error', (error) => {
         errorLogger.error(`MQTT client error: ${error.message}`);
     });
 
@@ -52,11 +67,15 @@ function setupMqttClient() {
     return client;
 }
 
+/**
+ * Subscribes the MQTT client to necessary topics based on the OEE configuration.
+ * @param {Object} client - The MQTT client instance.
+ */
 function subscribeToTopics(client) {
     Object.keys(oeeConfig).forEach(metric => {
         const topic = `${topicFormat.replace('group_id', structure.Group_id).replace('message_type', 'DDATA').replace('edge_node_id', structure.edge_node_id)}/${metric}`;
         console.log(`Subscribing to topic: ${topic}`);
-        client.subscribe(topic, err => {
+        client.subscribe(topic, (err) => {
             if (!err) {
                 oeeLogger.info(`Successfully subscribed to topic: ${topic}`);
             } else {
@@ -67,7 +86,7 @@ function subscribeToTopics(client) {
 
     const commandTopic = `${topicFormat.replace('group_id', structure.Group_id).replace('message_type', 'DCMD').replace('edge_node_id', structure.edge_node_id)}/#`;
     console.log(`Subscribing to command topic: ${commandTopic}`);
-    client.subscribe(commandTopic, err => {
+    client.subscribe(commandTopic, (err) => {
         if (!err) {
             oeeLogger.info(`Successfully subscribed to command topic: ${commandTopic}`);
         } else {
