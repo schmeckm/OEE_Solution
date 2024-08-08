@@ -46,9 +46,9 @@ class OEECalculator {
             const processOrderData = await loadProcessOrderData();
             oeeLogger.info(`Loaded process order data: ${JSON.stringify(processOrderData)}`);
             this.validateProcessOrderData(processOrderData); // Validate the data
-            this.setOEEData(processOrderData[0]); // Set the OEE data
+            this.setOEEData(processOrderData[0], 'default'); // Set the OEE data for default line
         } catch (error) {
-            errorLogger.error(`Error initializing OEECalculator and ProcessOrder : ${error.message}`);
+            errorLogger.error(`Error initializing OEECalculator: ${error.message}`);
             throw error;
         }
     }
@@ -66,16 +66,20 @@ class OEECalculator {
     }
 
     // Set OEE data with validated process order data
-    setOEEData(data) {
+    setOEEData(data, line) {
+        if (!this.oeeData[line]) {
+            this.oeeData[line] = this.resetOEEData();
+        }
+
         const { ProcessOrderNumber, setupTime, processingTime, teardownTime, totalPartsToBeProduced, Start, End, MaterialNumber, MaterialDescription } = data;
-        this.oeeData.ProcessOrderNumber = ProcessOrderNumber;
-        this.oeeData.plannedProduction = setupTime + processingTime + teardownTime;
-        this.oeeData.runtime = setupTime + processingTime + teardownTime;
-        this.oeeData.targetPerformance = totalPartsToBeProduced;
-        this.oeeData.StartTime = Start;
-        this.oeeData.EndTime = End;
-        this.oeeData.MaterialNumber = MaterialNumber;
-        this.oeeData.MaterialDescription = MaterialDescription;
+        this.oeeData[line].ProcessOrderNumber = ProcessOrderNumber;
+        this.oeeData[line].plannedProduction = setupTime + processingTime + teardownTime;
+        this.oeeData[line].runtime = setupTime + processingTime + teardownTime;
+        this.oeeData[line].targetPerformance = totalPartsToBeProduced;
+        this.oeeData[line].StartTime = Start;
+        this.oeeData[line].EndTime = End;
+        this.oeeData[line].MaterialNumber = MaterialNumber;
+        this.oeeData[line].MaterialDescription = MaterialDescription;
     }
 
     // Update specific OEE metric
@@ -102,7 +106,11 @@ class OEECalculator {
     }
 
     // Calculate OEE metrics
-    async calculateMetrics(line) {
+    async calculateMetrics(line, totalUnplannedDowntime, totalPlannedDowntime) {
+        if (!this.oeeData[line]) {
+            throw new Error(`No data found for line: ${line}`);
+        }
+
         this.validateInput(line);
 
         const { plannedProduction, runtime, targetPerformance, goodProducts, totalProduction, ProcessOrderNumber, StartTime, EndTime, MaterialNumber, MaterialDescription } = this.oeeData[line];
@@ -113,19 +121,19 @@ class OEECalculator {
 
             const totalProductionTime = OEEData.datasets[0].data.reduce((a, b) => a + b, 0);
             const totalBreakTime = OEEData.datasets[1].data.reduce((a, b) => a + b, 0);
-            const totalUnplannedDowntime = OEEData.datasets[2].data.reduce((a, b) => a + b, 0);
-            const totalPlannedDowntime = OEEData.datasets[3].data.reduce((a, b) => a + b, 0);
+            const actualUnplannedDowntime = totalUnplannedDowntime || OEEData.datasets[2].data.reduce((a, b) => a + b, 0);
+            const actualPlannedDowntime = totalPlannedDowntime || OEEData.datasets[3].data.reduce((a, b) => a + b, 0);
 
             oeeLogger.info(`Total production time: ${totalProductionTime}`);
             oeeLogger.info(`Total break time: ${totalBreakTime}`);
-            oeeLogger.info(`Total unplanned downtime: ${totalUnplannedDowntime}`);
-            oeeLogger.info(`Total planned downtime: ${totalPlannedDowntime}`);
+            oeeLogger.info(`Total unplanned downtime: ${actualUnplannedDowntime}`);
+            oeeLogger.info(`Total planned downtime: ${actualPlannedDowntime}`);
 
             // Log input values
             oeeLogger.info(`Input values for line ${line} - plannedProduction: ${plannedProduction}, runtime: ${runtime}, targetPerformance: ${targetPerformance}, goodProducts: ${goodProducts}, totalProduction: ${totalProduction}, MaterialNumber: ${MaterialNumber}, MaterialDescription: ${MaterialDescription}`);
 
             // Perform OEE calculation
-            this.calculateOEE(plannedProduction, runtime, targetPerformance, goodProducts, totalProduction, totalUnplannedDowntime, totalPlannedDowntime + totalBreakTime, line);
+            this.calculateOEE(plannedProduction, runtime, targetPerformance, goodProducts, totalProduction, actualUnplannedDowntime, actualPlannedDowntime, line);
 
             // Log calculated OEE data
             oeeLogger.info(`Calculated OEE data for line ${line}: ${JSON.stringify(this.oeeData[line])}`);

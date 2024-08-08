@@ -14,19 +14,24 @@ let receivedMetrics = {};
  * Update a metric with a new value.
  * @param {string} name - The metric name.
  * @param {number} value - The metric value.
+ * @param {string} line - The production line or workcenter.
  */
-function updateMetric(name, value) {
-    receivedMetrics[name] = value;
-    oeeCalculator.updateData(name, value);
-    oeeLogger.debug(`Metric updated: ${name} = ${value}`);
+function updateMetric(name, value, line) {
+    if (!receivedMetrics[line]) {
+        receivedMetrics[line] = {};
+    }
+    receivedMetrics[line][name] = value;
+    oeeCalculator.updateData(name, value, line);
+    oeeLogger.debug(`Metric updated: ${name} = ${value} for line ${line}`);
 }
 
 /**
  * Process metrics, calculate OEE, and send data via WebSocket.
+ * @param {string} line - The production line or workcenter.
  */
-async function processMetrics() {
+async function processMetrics(line) {
     try {
-        oeeLogger.info('Starting metrics processing.');
+        oeeLogger.info(`Starting metrics processing for line: ${line}.`);
         await oeeCalculator.init();
 
         // Load chart data and prepare OEE data
@@ -50,14 +55,14 @@ async function processMetrics() {
         oeeLogger.info(`Total planned downtime: ${totalPlannedDowntime}`);
 
         // Calculate metrics using the new total times
-        await oeeCalculator.calculateMetrics(totalUnplannedDowntime, totalPlannedDowntime + totalBreakTime);
+        await oeeCalculator.calculateMetrics(line, totalUnplannedDowntime, totalPlannedDowntime + totalBreakTime);
 
-        const metrics = oeeCalculator.getMetrics();
-        const { oee, availability, performance, quality, ProcessOrderNumber, StartTime, EndTime, plannedProduction, machine_id, MaterialNumber, MaterialDescription } = metrics;
-
+        const metrics = oeeCalculator.getMetrics(line);
         if (!metrics) {
-            throw new Error('Metrics could not be calculated or are undefined.');
+            throw new Error(`Metrics could not be calculated or are undefined for line: ${line}.`);
         }
+
+        const { oee, availability, performance, quality, ProcessOrderNumber, StartTime, EndTime, plannedProduction, machine_id, MaterialNumber, MaterialDescription } = metrics;
 
         const level = oeeCalculator.classifyOEE(oee / 100);
 
@@ -70,7 +75,6 @@ async function processMetrics() {
         const startTimeInTimezone = moment.tz(StartTime, "UTC").tz(TIMEZONE).format();
         const endTimeInTimezone = moment.tz(EndTime, "UTC").tz(TIMEZONE).format();
 
-        // Prepare payload
         // Prepare payload
         const roundedMetrics = {
             oee: Math.round(oee * 100) / 100,
@@ -92,7 +96,7 @@ async function processMetrics() {
         };
 
         // Log summary
-        oeeLogger.info(`OEE Metrics Summary: OEE=${roundedMetrics.oee}%, Availability=${roundedMetrics.availability}%, Performance=${roundedMetrics.performance}%, Quality=${roundedMetrics.quality}%, Level=${roundedMetrics.level}`);
+        oeeLogger.info(`OEE Metrics Summary for line ${line}: OEE=${roundedMetrics.oee}%, Availability=${roundedMetrics.availability}%, Performance=${roundedMetrics.performance}%, Quality=${roundedMetrics.quality}%, Level=${roundedMetrics.level}`);
         oeeLogger.info(`Process Data: ${JSON.stringify(roundedMetrics.processData)}`);
 
         // Send OEE metrics to all connected WebSocket clients
@@ -110,7 +114,7 @@ async function processMetrics() {
         oeeLogger.info(`Chart Data: ${JSON.stringify(OEEData)}`);
 
     } catch (error) {
-        errorLogger.error(`Error calculating metrics: ${error.message}`);
+        errorLogger.error(`Error calculating metrics for line ${line}: ${error.message}`);
     }
 }
 
