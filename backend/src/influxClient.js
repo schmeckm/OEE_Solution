@@ -20,6 +20,14 @@ writeApi.useDefaultTags({ host: 'host1' });
  * @param {Object} fields - The fields to write, with field names as keys and values as field values
  * @param {Object} tags - Optional tags to add to the point, with tag names as keys and values as tag values
  */
+/**
+ * Writes a data point to InfluxDB.
+ * 
+ * @param {string} measurement - The measurement name.
+ * @param {Object} fields - The fields to be added to the data point.
+ * @param {Object} [tags={}] - The tags to be added to the data point.
+ * @returns {void}
+ */
 const writePoint = (measurement, fields, tags = {}) => {
     const point = new Point(measurement);
     // Add fields to the point

@@ -1,47 +1,70 @@
 const { oeeLogger, errorLogger } = require('../utils/logger');
 const { OEECalculator, writeOEEToInfluxDB } = require('../utils/oeeCalculator');
 const { loadDataAndPrepareOEE } = require('../utils/downtimeManager');
-const { influxdb, structure } = require('../config/config');
+const { influxdb } = require('../config/config');
 const { setWebSocketServer, sendWebSocketMessage } = require('./webSocketUtils');
 const moment = require('moment-timezone');
 
 const TIMEZONE = process.env.TIMEZONE || 'Europe/Berlin'; // Set timezone from .env or default to 'Europe/Berlin'
 
-const oeeCalculator = new OEECalculator();
-let receivedMetrics = {};
+// Initialize OEECalculator and metrics storage for each line
+const oeeCalculators = new Map();
+const receivedMetrics = new Map();
+const metricBatch = [];
+const BATCH_SIZE = 10; // Adjust the batch size as needed
 
 /**
- * Update a metric with a new value.
+ * Update a metric with a new value and batch process the updates.
  * @param {string} name - The metric name.
  * @param {number} value - The metric value.
  * @param {string} line - The production line or workcenter.
  */
 function updateMetric(name, value, line) {
-    if (!receivedMetrics[line]) {
-        receivedMetrics[line] = {};
+    if (!receivedMetrics.has(line)) {
+        receivedMetrics.set(line, new Map());
     }
-    receivedMetrics[line][name] = value;
-    oeeCalculator.updateData(name, value, line);
-    oeeLogger.debug(`Metric updated: ${name} = ${value} for line ${line}`);
+    receivedMetrics.get(line).set(name, value);
+    metricBatch.push({ name, value, line });
+
+    if (metricBatch.length >= BATCH_SIZE) {
+        processMetricBatch();
+    }
 }
 
 /**
- * Process metrics, calculate OEE, and send data via WebSocket.
+ * Process a batch of metrics.
+ */
+function processMetricBatch() {
+    metricBatch.forEach(metric => {
+        let calculator = oeeCalculators.get(metric.line);
+        if (!calculator) {
+            calculator = new OEECalculator();
+            oeeCalculators.set(metric.line, calculator);
+        }
+        calculator.updateData(metric.name, metric.value, metric.line);
+    });
+    metricBatch.length = 0; // Clear the batch after processing
+}
+
+/**
+ * Process metrics, calculate OEE, and send data via WebSocket for a specific line.
  * @param {string} line - The production line or workcenter.
  */
 async function processMetrics(line) {
     try {
         oeeLogger.info(`Starting metrics processing for line: ${line}.`);
-        await oeeCalculator.init();
 
-        // Load chart data and prepare OEE data
-        let OEEData;
-        try {
-            OEEData = loadDataAndPrepareOEE();
-        } catch (chartError) {
-            errorLogger.error(`Error loading or preparing chart data: ${chartError.message}`);
-            return;
+        let calculator = oeeCalculators.get(line);
+        if (!calculator) {
+            calculator = new OEECalculator();
+            oeeCalculators.set(line, calculator);
         }
+
+        // Initialize OEE Calculator and load OEE data in parallel
+        const [OEEData] = await Promise.all([
+            loadDataAndPrepareOEE(),
+            calculator.init()
+        ]);
 
         // Calculate the total times from the chart data
         const totalProductionTime = OEEData.datasets[0].data.reduce((a, b) => a + b, 0);
@@ -55,16 +78,16 @@ async function processMetrics(line) {
         oeeLogger.info(`Total planned downtime: ${totalPlannedDowntime}`);
 
         // Calculate metrics using the new total times
-        await oeeCalculator.calculateMetrics(line, totalUnplannedDowntime, totalPlannedDowntime + totalBreakTime);
+        await calculator.calculateMetrics(line, totalUnplannedDowntime, totalPlannedDowntime + totalBreakTime);
 
-        const metrics = oeeCalculator.getMetrics(line);
+        const metrics = calculator.getMetrics(line);
         if (!metrics) {
             throw new Error(`Metrics could not be calculated or are undefined for line: ${line}.`);
         }
 
         const { oee, availability, performance, quality, ProcessOrderNumber, StartTime, EndTime, plannedProduction, machine_id, MaterialNumber, MaterialDescription } = metrics;
 
-        const level = oeeCalculator.classifyOEE(oee / 100);
+        const level = calculator.classifyOEE(oee / 100);
 
         oeeLogger.info(`Calculated Availability: ${availability}`);
         oeeLogger.info(`Calculated Performance: ${performance}`);
@@ -87,10 +110,10 @@ async function processMetrics(line) {
                 StartTime: startTimeInTimezone,
                 EndTime: endTimeInTimezone,
                 plannedProduction,
-                plannedDowntime: totalPlannedDowntime, // Use the new total planned downtime
-                unplannedDowntime: totalUnplannedDowntime, // Use the new total unplanned downtime
-                MaterialNumber: MaterialNumber, // Add MaterialNumber
-                MaterialDescription: MaterialDescription, // Add MaterialDescription
+                plannedDowntime: totalPlannedDowntime,
+                unplannedDowntime: totalUnplannedDowntime,
+                MaterialNumber,
+                MaterialDescription,
                 machine_id
             }
         };
@@ -99,11 +122,11 @@ async function processMetrics(line) {
         oeeLogger.info(`OEE Metrics Summary for line ${line}: OEE=${roundedMetrics.oee}%, Availability=${roundedMetrics.availability}%, Performance=${roundedMetrics.performance}%, Quality=${roundedMetrics.quality}%, Level=${roundedMetrics.level}`);
         oeeLogger.info(`Process Data: ${JSON.stringify(roundedMetrics.processData)}`);
 
-        // Send OEE metrics to all connected WebSocket clients
-        sendWebSocketMessage('oeeData', roundedMetrics);
+        // Send OEE metrics to all connected WebSocket clients in a batched manner
+        await sendBatchedWebSocketMessages('oeeData', roundedMetrics);
 
         if (influxdb.url && influxdb.token && influxdb.org && influxdb.bucket) {
-            await writeOEEToInfluxDB(roundedMetrics); // Pass the entire metrics object
+            await writeOEEToInfluxDB(roundedMetrics); // Batch and write the metrics to InfluxDB
             oeeLogger.info('Metrics written to InfluxDB.');
         }
 
@@ -115,6 +138,23 @@ async function processMetrics(line) {
 
     } catch (error) {
         errorLogger.error(`Error calculating metrics for line ${line}: ${error.message}`);
+    }
+}
+
+/**
+ * Batch and send WebSocket messages to avoid overwhelming the clients.
+ * @param {string} type - The message type.
+ * @param {Object} data - The data to be sent.
+ */
+async function sendBatchedWebSocketMessages(type, data) {
+    const websocketQueue = [];
+    websocketQueue.push({ type, data });
+
+    if (websocketQueue.length >= BATCH_SIZE) {
+        websocketQueue.forEach(message => {
+            sendWebSocketMessage(message.type, message.data);
+        });
+        websocketQueue.length = 0; // Clear the queue after sending
     }
 }
 

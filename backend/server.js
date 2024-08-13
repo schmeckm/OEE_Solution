@@ -11,6 +11,7 @@ const { Server } = require('ws');
  */
 dotenv.config();
 
+
 const { defaultLogger, errorLogger } = require('./utils/logger');
 const { logRetentionDays } = require('./config/config');
 const { setupMqttClient } = require('./src/mqttClient');
@@ -118,20 +119,12 @@ setWebSocketServer(wss);
  * Function to handle graceful shutdown of the server.
  * @param {string} signal - The signal received
  */
-function gracefulShutdown(signal) {
-    defaultLogger.info(`${signal} signal received: closing HTTP server`);
-    server.close(() => {
-        defaultLogger.info('HTTP server closed');
-        if (mqttClient) {
-            mqttClient.end(() => {
-                defaultLogger.info('MQTT client disconnected');
-                process.exit(0);
-            });
-        } else {
-            process.exit(0);
-        }
-    });
-}
+/**
+ * Gracefully shuts down the server.
+ * 
+ * @param {string} signal - The signal received.
+ * @returns {void}
+ */
 
 // Listen for termination signals to gracefully shut down the server
 process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));

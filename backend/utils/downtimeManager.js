@@ -62,13 +62,13 @@ function parseDate(dateStr) {
     return moment.utc(dateStr);
 }
 
-function filterDowntime(downtimes, startTime, endTime) {
+/* function filterDowntime(downtimes, startTime, endTime) {
     return downtimes.filter(downtime => {
         const start = parseDate(downtime.Start);
         const end = parseDate(downtime.End);
         return start.isBetween(startTime, endTime, null, '[]') || end.isBetween(startTime, endTime, null, '[]');
     });
-}
+} */
 
 function getUnplannedDowntime(processOrderNumber) {
     try {

@@ -13,6 +13,7 @@ const plannedDowntimeFilePath = path.resolve(__dirname, '../data/plannedDowntime
 const processOrderFilePath = path.resolve(__dirname, '../data/processOrder.json');
 const shiftModelFilePath = path.resolve(__dirname, '../data/shiftModel.json');
 const machineStoppagesFilePath = path.resolve(__dirname, '../data/machineStoppages.json');
+const machineFilePath = path.resolve(__dirname, '../data/machine.json'); // Pfad zu machine.json
 
 // Caches for data
 let unplannedDowntimeCache = null;
@@ -20,6 +21,7 @@ let plannedDowntimeCache = null;
 let processOrderDataCache = null;
 let shiftModelDataCache = null;
 let machineStoppagesCache = null;
+let machineDataCache = null; // Cache für machine.json
 
 // Load date format and timezone from environment variables
 const DATE_FORMAT = process.env.DATE_FORMAT || 'YYYY-MM-DDTHH:mm:ss.SSSZ';
@@ -57,36 +59,15 @@ function loadJsonData(filePath, dateFields = []) {
 }
 
 /**
- * Save JSON data to a file.
- * @param {string} filePath - The path to the JSON file.
- * @param {Object} data - The JSON data to save.
- * @param {function} callback - The callback function to execute after saving.
+ * Load and cache machine data.
+ * @returns {Object} The machine data.
  */
-function saveJsonData(filePath, data, callback) {
-    fs.writeFile(filePath, JSON.stringify(data, null, 2), 'utf8', (err) => {
-        if (err) {
-            errorLogger.error(`Error writing JSON data to ${filePath}: ${err.message}`);
-            return callback(err);
-        }
-        oeeLogger.info(`Data saved successfully to ${filePath}`);
-        callback(null);
-    });
-}
-
-/**
- * Validates process order data.
- * @param {Array} data - The process order data.
- * @returns {Array} The validated process order data.
- */
-function validateProcessOrderData(data) {
-    data.forEach(order => {
-        if (order.goodProducts > order.totalProduction) {
-            const errorMsg = `Invalid input data: goodProducts (${order.goodProducts}) cannot be greater than totalProduction (${order.totalProduction})`;
-            errorLogger.error(errorMsg);
-            throw new Error(errorMsg);
-        }
-    });
-    return data;
+function loadMachineData() {
+    if (!machineDataCache) {
+        machineDataCache = loadJsonData(machineFilePath); // Lade machine.json
+        oeeLogger.info(`Machine data loaded from ${machineFilePath}`);
+    }
+    return machineDataCache;
 }
 
 /**
@@ -140,7 +121,7 @@ function loadShiftModelData() {
 }
 
 /**
- * Load machine stoppages data once and cache it.
+ * Load and cache machine stoppages data.
  * @returns {Object} The machine stoppages data.
  */
 function loadMachineStoppagesData() {
@@ -152,132 +133,118 @@ function loadMachineStoppagesData() {
 }
 
 /**
- * Get machine stoppages cache.
- * @returns {Object} The machine stoppages cache.
+ * Validate process order data.
+ * @param {Array} data - The process order data.
+ * @returns {Array} The validated process order data.
  */
-function getMachineStoppagesCache() {
-    if (!machineStoppagesCache) {
-        loadMachineStoppagesData();
-    }
-    return machineStoppagesCache;
-}
-
-/**
- * Save machine stoppages data to file.
- * @param {Object} data - The machine stoppages data.
- * @param {function} callback - The callback function to execute after saving.
- */
-function saveMachineStoppageData(data, callback) {
-    saveJsonData(machineStoppagesFilePath, data, callback);
-}
-
-/**
- * Parse a date string into a Moment.js object and convert it to CEST.
- * @param {string} dateStr - The date string.
- * @returns {Object} Moment.js object.
- */
-function parseDate(dateStr) {
-    const date = moment.tz(dateStr, TIMEZONE);
-    if (!date.isValid()) {
-        const errorMsg = `Invalid date: ${dateStr}`;
-        errorLogger.error(errorMsg);
-        throw new Error(errorMsg);
-    }
-    return date;
-}
-
-/**
- * Filter downtimes that fall within the specified start and end times.
- * @param {Array} downtimes - The downtimes data.
- * @param {Object} startTime - The start time.
- * @param {Object} endTime - The end time.
- * @returns {Array} Filtered downtimes.
- */
-function filterDowntime(downtimes, startTime, endTime) {
-    return downtimes.filter(downtime => {
-        const start = parseDate(downtime.Start);
-        const end = parseDate(downtime.End);
-        return start.isBetween(startTime, endTime, null, '[]') || end.isBetween(startTime, endTime, null, '[]');
+function validateProcessOrderData(data) {
+    data.forEach(order => {
+        if (order.goodProducts > order.totalProduction) {
+            const errorMsg = `Invalid input data: goodProducts (${order.goodProducts}) cannot be greater than totalProduction (${order.totalProduction})`;
+            errorLogger.error(errorMsg);
+            throw new Error(errorMsg);
+        }
     });
+    return data;
 }
 
 /**
- * Accumulate downtime difference for a specific ProcessOrderNumber.
- * @param {string} processOrderNumber - The ProcessOrderNumber.
- * @returns {number} The unplanned downtime in minutes.
+ * Get unplanned downtime for a specific machine
+ * @param {string} machineId - The machine ID
+ * @param {string} startTime - The start time of the process order
+ * @param {string} endTime - The end time of the process order
+ * @returns {number} - The total unplanned downtime in minutes
  */
-function getUnplannedDowntime(processOrderNumber) {
-    try {
-        const unplannedDowntimeEntries = loadUnplannedDowntimeData();
+function getUnplannedDowntimeByMachine(machineId, startTime, endTime) {
+    const unplannedDowntimes = loadUnplannedDowntimeData();
+    const start = moment(startTime);
+    const end = moment(endTime);
 
-        // Summarize differences for the specified ProcessOrderNumber
-        const totalDowntimeMinutes = unplannedDowntimeEntries.reduce((total, entry) => {
-            if (entry.ProcessOrderNumber === processOrderNumber) {
-                total += entry.Differenz;
-            }
-            return total;
-        }, 0);
+    return unplannedDowntimes
+        .filter(entry => entry.machine_id === machineId)
+        .reduce((total, entry) => {
+            const entryStart = moment(entry.Start);
+            const entryEnd = moment(entry.End);
 
-        // Log the accumulated downtime
-        oeeLogger.info(`Total accumulated unplanned downtime for ProcessOrderNumber ${processOrderNumber}: ${totalDowntimeMinutes} minutes`);
-
-        return totalDowntimeMinutes;
-    } catch (error) {
-        errorLogger.error(`Error reading or processing unplannedDowntime.json: ${error.message}`);
-        throw error;
-    }
-}
-
-/**
- * Calculate the total planned downtime.
- * @param {string} processOrderNumber - The ProcessOrderNumber.
- * @param {string} startTime - The start time of the process order.
- * @param {string} endTime - The end time of the process order.
- * @returns {number} The total planned downtime in minutes.
- */
-function getPlannedDowntime(processOrderNumber, startTime, endTime) {
-    try {
-        const plannedDowntimeEntries = loadPlannedDowntimeData();
-        const start = parseDate(startTime);
-        const end = parseDate(endTime);
-
-        const totalDowntimeMinutes = plannedDowntimeEntries.reduce((total, entry) => {
-            if (!entry.Start || !entry.End) {
-                oeeLogger.warn(`Undefined Start or End in entry: ${JSON.stringify(entry)}`);
-                return total; // Skip this entry
-            }
-
-            const entryStart = parseDate(entry.Start);
-            const entryEnd = parseDate(entry.End);
-            oeeLogger.debug(`Processing entry for ProcessOrderNumber ${entry.ProcessOrderNumber}: Start ${entry.Start}, End ${entry.End}`);
-
-            if (entry.ProcessOrderNumber === processOrderNumber && entryStart.isBefore(end) && entryEnd.isAfter(start)) {
+            if (entryEnd.isAfter(start) && entryStart.isBefore(end)) {
                 const overlapStart = moment.max(start, entryStart);
                 const overlapEnd = moment.min(end, entryEnd);
-                const duration = overlapEnd.diff(overlapStart, 'minutes');
-                oeeLogger.debug(`Overlap found: starts at ${overlapStart.format(DATE_FORMAT)}, ends at ${overlapEnd.format(DATE_FORMAT)}, duration ${duration} minutes`);
-                total += duration;
+                total += overlapEnd.diff(overlapStart, 'minutes');
             }
             return total;
         }, 0);
+}
 
-        oeeLogger.info(`Total accumulated planned downtime for ProcessOrderNumber ${processOrderNumber}: ${totalDowntimeMinutes} minutes`);
+/**
+ * Get planned downtime for a specific machine
+ * @param {string} machineId - The machine ID
+ * @param {string} startTime - The start time of the process order
+ * @param {string} endTime - The end time of the process order
+ * @returns {number} - The total planned downtime in minutes
+ */
+function getPlannedDowntimeByMachine(machineId, startTime, endTime) {
+    const plannedDowntimes = loadPlannedDowntimeData();
+    const start = moment(startTime);
+    const end = moment(endTime);
 
-        return totalDowntimeMinutes;
-    } catch (error) {
-        errorLogger.error(`Error reading or processing plannedDowntime.json: ${error.message}`);
-        throw error;
-    }
+    return plannedDowntimes
+        .filter(entry => entry.machine_id === machineId)
+        .reduce((total, entry) => {
+            const entryStart = moment(entry.Start);
+            const entryEnd = moment(entry.End);
+
+            if (entryEnd.isAfter(start) && entryStart.isBefore(end)) {
+                const overlapStart = moment.max(start, entryStart);
+                const overlapEnd = moment.min(end, entryEnd);
+                total += overlapEnd.diff(overlapStart, 'minutes');
+            }
+            return total;
+        }, 0);
+}
+
+/**
+ * Get total machine stoppage time for a specific process order.
+ * @param {string} processOrderNumber - The process order number.
+ * @returns {number} - The total machine stoppage time in minutes.
+ */
+function getTotalMachineStoppageTimeByProcessOrder(processOrderNumber) {
+    const stoppages = loadMachineStoppagesData();
+    return stoppages
+        .filter(stoppage => stoppage.ProcessOrderNumber === processOrderNumber)
+        .reduce((total, stoppage) => {
+            total += stoppage.Differenz; // Summiere die Differenz (in Sekunden)
+            return total;
+        }, 0) / 60; // Rückgabe in Minuten
+}
+
+/**
+ * Get total machine stoppage time for a specific machine and period.
+ * @param {string} machineId - The machine ID.
+ * @param {string} startTime - The start time.
+ * @param {string} endTime - The end time.
+ * @returns {number} - The total machine stoppage time in minutes.
+ */
+function getTotalMachineStoppageTimeByLineAndPeriod(machineId, startTime, endTime) {
+    const stoppages = loadMachineStoppagesData();
+    const start = moment(startTime);
+    const end = moment(endTime);
+
+    return stoppages
+        .filter(stoppage => stoppage.machine_id === machineId && moment(stoppage.Start).isBetween(start, end, null, '[]'))
+        .reduce((total, stoppage) => {
+            total += stoppage.Differenz; // Summiere die Differenz (in Sekunden)
+            return total;
+        }, 0) / 60; // Rückgabe in Minuten
 }
 
 module.exports = {
-    getUnplannedDowntime,
-    getPlannedDowntime,
+    getUnplannedDowntimeByMachine,
+    getPlannedDowntimeByMachine,
+    getTotalMachineStoppageTimeByProcessOrder,
+    getTotalMachineStoppageTimeByLineAndPeriod,
     loadProcessOrderData,
     loadUnplannedDowntimeData,
     loadPlannedDowntimeData,
-    loadShiftModelData,
-    loadMachineStoppagesData,
-    getMachineStoppagesCache,
-    saveMachineStoppageData
+    loadMachineData,
+    loadMachineStoppagesData
 };

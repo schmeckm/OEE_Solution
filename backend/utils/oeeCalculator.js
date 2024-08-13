@@ -15,6 +15,10 @@ const CLASSIFICATION_LEVELS = {
 };
 
 // OEECalculator class handles the calculation and management of OEE metrics
+/**
+ * Class representing an OEE Calculator.
+ * @class
+ */
 class OEECalculator {
     constructor() {
         this.oeeData = {}; // Initialize as an empty object

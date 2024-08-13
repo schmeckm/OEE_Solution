@@ -1,11 +1,11 @@
 [{
         "machine_id": "1",
-        "name": "Machine 1",
-        "description": "Description of Machine 1"
+        "name": "Falcon11",
+        "description": "Description of Falcon11"
     },
     {
         "machine_id": "2",
-        "name": "Machine 2",
-        "description": "Description of Machine 2"
+        "name": "Falcon12",
+        "description": "Description of Falcon12"
     }
 ]

@@ -3,13 +3,15 @@
         "ProcessOrderNumber": "47111",
         "Start": "2024-07-14T09:25:13.507Z",
         "End": "2024-07-14T09:30:30.555Z",
-        "Differenz": 0
+        "Differenz": 0,
+        "machine_id": "1"
     },
     {
-        "order_id": 1,
-        "ProcessOrderNumber": "47111",
-        "Start": "2024-07-14T09:00:25.743Z",
-        "End": "2024-07-14T09:02:30.555Z",
-        "Differenz": 800
+        "order_id": 2,
+        "ProcessOrderNumber": "47112",
+        "Start": "2024-07-15T09:00:25.743Z",
+        "End": "2024-07-15T09:02:30.555Z",
+        "Differenz": 800,
+        "machine_id": "2"
     }
 ]

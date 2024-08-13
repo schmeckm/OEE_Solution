@@ -8,6 +8,11 @@ let wsServer = null; // Rename to avoid conflict with frontend
  * Set the WebSocket server instance.
  * @param {Object} server - The WebSocket server instance.
  */
+/**
+ * Sets the WebSocket server and handles client connections.
+ * 
+ * @param {WebSocketServer} server - The WebSocket server instance.
+ */
 function setWebSocketServer(server) {
     wsServer = server;
     wsServer.on('connection', async(ws) => {

@@ -3,6 +3,13 @@ const { errorLogger } = require('./logger');
 
 const cache = {};
 
+/**
+ * Loads JSON data from a file path.
+ * 
+ * @param {string} filePath - The path to the JSON file.
+ * @returns {Promise<Object>} - A promise that resolves to the parsed JSON data.
+ * @throws {Error} - If there is an error loading or parsing the JSON data.
+ */
 async function loadJsonData(filePath) {
     if (cache[filePath]) {
         return cache[filePath];
