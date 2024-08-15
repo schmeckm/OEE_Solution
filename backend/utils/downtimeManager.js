@@ -3,22 +3,30 @@ const path = require('path');
 const moment = require('moment');
 const { oeeLogger, errorLogger } = require('../utils/logger');
 
+// File paths for JSON data
 const unplannedDowntimeFilePath = path.resolve(__dirname, '../data/unplannedDowntime.json');
 const plannedDowntimeFilePath = path.resolve(__dirname, '../data/plannedDowntime.json');
 const processOrderFilePath = path.resolve(__dirname, '../data/processOrder.json');
 const shiftModelFilePath = path.resolve(__dirname, '../data/shiftModel.json');
 
+// Cache variables
 let unplannedDowntimeCache = null;
 let plannedDowntimeCache = null;
 let processOrderDataCache = null;
 let shiftModelDataCache = null;
 
-// Load JSON data from a file with caching
+// Load JSON data from a file with caching and validation
 function loadJsonData(filePath) {
     try {
         oeeLogger.debug(`Loading JSON data from ${filePath}`);
         const data = fs.readFileSync(filePath, 'utf8');
         const jsonData = JSON.parse(data);
+
+        if (!Array.isArray(jsonData)) {
+            oeeLogger.warn(`Data in ${filePath} is not an array.`);
+            return []; // Return an empty array if the data is not in the expected format
+        }
+
         oeeLogger.info(`Content of ${filePath} loaded successfully`);
         return jsonData;
     } catch (error) {
@@ -27,23 +35,39 @@ function loadJsonData(filePath) {
     }
 }
 
-// Load data functions with caching
+// Load and cache unplanned downtime data
 function loadUnplannedDowntimeData() {
     if (!unplannedDowntimeCache) {
         unplannedDowntimeCache = loadJsonData(unplannedDowntimeFilePath);
-        oeeLogger.info(`Unplanned downtime data loaded from ${unplannedDowntimeFilePath}`);
+        if (!Array.isArray(unplannedDowntimeCache)) {
+            oeeLogger.warn(`Expected an array in unplannedDowntime.json but received: ${typeof unplannedDowntimeCache}`);
+            unplannedDowntimeCache = [];
+        } else if (unplannedDowntimeCache.length === 0) {
+            oeeLogger.warn(`Unplanned downtime array is empty in ${unplannedDowntimeFilePath}`);
+        } else {
+            oeeLogger.info(`Unplanned downtime data successfully loaded: ${JSON.stringify(unplannedDowntimeCache, null, 2)}`);
+        }
     }
     return unplannedDowntimeCache;
 }
 
+// Load and cache planned downtime data
 function loadPlannedDowntimeData() {
     if (!plannedDowntimeCache) {
         plannedDowntimeCache = loadJsonData(plannedDowntimeFilePath);
-        oeeLogger.info(`Planned downtime data loaded from ${plannedDowntimeFilePath}`);
+        if (!Array.isArray(plannedDowntimeCache)) {
+            oeeLogger.warn(`Expected an array in plannedDowntime.json but received: ${typeof plannedDowntimeCache}`);
+            plannedDowntimeCache = [];
+        } else if (plannedDowntimeCache.length === 0) {
+            oeeLogger.warn(`Planned downtime array is empty in ${plannedDowntimeFilePath}`);
+        } else {
+            oeeLogger.info(`Planned downtime data successfully loaded: ${JSON.stringify(plannedDowntimeCache, null, 2)}`);
+        }
     }
     return plannedDowntimeCache;
 }
 
+// Load and cache process order data
 function loadProcessOrderData() {
     if (!processOrderDataCache) {
         processOrderDataCache = loadJsonData(processOrderFilePath);
@@ -55,7 +79,7 @@ function loadProcessOrderData() {
     return processOrderDataCache;
 }
 
-
+// Load and cache shift model data
 function loadShiftModelData() {
     if (!shiftModelDataCache) {
         shiftModelDataCache = loadJsonData(shiftModelFilePath);
@@ -64,18 +88,15 @@ function loadShiftModelData() {
     return shiftModelDataCache;
 }
 
+// Parse a date string to a Moment object in UTC
 function parseDate(dateStr) {
     return moment.utc(dateStr);
 }
 
-// Get unplanned downtime filtered by process order number or machine ID
+// Get planned downtime filtered by process order number and time range
 function getPlannedDowntime(processOrderNumber, startTime, endTime) {
     try {
         const plannedDowntimeEntries = loadPlannedDowntimeData();
-
-        if (!Array.isArray(plannedDowntimeEntries)) {
-            throw new Error("Expected an array from loadPlannedDowntimeData");
-        }
 
         const start = parseDate(startTime).valueOf();
         const end = parseDate(endTime).valueOf();
@@ -106,15 +127,10 @@ function getPlannedDowntime(processOrderNumber, startTime, endTime) {
     }
 }
 
-
-// Get planned downtime filtered by process order number and time range
+// Get unplanned downtime filtered by process order number or machine ID
 function getUnplannedDowntime({ processOrderNumber = null, machineId = null }) {
     try {
         const unplannedDowntimeEntries = loadUnplannedDowntimeData();
-
-        if (!Array.isArray(unplannedDowntimeEntries)) {
-            throw new Error("Expected an array from loadUnplannedDowntimeData");
-        }
 
         const filteredEntries = unplannedDowntimeEntries.filter(entry => {
             if (processOrderNumber) {
@@ -135,7 +151,6 @@ function getUnplannedDowntime({ processOrderNumber = null, machineId = null }) {
         throw error;
     }
 }
-
 
 // Function to calculate break duration
 function calculateBreakDuration(breakStart, breakEnd) {
@@ -222,7 +237,7 @@ function loadDataAndPrepareOEE(machineId) {
 
         oeeLogger.debug(`Current process order details: ${JSON.stringify(currentProcessOrder, null, 2)}`);
 
-        // Get planned and unplanned downtimes using helper functions
+        // Load planned and unplanned downtimes internally
         let plannedDowntime = getPlannedDowntime(processOrderNumber, processOrderStartTime, processOrderEndTime);
         let unplannedDowntime = getUnplannedDowntime({ processOrderNumber });
 
@@ -328,7 +343,6 @@ function loadDataAndPrepareOEE(machineId) {
         throw error;
     }
 }
-
 
 // Export the functions for use in other modules
 module.exports = {

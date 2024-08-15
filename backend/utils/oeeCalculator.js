@@ -1,7 +1,7 @@
 const { InfluxDB, Point } = require('@influxdata/influxdb-client');
 const { oeeLogger, errorLogger } = require('../utils/logger');
 const { influxdb, oeeAsPercent } = require('../config/config');
-const { loadDataAndPrepareOEE } = require('../utils/downtimeManager');
+const { loadDataAndPrepareOEE, loadPlannedDowntimeData, loadUnplannedDowntimeData } = require('../utils/downtimeManager');
 const { loadProcessOrderData } = require('../src/dataLoader');
 
 // Constants for OEE classification
@@ -123,6 +123,7 @@ class OEECalculator {
         try {
             oeeLogger.info(`Before OEE calculation for machineId ${machineId}: ${JSON.stringify(this.oeeData[machineId])}`);
 
+
             // Call loadDataAndPrepareOEE with the machineId
             const OEEData = loadDataAndPrepareOEE(machineId);
 
@@ -144,7 +145,16 @@ class OEECalculator {
             oeeLogger.info(`Input values for machineId ${machineId} - plannedProduction: ${plannedProduction}, runtime: ${runtime}, targetPerformance: ${targetPerformance}, goodProducts: ${goodProducts}, totalProduction: ${totalProduction}, MaterialNumber: ${MaterialNumber}, MaterialDescription: ${MaterialDescription}`);
 
             // Perform OEE calculation
-            this.calculateOEE({ plannedProduction, runtime, targetPerformance, goodProducts, totalProduction, actualUnplannedDowntime, actualPlannedDowntime, machineId });
+            this.calculateOEE({
+                plannedProduction,
+                runtime,
+                targetPerformance,
+                goodProducts,
+                totalProduction,
+                actualUnplannedDowntime,
+                actualPlannedDowntime,
+                machineId,
+            });
 
             // Log calculated OEE data
             oeeLogger.info(`Calculated OEE data for machineId ${machineId}: ${JSON.stringify(this.oeeData[machineId])}`);
@@ -216,14 +226,14 @@ async function writeOEEToInfluxDB(metrics) {
             .tag('area', 'Packaging')
             .tag('machineId', metrics.processData.edge_node_id);
 
-        // Add additional tags if necessary
+        // Zusätzliche Tags hinzufügen, falls notwendig
         Object.keys(metrics.processData).forEach(key => {
             if (typeof metrics.processData[key] !== 'object') {
                 point.tag(key, metrics.processData[key]);
             }
         });
 
-        // Add fields
+        // Felder hinzufügen
         point
             .floatField('oee', oeeAsPercent ? metrics.oee : metrics.oee / 100)
             .floatField('availability', oeeAsPercent ? metrics.availability * 100 : metrics.availability)
