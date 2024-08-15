@@ -121,8 +121,6 @@ class OEECalculator {
         oeeLogger.info(`Calculating metrics for ProcessOrderNumber: ${ProcessOrderNumber} on machineId: ${machineId}`);
 
         try {
-            oeeLogger.info(`Before OEE calculation for machineId ${machineId}: ${JSON.stringify(this.oeeData[machineId])}`);
-
 
             // Call loadDataAndPrepareOEE with the machineId
             const OEEData = loadDataAndPrepareOEE(machineId);

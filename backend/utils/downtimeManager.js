@@ -219,9 +219,13 @@ function loadDataAndPrepareOEE(machineId) {
         oeeLogger.info('Loading data and preparing OEE data.');
 
         // Load and filter process orders by machineId and status 'REL'
+        // Load and filter process orders by machineId and status 'REL'
         const processOrders = loadProcessOrderData().filter(order => {
-            oeeLogger.debug(`Checking process order: ${JSON.stringify(order)}`);
-            return order.machine_id === machineId && order.ProcessOrderStatus === 'REL';
+            if (order.machine_id === machineId && order.ProcessOrderStatus === 'REL') {
+                oeeLogger.info(`Matching process order found: ${JSON.stringify(order)}`);
+                return true;
+            }
+            return false;
         });
 
         // If no running process orders are found, throw an error
@@ -237,9 +241,15 @@ function loadDataAndPrepareOEE(machineId) {
 
         oeeLogger.debug(`Current process order details: ${JSON.stringify(currentProcessOrder, null, 2)}`);
 
+        /*************************************************************************************************************** */
+        /*************************************************************************************************************** */
+        /*************************************************************************************************************** */
+        /*************************************************************************************************************** */
+
         // Load planned and unplanned downtimes internally
         let plannedDowntime = getPlannedDowntime(processOrderNumber, processOrderStartTime, processOrderEndTime);
-        let unplannedDowntime = getUnplannedDowntime({ processOrderNumber });
+        let unplannedDowntime = getUnplannedDowntime(processOrderNumber, processOrderStartTime, processOrderEndTime);
+
 
         // Ensure plannedDowntime and unplannedDowntime are arrays
         if (!Array.isArray(plannedDowntime)) {
