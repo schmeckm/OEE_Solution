@@ -45,14 +45,18 @@ class OEECalculator {
     }
 
     // Initialize OEE data with process order data
-    async init() {
+    init = async function(machineId) {
         try {
-            const processOrderData = await loadProcessOrderData();
-            oeeLogger.info(`Loaded process order data: ${JSON.stringify(processOrderData)}`);
+            const processOrderData = await loadProcessOrderData(machineId);
+            oeeLogger.info(`Loaded process order data for machineId ${machineId}: ${JSON.stringify(processOrderData)}`);
+            if (processOrderData.length === 0) {
+                throw new Error(`No active process order found for machineId ${machineId}.`);
+            }
+
             this.validateProcessOrderData(processOrderData); // Validate the data
-            this.setOEEData(processOrderData[0], 'default'); // Set the OEE data for default line
+            this.setOEEData(processOrderData[0], machineId); // Set the OEE data for the specific machineId
         } catch (error) {
-            errorLogger.error(`Error initializing OEECalculator: ${error.message}`);
+            errorLogger.error(`Error initializing OEECalculator for machineId ${machineId}: ${error.message}`);
             throw error;
         }
     }
@@ -70,35 +74,35 @@ class OEECalculator {
     }
 
     // Set OEE data with validated process order data
-    setOEEData(data, line) {
-        if (!this.oeeData[line]) {
-            this.oeeData[line] = this.resetOEEData();
+    setOEEData(data, machineId) {
+        if (!this.oeeData[machineId]) {
+            this.oeeData[machineId] = this.resetOEEData();
         }
 
         const { ProcessOrderNumber, setupTime, processingTime, teardownTime, totalPartsToBeProduced, Start, End, MaterialNumber, MaterialDescription } = data;
-        this.oeeData[line].ProcessOrderNumber = ProcessOrderNumber;
-        this.oeeData[line].plannedProduction = setupTime + processingTime + teardownTime;
-        this.oeeData[line].runtime = setupTime + processingTime + teardownTime;
-        this.oeeData[line].targetPerformance = totalPartsToBeProduced;
-        this.oeeData[line].StartTime = Start;
-        this.oeeData[line].EndTime = End;
-        this.oeeData[line].MaterialNumber = MaterialNumber;
-        this.oeeData[line].MaterialDescription = MaterialDescription;
+        this.oeeData[machineId].ProcessOrderNumber = ProcessOrderNumber || 'UnknownOrder';
+        this.oeeData[machineId].plannedProduction = setupTime + processingTime + teardownTime;
+        this.oeeData[machineId].runtime = setupTime + processingTime + teardownTime;
+        this.oeeData[machineId].targetPerformance = totalPartsToBeProduced;
+        this.oeeData[machineId].StartTime = Start;
+        this.oeeData[machineId].EndTime = End;
+        this.oeeData[machineId].MaterialNumber = MaterialNumber || 'UnknownMaterial';
+        this.oeeData[machineId].MaterialDescription = MaterialDescription || 'No Description';
     }
 
     // Update specific OEE metric
-    updateData(metric, value, line) {
-        oeeLogger.debug(`Updating ${metric} with value: ${value} for line: ${line}`);
-        if (!this.oeeData[line]) {
-            this.oeeData[line] = this.resetOEEData(); // Initialize line data if not exists
+    updateData(metric, value, machineId) {
+        oeeLogger.debug(`Updating ${metric} with value: ${value} for machineId: ${machineId}`);
+        if (!this.oeeData[machineId]) {
+            this.oeeData[machineId] = this.resetOEEData(); // Initialize machineId data if not exists
         }
-        this.oeeData[line][metric] = value;
+        this.oeeData[machineId][metric] = value;
     }
 
     // Validate input OEE data before calculation
-    validateInput(line) {
-        const { plannedProduction, runtime, actualPerformance, targetPerformance, goodProducts, totalProduction } = this.oeeData[line];
-        oeeLogger.debug(`Validating input data for line ${line}: ${JSON.stringify(this.oeeData[line])}`);
+    validateInput(machineId) {
+        const { plannedProduction, runtime, targetPerformance, goodProducts, totalProduction } = this.oeeData[machineId];
+        oeeLogger.debug(`Validating input data for machineId ${machineId}: ${JSON.stringify(this.oeeData[machineId])}`);
 
         if (runtime <= 0) throw new Error('Invalid input data: runtime must be greater than 0');
         if (plannedProduction <= 0) throw new Error('Invalid input data: plannedProduction must be greater than 0');
@@ -110,17 +114,19 @@ class OEECalculator {
     }
 
     // Calculate OEE metrics
-    async calculateMetrics(line, totalUnplannedDowntime, totalPlannedDowntime) {
-        if (!this.oeeData[line]) {
-            throw new Error(`No data found for line: ${line}`);
+    async calculateMetrics(machineId, totalUnplannedDowntime, totalPlannedDowntime) {
+        if (!this.oeeData[machineId]) {
+            throw new Error(`No data found for machineId: ${machineId}`);
         }
 
-        this.validateInput(line);
+        this.validateInput(machineId);
 
-        const { plannedProduction, runtime, targetPerformance, goodProducts, totalProduction, ProcessOrderNumber, StartTime, EndTime, MaterialNumber, MaterialDescription } = this.oeeData[line];
-        oeeLogger.info(`Calculating metrics for ProcessOrderNumber: ${ProcessOrderNumber} on line: ${line}`);
+        const { plannedProduction, runtime, targetPerformance, goodProducts, totalProduction, ProcessOrderNumber, StartTime, EndTime, MaterialNumber, MaterialDescription } = this.oeeData[machineId];
+        oeeLogger.info(`Calculating metrics for ProcessOrderNumber: ${ProcessOrderNumber} on machineId: ${machineId}`);
 
         try {
+            oeeLogger.info(`Before OEE calculation for machineId ${machineId}: ${JSON.stringify(this.oeeData[machineId])}`);
+
             const OEEData = loadDataAndPrepareOEE();
 
             const totalProductionTime = OEEData.datasets[0].data.reduce((a, b) => a + b, 0);
@@ -134,33 +140,33 @@ class OEECalculator {
             oeeLogger.info(`Total planned downtime: ${actualPlannedDowntime}`);
 
             // Log input values
-            oeeLogger.info(`Input values for line ${line} - plannedProduction: ${plannedProduction}, runtime: ${runtime}, targetPerformance: ${targetPerformance}, goodProducts: ${goodProducts}, totalProduction: ${totalProduction}, MaterialNumber: ${MaterialNumber}, MaterialDescription: ${MaterialDescription}`);
+            oeeLogger.info(`Input values for machineId ${machineId} - plannedProduction: ${plannedProduction}, runtime: ${runtime}, targetPerformance: ${targetPerformance}, goodProducts: ${goodProducts}, totalProduction: ${totalProduction}, MaterialNumber: ${MaterialNumber}, MaterialDescription: ${MaterialDescription}`);
 
             // Perform OEE calculation
-            this.calculateOEE(plannedProduction, runtime, targetPerformance, goodProducts, totalProduction, actualUnplannedDowntime, actualPlannedDowntime, line);
+            this.calculateOEE(plannedProduction, runtime, targetPerformance, goodProducts, totalProduction, actualUnplannedDowntime, actualPlannedDowntime, machineId);
 
             // Log calculated OEE data
-            oeeLogger.info(`Calculated OEE data for line ${line}: ${JSON.stringify(this.oeeData[line])}`);
+            oeeLogger.info(`Calculated OEE data for machineId ${machineId}: ${JSON.stringify(this.oeeData[machineId])}`);
         } catch (error) {
-            errorLogger.error(`Error calculating metrics for line ${line}: ${error.message}`);
+            errorLogger.error(`Error calculating metrics for machineId ${machineId}: ${error.message}`);
             throw error;
         }
     }
 
     // Calculate OEE and its components: availability, performance, and quality
-    calculateOEE(plannedProduction, runtime, targetPerformance, goodProducts, totalProduction, actualUnplannedDowntime, actualPlannedDowntime, line) {
+    calculateOEE(plannedProduction, runtime, targetPerformance, goodProducts, totalProduction, actualUnplannedDowntime, actualPlannedDowntime, machineId) {
         const operatingTime = runtime - (actualUnplannedDowntime / 60) - (actualPlannedDowntime / 60);
 
-        this.oeeData[line].availability = operatingTime / plannedProduction;
-        this.oeeData[line].performance = targetPerformance > 0 ? totalProduction / targetPerformance : 0;
-        this.oeeData[line].quality = totalProduction > 0 ? goodProducts / totalProduction : 0;
-        this.oeeData[line].oee = this.oeeData[line].availability * this.oeeData[line].performance * this.oeeData[line].quality * 100;
+        this.oeeData[machineId].availability = operatingTime / plannedProduction;
+        this.oeeData[machineId].performance = targetPerformance > 0 ? totalProduction / targetPerformance : 0;
+        this.oeeData[machineId].quality = totalProduction > 0 ? goodProducts / totalProduction : 0;
+        this.oeeData[machineId].oee = this.oeeData[machineId].availability * this.oeeData[machineId].performance * this.oeeData[machineId].quality * 100;
 
-        if (!isFinite(this.oeeData[line].oee)) {
-            throw new Error(`Calculated OEE is not finite: ${this.oeeData[line].oee}`);
+        if (!isFinite(this.oeeData[machineId].oee)) {
+            throw new Error(`Calculated OEE is not finite: ${this.oeeData[machineId].oee}`);
         }
 
-        this.oeeData[line].classification = this.classifyOEE(this.oeeData[line].oee / 100);
+        this.oeeData[machineId].classification = this.classifyOEE(this.oeeData[machineId].oee / 100);
     }
 
     // Classify OEE based on predefined levels
@@ -176,8 +182,8 @@ class OEECalculator {
     }
 
     // Get calculated OEE metrics
-    getMetrics(line) {
-        return this.oeeData[line];
+    getMetrics(machineId) {
+        return this.oeeData[machineId];
     }
 }
 
@@ -206,16 +212,16 @@ async function writeOEEToInfluxDB(metrics) {
         const point = new Point('oee')
             .tag('plant', metrics.processData.group_id)
             .tag('area', 'Packaging')
-            .tag('line', metrics.processData.edge_node_id);
+            .tag('machineId', metrics.processData.edge_node_id);
 
-        // Add all additional tags from metrics.processData
+        // Zusätzliche Tags hinzufügen, falls notwendig
         Object.keys(metrics.processData).forEach(key => {
             if (typeof metrics.processData[key] !== 'object') {
                 point.tag(key, metrics.processData[key]);
             }
         });
 
-        // Add fields
+        // Felder hinzufügen
         point
             .floatField('oee', oeeAsPercent ? metrics.oee : metrics.oee / 100)
             .floatField('availability', oeeAsPercent ? metrics.availability * 100 : metrics.availability)
@@ -231,5 +237,6 @@ async function writeOEEToInfluxDB(metrics) {
         errorLogger.error(`Error writing to InfluxDB: ${error.message}`);
     }
 }
+
 
 module.exports = { OEECalculator, writeOEEToInfluxDB };

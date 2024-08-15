@@ -12,15 +12,15 @@
         "goodProducts": 950,
         "totalProduction": 1000,
         "machine_id": "1",
-        "ProcessOrderStatus": "REL"
+        "ProcessOrderStatus": "CRD"
     },
     {
         "order_id": 2,
         "ProcessOrderNumber": "47112",
         "MaterialNumber": "1019293",
         "MaterialDescription": "Another Medicine",
-        "Start": "2024-07-15T08:00:00.000Z",
-        "End": "2024-07-15T18:00:00.000Z",
+        "Start": "2024-07-14T04:15:13.507Z",
+        "End": "2024-07-14T20:15:18.427Z",
         "setupTime": 45,
         "processingTime": 90,
         "teardownTime": 20,
@@ -28,6 +28,6 @@
         "goodProducts": 780,
         "totalProduction": 800,
         "machine_id": "1",
-        "ProcessOrderStatus": "Created"
+        "ProcessOrderStatus": "REL"
     }
 ]

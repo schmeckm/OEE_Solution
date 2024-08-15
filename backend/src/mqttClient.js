@@ -61,9 +61,9 @@ function setupMqttClient() {
 
             // Verarbeite die Nachricht basierend auf dem dataType (DCMD oder DDATA)
             if (dataType === 'DCMD') {
-                handleCommandMessage(decodedMessage, line, metric);
+                handleCommandMessage(decodedMessage, machineId, metric);
             } else if (dataType === 'DDATA') {
-                handleOeeMessage(decodedMessage, line, metric);
+                handleOeeMessage(decodedMessage, machineId, metric);
             } else {
                 oeeLogger.warn(`Unknown data type in topic: ${dataType}`);
             }
@@ -122,8 +122,16 @@ function subscribeToTopics(client) {
  * @returns {string|null} The machine ID or null if not found.
  */
 async function getMachineIdFromLineCode(lineCode) {
+    oeeLogger.debug(`Searching for machine ID with line code: ${lineCode}`);
     const machines = loadMachineData(); // Funktion zum Laden von machine.json
     const machine = machines.find(m => m.name === lineCode);
+
+    if (machine) {
+        oeeLogger.info(`Machine ID ${machine.machine_id} found for line code: ${lineCode}`);
+    } else {
+        oeeLogger.warn(`No machine ID found for line code: ${lineCode}`);
+    }
+
     return machine ? machine.machine_id : null;
 }
 
@@ -133,8 +141,18 @@ async function getMachineIdFromLineCode(lineCode) {
  * @returns {boolean} True if there is a running order, false otherwise.
  */
 async function checkForRunningOrder(machineId) {
+    oeeLogger.debug(`Checking for running order with machine ID: ${machineId}`);
     const processOrders = loadProcessOrderData(); // Funktion zum Laden von processOrder.json
-    return processOrders.some(order => order.machine_id === machineId && order.ProcessOrderStatus === "REL");
+
+    const runningOrder = processOrders.find(order => order.machine_id === machineId && order.ProcessOrderStatus === "REL");
+
+    if (runningOrder) {
+        oeeLogger.info(`Running order found: ProcessOrderNumber=${runningOrder.ProcessOrderNumber} for machine ID: ${machineId}`);
+    } else {
+        oeeLogger.info(`No running order found for machine ID: ${machineId}`);
+    }
+
+    return !!runningOrder; // Return true if a running order is found, otherwise false
 }
 
 module.exports = { setupMqttClient };

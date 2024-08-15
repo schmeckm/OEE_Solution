@@ -122,9 +122,22 @@ setWebSocketServer(wss);
 /**
  * Gracefully shuts down the server.
  * 
- * @param {string} signal - The signal received.
- * @returns {void}
+ * @param {string} signal - The signal received for shutdown.
  */
+function gracefulShutdown(signal) {
+    defaultLogger.info(`${signal} signal received: closing HTTP server`);
+    server.close(() => {
+        defaultLogger.info('HTTP server closed');
+        if (mqttClient) {
+            mqttClient.end(() => {
+                defaultLogger.info('MQTT client disconnected');
+                process.exit(0);
+            });
+        } else {
+            process.exit(0);
+        }
+    });
+}
 
 // Listen for termination signals to gracefully shut down the server
 process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));

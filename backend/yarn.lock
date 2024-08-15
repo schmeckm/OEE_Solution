@@ -1181,6 +1181,11 @@ one-time@^1.0.0:
   dependencies:
     fn.name "1.x.x"
 
+opossum@^8.1.4:
+  version "8.1.4"
+  resolved "https://registry.npmjs.org/opossum/-/opossum-8.1.4.tgz"
+  integrity sha512-ktDDCD2MKX7yx8ZLtt57JrUE0IyYJthmTyXtaF4dEdPYHvX0kkWRiKkQkhEjtZnTNN5y1ErMriKNqOLqgpYXtQ==
+
 pako@^2.0.4:
   version "2.1.0"
   resolved "https://registry.npmjs.org/pako/-/pako-2.1.0.tgz"

@@ -62,13 +62,13 @@ function parseDate(dateStr) {
     return moment.utc(dateStr);
 }
 
-/* function filterDowntime(downtimes, startTime, endTime) {
+function filterDowntime(downtimes, startTime, endTime) {
     return downtimes.filter(downtime => {
         const start = parseDate(downtime.Start);
         const end = parseDate(downtime.End);
         return start.isBetween(startTime, endTime, null, '[]') || end.isBetween(startTime, endTime, null, '[]');
     });
-} */
+}
 
 function getUnplannedDowntime(processOrderNumber) {
     try {
@@ -174,6 +174,10 @@ function filterAndCalculateDurations(processOrder, plannedDowntime, unplannedDow
     };
 }
 
+// Fehler: !!!!!!!!!!!!!!!!
+// Hier muss OEE geladen werden pro Auftrag oder pro (machineId)
+// 
+
 function loadDataAndPrepareOEE() {
     try {
         oeeLogger.info('Loading data and preparing OEE data.');
@@ -261,7 +265,7 @@ function loadDataAndPrepareOEE() {
             currentTime = nextTime;
         }
 
-        oeeLogger.info('OEE data prepared successfully.');
+        oeeLogger.debug('OEE data prepared successfully.');
         oeeLogger.info(`OEE Data: ${JSON.stringify(OEEData)}`);
 
         return OEEData;

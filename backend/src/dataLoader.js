@@ -65,7 +65,7 @@ function loadJsonData(filePath, dateFields = []) {
 function loadMachineData() {
     if (!machineDataCache) {
         machineDataCache = loadJsonData(machineFilePath); // Lade machine.json
-        oeeLogger.info(`Machine data loaded from ${machineFilePath}`);
+        oeeLogger.debug(`Machine data loaded from ${machineFilePath}`);
     }
     return machineDataCache;
 }
@@ -77,7 +77,7 @@ function loadMachineData() {
 function loadUnplannedDowntimeData() {
     if (!unplannedDowntimeCache) {
         unplannedDowntimeCache = loadJsonData(unplannedDowntimeFilePath, ['Start', 'End']);
-        oeeLogger.info(`Unplanned downtime data loaded from ${unplannedDowntimeFilePath}`);
+        oeeLogger.debug(`Unplanned downtime data loaded from ${unplannedDowntimeFilePath}`);
     }
     return unplannedDowntimeCache;
 }
@@ -89,7 +89,7 @@ function loadUnplannedDowntimeData() {
 function loadPlannedDowntimeData() {
     if (!plannedDowntimeCache) {
         plannedDowntimeCache = loadJsonData(plannedDowntimeFilePath, ['Start', 'End']);
-        oeeLogger.info(`Planned downtime data loaded from ${plannedDowntimeFilePath}`);
+        oeeLogger.debug(`Planned downtime data loaded from ${plannedDowntimeFilePath}`);
     }
     return plannedDowntimeCache;
 }
@@ -101,12 +101,17 @@ function loadPlannedDowntimeData() {
 function loadProcessOrderData() {
     if (!processOrderDataCache) {
         let processOrderData = loadJsonData(processOrderFilePath, ['Start', 'End']);
+
+        // Log the loaded data
+        oeeLogger.info(`Loaded process order data: ${JSON.stringify(processOrderData, null, 2)}`);
+
         processOrderData = validateProcessOrderData(processOrderData);
         processOrderDataCache = processOrderData;
         oeeLogger.info(`Process order data loaded from ${processOrderFilePath}`);
     }
     return processOrderDataCache;
 }
+
 
 /**
  * Load shift model data once and cache it.
@@ -139,6 +144,12 @@ function loadMachineStoppagesData() {
  */
 function validateProcessOrderData(data) {
     data.forEach(order => {
+        oeeLogger.info(`Validating process order: ProcessOrderNumber=${order.ProcessOrderNumber}, MaterialNumber=${order.MaterialNumber}`);
+        if (!order.ProcessOrderNumber || !order.MaterialNumber || !order.MaterialDescription) {
+            const errorMsg = `Invalid process order data: Missing essential fields in order ${JSON.stringify(order)}`;
+            errorLogger.error(errorMsg);
+            throw new Error(errorMsg);
+        }
         if (order.goodProducts > order.totalProduction) {
             const errorMsg = `Invalid input data: goodProducts (${order.goodProducts}) cannot be greater than totalProduction (${order.totalProduction})`;
             errorLogger.error(errorMsg);
@@ -246,5 +257,6 @@ module.exports = {
     loadUnplannedDowntimeData,
     loadPlannedDowntimeData,
     loadMachineData,
-    loadMachineStoppagesData
+    loadMachineStoppagesData,
+    validateProcessOrderData
 };
