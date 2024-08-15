@@ -28,12 +28,12 @@ function updateMetric(name, value, machineId) {
 }
 
 /**
- * Process metrics, calculate OEE, and send data via WebSocket for a specific machineId.
+ * Process metrics, calculate OEE, and send data via WebSocket for a specific  machineId.
  * @param {string} machineId - The machineId or workcenter.
  */
 async function processMetrics(machineId) {
     try {
-        oeeLogger.info(`Starting metrics processing for line: ${machineId}.`);
+        oeeLogger.info(`Starting metrics processing for machine': ${machineId}.`);
 
         let calculator = oeeCalculators.get(machineId);
         if (!calculator) {
@@ -42,13 +42,18 @@ async function processMetrics(machineId) {
         }
 
         // Initialize OEE Calculator and load OEE data in parallel
-        const [OEEData] = await Promise.all([
-            loadDataAndPrepareOEE(),
-            calculator.init(machineId)
-        ]);
+        const OEEData = loadDataAndPrepareOEE(machineId);
+
+        if (!OEEData || !Array.isArray(OEEData.datasets)) {
+            throw new Error('Invalid OEEData returned from loadDataAndPrepareOEE. Expected an object with a datasets array.');
+        }
 
         // Calculate total times from the chart data
         const totalTimes = OEEData.datasets.reduce((totals, dataset, index) => {
+            if (!Array.isArray(dataset.data)) {
+                throw new Error(`Invalid dataset found at index ${index}. Expected an array in dataset.data.`);
+            }
+
             const total = dataset.data.reduce((a, b) => a + b, 0);
             switch (index) {
                 case 0:
@@ -118,7 +123,6 @@ async function processMetrics(machineId) {
         oeeLogger.info(`OEE Metrics Summary for line ${machineId}: OEE=${roundedMetrics.oee}%, Availability=${roundedMetrics.availability}%, Performance=${roundedMetrics.performance}%, Quality=${roundedMetrics.quality}%, Level=${roundedMetrics.level}`);
         oeeLogger.info(`Process Data: ${JSON.stringify(roundedMetrics.processData)}`);
 
-
         // Write metrics to InfluxDB if configured
         if (influxdb.url && influxdb.token && influxdb.org && influxdb.bucket) {
             await writeOEEToInfluxDB(roundedMetrics);
@@ -130,8 +134,9 @@ async function processMetrics(machineId) {
         oeeLogger.debug(`Chart Data: ${JSON.stringify(OEEData)}`);
 
     } catch (error) {
-        errorLogger.error(`Error calculating metrics for line ${machineId}: ${error.message}`);
+        errorLogger.warn(`Error calculating metrics for line ${machineId}: ${error.message}`);
     }
 }
+
 
 module.exports = { updateMetric, processMetrics, setWebSocketServer };

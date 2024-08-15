@@ -119,66 +119,7 @@ function handleUnholdCommand(value) {
 
         if (processOrderNumber && order_id) {
             if (currentHoldStatus[processOrderNumber] && currentHoldStatus[processOrderNumber].length > 0) {
-                oeeLogger.info('Machine is now Unhold');
-                startMachineOperations();
-                logEventToDatabase('Unhold', timestamp);
-                notifyPersonnel('Machine has been unhold and resumed operations.');
-
-                const holdTimestamp = parseDate(currentHoldStatus[processOrderNumber][currentHoldStatus[processOrderNumber].length - 1].timestamp);
-                const unholdTimestamp = parseDate(timestamp);
-
-                oeeLogger.debug(`holdTimestamp: ${holdTimestamp}`);
-                oeeLogger.debug(`unholdTimestamp: ${unholdTimestamp}`);
-
-                const downtimeSeconds = Math.round(unholdTimestamp.diff(holdTimestamp, 'seconds'));
-
-                oeeLogger.debug(`Calculated downtimeSeconds: ${downtimeSeconds}`);
-
-                if (downtimeSeconds >= THRESHOLD_SECONDS) {
-                    // In deiner Funktion, z.B. in handleUnholdCommand
-                    const machineStoppageEntry = {
-                        "ID": uuidv4(), // Generiert eine einzigartige ID
-                        "ProcessOrderID": order_id,
-                        "ProcessOrderNumber": processOrderNumber,
-                        "Start": holdTimestamp.toISOString(),
-                        "End": unholdTimestamp.toISOString(),
-                        "Reason": "tbd",
-                        "Differenz": downtimeSeconds
-                    };
-
-                    try {
-                        let Microstops = [];
-                        if (fs.existsSync(dbFilePath)) {
-                            const MicrostopsContent = fs.readFileSync(dbFilePath, 'utf8');
-                            try {
-                                Microstops = JSON.parse(MicrostopsContent);
-                            } catch (jsonError) {
-                                oeeLogger.warn('Microstops.json is empty or invalid. Initializing with an empty array.');
-                                Microstops = [];
-                            }
-                        }
-
-                        Microstops.push(machineStoppageEntry);
-
-                        fs.writeFileSync(dbFilePath, JSON.stringify(Microstops, null, 2), 'utf8');
-                        console.log(`Unhold signal recorded in Microstops.json at ${timestamp}`);
-                        console.log(`Downtime for Order ${processOrderNumber}: ${downtimeSeconds} seconds`);
-
-                        // Senden der aktualisierten Maschinendaten an WebSocket-Clients
-                        sendWebSocketMessage('Microstops', Microstops);
-
-                    } catch (error) {
-                        console.error('Error writing Microstops.json:', error.message);
-                    }
-                } else {
-                    oeeLogger.info(`Downtime of ${downtimeSeconds} seconds did not meet the threshold of ${THRESHOLD_SECONDS} seconds. No entry recorded.`);
-                }
-
-                currentHoldStatus[processOrderNumber].pop();
-
-                if (currentHoldStatus[processOrderNumber].length === 0) {
-                    delete currentHoldStatus[processOrderNumber];
-                }
+                handleUnholdMachine(processOrderNumber, order_id, timestamp);
             } else {
                 oeeLogger.info('Unhold command received, but no previous Hold signal found.');
                 console.log('Current Hold Status:', currentHoldStatus);
@@ -188,6 +129,67 @@ function handleUnholdCommand(value) {
         }
     } else {
         oeeLogger.info('Unhold command received, but value is not 1');
+    }
+}
+
+// Helper function to handle unholding the machine
+function handleUnholdMachine(processOrderNumber, order_id, timestamp) {
+    oeeLogger.info('Machine is now Unhold');
+    startMachineOperations();
+    logEventToDatabase('Unhold', timestamp);
+    notifyPersonnel('Machine has been unhold and resumed operations.');
+
+    const holdTimestamp = parseDate(currentHoldStatus[processOrderNumber][currentHoldStatus[processOrderNumber].length - 1].timestamp);
+    const unholdTimestamp = parseDate(timestamp);
+
+    oeeLogger.debug(`holdTimestamp: ${holdTimestamp}`);
+    oeeLogger.debug(`unholdTimestamp: ${unholdTimestamp}`);
+
+    const downtimeSeconds = Math.round(unholdTimestamp.diff(holdTimestamp, 'seconds'));
+
+    oeeLogger.debug(`Calculated downtimeSeconds: ${downtimeSeconds}`);
+
+    if (downtimeSeconds >= THRESHOLD_SECONDS) {
+        const machineStoppageEntry = {
+            "ID": uuidv4(),
+            "ProcessOrderID": order_id,
+            "ProcessOrderNumber": processOrderNumber,
+            "Start": holdTimestamp.toISOString(),
+            "End": unholdTimestamp.toISOString(),
+            "Reason": "tbd",
+            "Differenz": downtimeSeconds
+        };
+
+        try {
+            let Microstops = [];
+            if (fs.existsSync(dbFilePath)) {
+                const MicrostopsContent = fs.readFileSync(dbFilePath, 'utf8');
+                try {
+                    Microstops = JSON.parse(MicrostopsContent);
+                } catch (jsonError) {
+                    oeeLogger.warn('Microstops.json is empty or invalid. Initializing with an empty array.');
+                    Microstops = [];
+                }
+            }
+
+            Microstops.push(machineStoppageEntry);
+
+            fs.writeFileSync(dbFilePath, JSON.stringify(Microstops, null, 2), 'utf8');
+            console.log(`Unhold signal recorded in Microstops.json at ${timestamp}`);
+            console.log(`Downtime for Order ${processOrderNumber}: ${downtimeSeconds} seconds`);
+
+            sendWebSocketMessage('Microstops', Microstops);
+        } catch (error) {
+            console.error('Error writing Microstops.json:', error.message);
+        }
+    } else {
+        oeeLogger.info(`Downtime of ${downtimeSeconds} seconds did not meet the threshold of ${THRESHOLD_SECONDS} seconds. No entry recorded.`);
+    }
+
+    currentHoldStatus[processOrderNumber].pop();
+
+    if (currentHoldStatus[processOrderNumber].length === 0) {
+        delete currentHoldStatus[processOrderNumber];
     }
 }
 

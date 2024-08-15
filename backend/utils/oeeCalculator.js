@@ -15,10 +15,6 @@ const CLASSIFICATION_LEVELS = {
 };
 
 // OEECalculator class handles the calculation and management of OEE metrics
-/**
- * Class representing an OEE Calculator.
- * @class
- */
 class OEECalculator {
     constructor() {
         this.oeeData = {}; // Initialize as an empty object
@@ -45,7 +41,7 @@ class OEECalculator {
     }
 
     // Initialize OEE data with process order data
-    init = async function(machineId) {
+    async init(machineId) {
         try {
             const processOrderData = await loadProcessOrderData(machineId);
             oeeLogger.info(`Loaded process order data for machineId ${machineId}: ${JSON.stringify(processOrderData)}`);
@@ -127,7 +123,12 @@ class OEECalculator {
         try {
             oeeLogger.info(`Before OEE calculation for machineId ${machineId}: ${JSON.stringify(this.oeeData[machineId])}`);
 
-            const OEEData = loadDataAndPrepareOEE();
+            // Call loadDataAndPrepareOEE with the machineId
+            const OEEData = loadDataAndPrepareOEE(machineId);
+
+            if (!OEEData || !Array.isArray(OEEData.datasets)) {
+                throw new Error('Invalid OEEData returned from loadDataAndPrepareOEE. Expected an object with a datasets array.');
+            }
 
             const totalProductionTime = OEEData.datasets[0].data.reduce((a, b) => a + b, 0);
             const totalBreakTime = OEEData.datasets[1].data.reduce((a, b) => a + b, 0);
@@ -143,18 +144,19 @@ class OEECalculator {
             oeeLogger.info(`Input values for machineId ${machineId} - plannedProduction: ${plannedProduction}, runtime: ${runtime}, targetPerformance: ${targetPerformance}, goodProducts: ${goodProducts}, totalProduction: ${totalProduction}, MaterialNumber: ${MaterialNumber}, MaterialDescription: ${MaterialDescription}`);
 
             // Perform OEE calculation
-            this.calculateOEE(plannedProduction, runtime, targetPerformance, goodProducts, totalProduction, actualUnplannedDowntime, actualPlannedDowntime, machineId);
+            this.calculateOEE({ plannedProduction, runtime, targetPerformance, goodProducts, totalProduction, actualUnplannedDowntime, actualPlannedDowntime, machineId });
 
             // Log calculated OEE data
             oeeLogger.info(`Calculated OEE data for machineId ${machineId}: ${JSON.stringify(this.oeeData[machineId])}`);
         } catch (error) {
-            errorLogger.error(`Error calculating metrics for machineId ${machineId}: ${error.message}`);
+            errorLogger.warn(`Warning calculating metrics for machineId ${machineId}: ${error.message}`);
             throw error;
         }
     }
 
     // Calculate OEE and its components: availability, performance, and quality
-    calculateOEE(plannedProduction, runtime, targetPerformance, goodProducts, totalProduction, actualUnplannedDowntime, actualPlannedDowntime, machineId) {
+    calculateOEE(data) {
+        const { plannedProduction, runtime, targetPerformance, goodProducts, totalProduction, actualUnplannedDowntime, actualPlannedDowntime, machineId } = data;
         const operatingTime = runtime - (actualUnplannedDowntime / 60) - (actualPlannedDowntime / 60);
 
         this.oeeData[machineId].availability = operatingTime / plannedProduction;
@@ -214,14 +216,14 @@ async function writeOEEToInfluxDB(metrics) {
             .tag('area', 'Packaging')
             .tag('machineId', metrics.processData.edge_node_id);
 
-        // Zusätzliche Tags hinzufügen, falls notwendig
+        // Add additional tags if necessary
         Object.keys(metrics.processData).forEach(key => {
             if (typeof metrics.processData[key] !== 'object') {
                 point.tag(key, metrics.processData[key]);
             }
         });
 
-        // Felder hinzufügen
+        // Add fields
         point
             .floatField('oee', oeeAsPercent ? metrics.oee : metrics.oee / 100)
             .floatField('availability', oeeAsPercent ? metrics.availability * 100 : metrics.availability)
@@ -237,6 +239,5 @@ async function writeOEEToInfluxDB(metrics) {
         errorLogger.error(`Error writing to InfluxDB: ${error.message}`);
     }
 }
-
 
 module.exports = { OEECalculator, writeOEEToInfluxDB };

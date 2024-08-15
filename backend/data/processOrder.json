@@ -12,7 +12,7 @@
         "goodProducts": 950,
         "totalProduction": 1000,
         "machine_id": "1",
-        "ProcessOrderStatus": "CRD"
+        "ProcessOrderStatus": "REL"
     },
     {
         "order_id": 2,
@@ -28,6 +28,6 @@
         "goodProducts": 780,
         "totalProduction": 800,
         "machine_id": "1",
-        "ProcessOrderStatus": "REL"
+        "ProcessOrderStatus": "CRD"
     }
 ]
