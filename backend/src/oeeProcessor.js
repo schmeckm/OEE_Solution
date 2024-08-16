@@ -1,8 +1,8 @@
 const { oeeLogger, errorLogger } = require('../utils/logger');
-const { OEECalculator, writeOEEToInfluxDB } = require('../utils/oeeCalculator');
-const { loadDataAndPrepareOEE } = require('../utils/downtimeManager');
+const { OEECalculator, writeOEEToInfluxDB } = require('../src/oeeCalculator');
+const { loadDataAndPrepareOEE } = require('../src/downtimeManager');
 const { influxdb } = require('../config/config');
-const { setWebSocketServer, sendWebSocketMessage } = require('./webSocketUtils');
+const { setWebSocketServer, sendWebSocketMessage } = require('../websocket/webSocketUtils');
 const moment = require('moment-timezone');
 
 const TIMEZONE = process.env.TIMEZONE || 'Europe/Berlin'; // Set timezone from .env or default to 'Europe/Berlin'

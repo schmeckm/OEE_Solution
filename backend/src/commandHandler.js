@@ -6,7 +6,7 @@ const { v4: uuidv4 } = require('uuid');
 const { oeeLogger, errorLogger } = require('../utils/logger');
 const { loadProcessOrderData, loadMachineStoppagesData } = require('../src/dataLoader');
 const config = require('../config/config'); // Import the config
-const { setWebSocketServer, sendWebSocketMessage } = require('./webSocketUtils'); // Import WebSocket utilities
+const { setWebSocketServer, sendWebSocketMessage } = require('../websocket/webSocketUtils'); // Import WebSocket utilities
 
 dotenv.config(); // Load environment variables from .env file
 
@@ -17,7 +17,7 @@ let processOrderData = null;
 const THRESHOLD_SECONDS = config.thresholdSeconds;
 
 // Path to the Microstops.json file
-const dbFilePath = path.join(__dirname, '../data/machineStoppages.json');
+const dbFilePath = path.join(__dirname, '../data/microstops.json');
 
 // Load environment variables
 const DATE_FORMAT = process.env.DATE_FORMAT || 'YYYY-MM-DDTHH:mm:ss.SSSZ';

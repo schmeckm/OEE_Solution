@@ -1,5 +1,5 @@
 const express = require('express');
-const { calculateOEE } = require('../utils/oeeCalculator');
+const { calculateOEE } = require('../src/oeeCalculator');
 const { validateOEEData } = require('../utils/middleware');
 const { oeeLogger, errorLogger } = require('../utils/logger');
 

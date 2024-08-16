@@ -3,15 +3,6 @@ const DailyRotateFile = require('winston-daily-rotate-file');
 const path = require('path');
 require('dotenv').config(); // Load the .env file
 
-/**
- * Log format for Winston.
- * @param {Object} param0 - Log information.
- * @param {string} param0.level - Log level.
- * @param {string} param0.message - Log message.
- * @param {string} param0.timestamp - Timestamp of the log.
- * @param {Object} param0.metadata - Additional metadata.
- * @returns {string} Formatted log message.
- */
 const logFormat = winston.format.printf(({ level, message, timestamp, ...metadata }) => {
     let logMessage = `${timestamp} ${level}: ${message}`;
     if (Object.keys(metadata).length) {
@@ -33,28 +24,26 @@ const logToFile = process.env.LOG_TO_FILE === 'true';
 const customFilter = winston.format((info) => logLevels.includes(info.level) ? info : false);
 
 /**
- * Creates a Winston logger.
- * @param {string} logFilename - Name of the log file.
- * @returns {Object} Winston logger.
+ * Helper function to create a log transport.
+ * @param {string} type - Type of transport ('console' or 'file').
+ * @param {string} [filename] - Filename for file transport.
+ * @returns {Object} - Configured transport.
  */
-const createLogger = (logFilename) => {
-    const logDirectory = path.join(__dirname, '../logs');
-    const transports = [];
-
-    if (logToConsole) {
-        transports.push(new winston.transports.Console({
+const createTransport = (type, filename) => {
+    if (type === 'console' && logToConsole) {
+        return new winston.transports.Console({
             format: winston.format.combine(
                 customFilter(),
                 winston.format.colorize(),
                 winston.format.timestamp(),
                 logFormat
             )
-        }));
+        });
     }
 
-    if (logToFile) {
-        transports.push(new DailyRotateFile({
-            filename: path.join(logDirectory, `${logFilename}-%DATE%.log`),
+    if (type === 'file' && logToFile) {
+        return new DailyRotateFile({
+            filename: path.join(__dirname, `../logs/${filename}-%DATE%.log`),
             datePattern: 'YYYY-MM-DD',
             maxSize: '20m',
             maxFiles: `${retentionDays}d`,
@@ -63,8 +52,41 @@ const createLogger = (logFilename) => {
                 winston.format.timestamp(),
                 logFormat
             )
-        }));
+        });
     }
+
+    return null;
+};
+
+/**
+ * Helper function to create exception and rejection handlers.
+ * @param {string} name - Type of handler ('exceptions' or 'rejections').
+ * @returns {Array} - Configured handlers.
+ */
+const createHandlers = (name) => [
+    new DailyRotateFile({
+        filename: path.join(__dirname, `../logs/${name}-%DATE%.log`),
+        datePattern: 'YYYY-MM-DD',
+        maxSize: '20m',
+        maxFiles: `${retentionDays}d`,
+        format: winston.format.combine(
+            customFilter(),
+            winston.format.timestamp(),
+            logFormat
+        )
+    })
+];
+
+/**
+ * Creates a Winston logger.
+ * @param {string} logFilename - Name of the log file.
+ * @returns {Object} Winston logger.
+ */
+const createLogger = (logFilename = 'app') => {
+    const transports = [
+        createTransport('console'),
+        createTransport('file', logFilename)
+    ].filter(Boolean); // Filter out null transports
 
     return winston.createLogger({
         level: 'debug',
@@ -73,38 +95,15 @@ const createLogger = (logFilename) => {
             winston.format.json()
         ),
         transports,
-        exceptionHandlers: [
-            new DailyRotateFile({
-                filename: path.join(logDirectory, 'exceptions-%DATE%.log'),
-                datePattern: 'YYYY-MM-DD',
-                maxSize: '20m',
-                maxFiles: `${retentionDays}d`,
-                format: winston.format.combine(
-                    customFilter(),
-                    winston.format.timestamp(),
-                    logFormat
-                )
-            })
-        ],
-        rejectionHandlers: [
-            new DailyRotateFile({
-                filename: path.join(logDirectory, 'rejections-%DATE%.log'),
-                datePattern: 'YYYY-MM-DD',
-                maxSize: '20m',
-                maxFiles: `${retentionDays}d`,
-                format: winston.format.combine(
-                    customFilter(),
-                    winston.format.timestamp(),
-                    logFormat
-                )
-            })
-        ]
+        exceptionHandlers: createHandlers('exceptions'),
+        rejectionHandlers: createHandlers('rejections')
     });
 };
 
+// Create different logger instances for various logging purposes
 const oeeLogger = createLogger('oee');
 const errorLogger = createLogger('error');
-const defaultLogger = createLogger('app');
+const defaultLogger = createLogger();
 const unplannedDowntimeLogger = createLogger('unplannedDowntime');
 
 module.exports = {

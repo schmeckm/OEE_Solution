@@ -1,6 +1,4 @@
 const Joi = require('joi');
-const dotenv = require('dotenv');
-dotenv.config();
 
 const envSchema = Joi.object({
     MQTT_BROKER_URL: Joi.string().uri().required(),
