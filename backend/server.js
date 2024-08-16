@@ -4,7 +4,15 @@
 const express = require('express');
 const path = require('path');
 const dotenv = require('dotenv');
+const helmet = require('helmet');
+const rateLimit = require('express-rate-limit');
 const { Server } = require('ws');
+const bcrypt = require('bcrypt');
+const jwt = require('jsonwebtoken');
+const swaggerUi = require('swagger-ui-express');
+const swaggerJsdoc = require('swagger-jsdoc');
+const { loadUsers, saveUsers } = require('./services/userService');
+const { authenticateToken, authorizeRole } = require('./middlewares/auth');
 
 /**
  * Load environment variables from .env file.
@@ -25,14 +33,45 @@ const app = express();
 const port = process.env.PORT || 3000;
 
 /**
- * Middleware to parse incoming JSON and URL-encoded payloads.
- * - `express.json()`: Parses incoming requests with JSON payloads.
- * - `express.urlencoded()`: Parses incoming requests with URL-encoded payloads.
+ * Security Middleware
+ * - `helmet()`: Sets various HTTP headers to secure the app.
+ * - `express.json()`: Parses incoming requests with JSON payloads and limits payload size to prevent DoS attacks.
+ * - `express.urlencoded()`: Parses incoming requests with URL-encoded payloads and limits payload size.
  * - `express.static()`: Serves static files from the 'public' directory.
+ * - `rateLimit`: Limits the number of requests from a single IP to prevent DoS attacks.
  */
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
-app.use(express.static(path.join(__dirname, 'public')));
+app.use(helmet()); // Set security-related HTTP headers
+app.use(express.json({ limit: '10kb' })); // Limit payload size to prevent DoS attacks
+app.use(express.urlencoded({ extended: true, limit: '10kb' })); // Limit URL-encoded data size
+app.use(express.static(path.join(__dirname, 'public'))); // Serve static files
+
+// Rate limiting to prevent DoS attacks
+const limiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 100, // Limit each IP to 100 requests per windowMs
+});
+app.use(limiter);
+
+/**
+ * Swagger Setup
+ */
+const swaggerOptions = {
+    definition: {
+        openapi: '3.0.0',
+        info: {
+            title: 'API Documentation',
+            version: '1.0.0',
+            description: 'This is the API documentation for the REST API.',
+        },
+        servers: [{
+            url: `http://localhost:${port}/api/v1`, // Ihre Basis-URL anpassen
+        }, ],
+    },
+    apis: ['./routes/*.js'], // Pfad zu Ihren API-Routen
+};
+
+const swaggerSpecs = swaggerJsdoc(swaggerOptions);
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpecs));
 
 /**
  * Register API Endpoints
@@ -41,6 +80,69 @@ app.use(express.static(path.join(__dirname, 'public')));
 registerApiRoutes(app);
 
 defaultLogger.info('Logger initialized successfully.');
+
+/**
+ * User Registration Endpoint
+ * Allows new users to register with a username, password, and role.
+ * Password is hashed before saving to the JSON file.
+ */
+app.post('/register', async(req, res) => {
+    const { username, password, role } = req.body;
+    const users = loadUsers();
+
+    // Check if the username already exists
+    if (users.some(user => user.username === username)) {
+        return res.status(400).json({ message: 'Username already exists' });
+    }
+
+    // Hash the password
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    // Add the new user
+    const newUser = {
+        id: users.length ? Math.max(...users.map(user => user.id)) + 1 : 1,
+        username,
+        password: hashedPassword,
+        role
+    };
+    users.push(newUser);
+    saveUsers(users);
+
+    res.status(201).json({ message: 'User registered successfully' });
+});
+
+/**
+ * User Login Endpoint
+ * Authenticates the user and returns a JWT token if successful.
+ */
+app.post('/login', async(req, res) => {
+    const { username, password } = req.body;
+    const users = loadUsers();
+
+    // Find the user
+    const user = users.find(user => user.username === username);
+    if (!user) {
+        return res.status(400).json({ message: 'User not found' });
+    }
+
+    // Verify the password
+    const validPassword = await bcrypt.compare(password, user.password);
+    if (!validPassword) {
+        return res.status(400).json({ message: 'Invalid password' });
+    }
+
+    // Generate a JWT token
+    const accessToken = jwt.sign({ id: user.id, role: user.role }, process.env.ACCESS_TOKEN_SECRET, { expiresIn: '1h' });
+    res.json({ accessToken });
+});
+
+/**
+ * Protected Admin Route
+ * Example of a protected route that only users with the 'admin' role can access.
+ */
+app.get('/admin', authenticateToken, authorizeRole('admin'), (req, res) => {
+    res.json({ message: 'Welcome, Admin!' });
+});
 
 /**
  * Cron Job for Log Cleanup

@@ -1,15 +1,61 @@
 const express = require('express');
-const { loadMachines, saveMachines } = require('../services/machineService'); // Import the machine service
+const { loadMachines, saveMachines } = require('../services/machineService');
 
 const router = express.Router();
 
-// API zum Abrufen aller Maschinen
+/**
+ * @swagger
+ * tags:
+ *   name: Machines
+ *   description: API for managing machines
+ */
+
+/**
+ * @swagger
+ * /machines:
+ *   get:
+ *     summary: Get all machines
+ *     tags: [Machines]
+ *     description: Retrieve a list of all machines.
+ *     responses:
+ *       200:
+ *         description: A list of machines.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 type: object
+ */
 router.get('/', (req, res) => {
     const machines = loadMachines();
     res.json(machines);
 });
 
-// API zum Abrufen einer spezifischen Maschine
+/**
+ * @swagger
+ * /machines/{id}:
+ *   get:
+ *     summary: Get a specific machine
+ *     tags: [Machines]
+ *     description: Retrieve a single machine by ID.
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: The machine ID.
+ *     responses:
+ *       200:
+ *         description: A machine object.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *       404:
+ *         description: Machine not found.
+ */
 router.get('/:id', (req, res) => {
     const machines = loadMachines();
     const machine = machines.find(m => m.machine_id === req.params.id);
@@ -20,7 +66,37 @@ router.get('/:id', (req, res) => {
     }
 });
 
-// API zum Hinzufügen einer neuen Maschine
+/**
+ * @swagger
+ * /machines:
+ *   post:
+ *     summary: Add a new machine
+ *     tags: [Machines]
+ *     description: Create a new machine.
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               name:
+ *                 type: string
+ *               type:
+ *                 type: string
+ *     responses:
+ *       201:
+ *         description: Machine created successfully.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                 machine:
+ *                   type: object
+ */
 router.post('/', (req, res) => {
     const machines = loadMachines();
     const newMachine = req.body;
@@ -30,7 +106,46 @@ router.post('/', (req, res) => {
     res.status(201).json({ message: 'New machine added successfully', machine: newMachine });
 });
 
-// API zum Aktualisieren einer bestehenden Maschine
+/**
+ * @swagger
+ * /machines/{id}:
+ *   put:
+ *     summary: Update an existing machine
+ *     tags: [Machines]
+ *     description: Update the details of an existing machine.
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: The machine ID.
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               name:
+ *                 type: string
+ *               type:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Machine updated successfully.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                 machine:
+ *                   type: object
+ *       404:
+ *         description: Machine not found.
+ */
 router.put('/:id', (req, res) => {
     const machines = loadMachines();
     const index = machines.findIndex(m => m.machine_id === req.params.id);
@@ -43,7 +158,26 @@ router.put('/:id', (req, res) => {
     }
 });
 
-// API zum Löschen einer Maschine
+/**
+ * @swagger
+ * /machines/{id}:
+ *   delete:
+ *     summary: Delete a machine
+ *     tags: [Machines]
+ *     description: Remove a machine from the list.
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: The machine ID.
+ *     responses:
+ *       200:
+ *         description: Machine deleted successfully.
+ *       404:
+ *         description: Machine not found.
+ */
 router.delete('/:id', (req, res) => {
     let machines = loadMachines();
     const initialLength = machines.length;

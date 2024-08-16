@@ -3,13 +3,60 @@ const { loadOEEConfig, saveOEEConfig } = require('../services/oeeConfigService')
 
 const router = express.Router();
 
-// API zum Abrufen der gesamten OEE-Konfiguration
+/**
+ * @swagger
+ * tags:
+ *   name: OEE Configuration
+ *   description: API for managing OEE configurations
+ */
+
+/**
+ * @swagger
+ * /oeeconfig:
+ *   get:
+ *     summary: Get the entire OEE configuration
+ *     tags: [OEE Configuration]
+ *     description: Retrieve the entire OEE configuration as a JSON object.
+ *     responses:
+ *       200:
+ *         description: The entire OEE configuration.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ */
 router.get('/', (req, res) => {
     const oeeConfig = loadOEEConfig();
     res.json(oeeConfig);
 });
 
-// API zum Abrufen einer spezifischen OEE-Konfiguration
+/**
+ * @swagger
+ * /oeeconfig/{key}:
+ *   get:
+ *     summary: Get a specific OEE configuration
+ *     tags: [OEE Configuration]
+ *     description: Retrieve the value of a specific OEE configuration key.
+ *     parameters:
+ *       - in: path
+ *         name: key
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: The OEE configuration key to retrieve.
+ *     responses:
+ *       200:
+ *         description: The value of the specified OEE configuration key.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 key:
+ *                   type: string
+ *       404:
+ *         description: Key not found.
+ */
 router.get('/:key', (req, res) => {
     const oeeConfig = loadOEEConfig();
     const key = req.params.key;
@@ -22,7 +69,25 @@ router.get('/:key', (req, res) => {
     }
 });
 
-// API zum Hinzufügen einer neuen OEE-Konfiguration
+/**
+ * @swagger
+ * /oeeconfig:
+ *   post:
+ *     summary: Add a new OEE configuration
+ *     tags: [OEE Configuration]
+ *     description: Add a new key-value pair to the OEE configuration.
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             additionalProperties:
+ *               type: string
+ *     responses:
+ *       201:
+ *         description: New OEE configuration added successfully.
+ */
 router.post('/', (req, res) => {
     const oeeConfig = loadOEEConfig();
     const newConfig = req.body;
@@ -33,7 +98,35 @@ router.post('/', (req, res) => {
     res.status(201).json({ message: 'New OEE configuration added successfully' });
 });
 
-// API zum Aktualisieren einer bestehenden OEE-Konfiguration
+/**
+ * @swagger
+ * /oeeconfig/{key}:
+ *   put:
+ *     summary: Update an existing OEE configuration
+ *     tags: [OEE Configuration]
+ *     description: Update the value of a specific OEE configuration key.
+ *     parameters:
+ *       - in: path
+ *         name: key
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: The OEE configuration key to update.
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               value:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: OEE configuration updated successfully.
+ *       404:
+ *         description: Key not found.
+ */
 router.put('/:key', (req, res) => {
     const oeeConfig = loadOEEConfig();
     const key = req.params.key;
@@ -47,7 +140,26 @@ router.put('/:key', (req, res) => {
     }
 });
 
-// API zum Löschen einer spezifischen OEE-Konfiguration
+/**
+ * @swagger
+ * /oeeconfig/{key}:
+ *   delete:
+ *     summary: Delete a specific OEE configuration
+ *     tags: [OEE Configuration]
+ *     description: Remove a key-value pair from the OEE configuration.
+ *     parameters:
+ *       - in: path
+ *         name: key
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: The OEE configuration key to delete.
+ *     responses:
+ *       200:
+ *         description: Key deleted successfully.
+ *       404:
+ *         description: Key not found.
+ */
 router.delete('/:key', (req, res) => {
     const oeeConfig = loadOEEConfig();
     const key = req.params.key;

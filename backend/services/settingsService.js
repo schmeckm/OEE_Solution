@@ -3,6 +3,7 @@ const path = require('path');
 const dotenv = require('dotenv');
 const envfile = require('envfile');
 const Joi = require('joi');
+const lockfile = require('proper-lockfile'); // Bibliothek für Dateisperren
 
 const ENV_FILE = path.join(__dirname, '../.env'); // Verweis auf das Root-Verzeichnis
 
@@ -32,6 +33,7 @@ const loadEnvConfig = () => {
         console.log(`Reading .env file from path: ${ENV_FILE}`); // Debugging-Ausgabe
         if (fs.existsSync(ENV_FILE)) {
             const data = fs.readFileSync(ENV_FILE, 'utf8');
+            console.log(`Successfully read .env file: ${ENV_FILE}`);
             return dotenv.parse(data);
         } else {
             console.error(`.env file not found at ${ENV_FILE}`);
@@ -49,8 +51,25 @@ const saveEnvConfig = (config) => {
         throw new Error(`Config validation error: ${error.message}`);
     }
 
-    const envData = envfile.stringify(envVars);
-    fs.writeFileSync(ENV_FILE, envData);
+    try {
+        // Datei sperren, um gleichzeitigen Zugriff zu vermeiden
+        if (lockfile.checkSync(ENV_FILE)) {
+            console.error(`The .env file is currently locked by another process.`);
+            throw new Error('File is locked');
+        }
+
+        const release = lockfile.lockSync(ENV_FILE); // Datei sperren
+        try {
+            const envData = envfile.stringify(envVars);
+            fs.writeFileSync(ENV_FILE, envData);
+            console.log(`Successfully saved .env file: ${ENV_FILE}`);
+        } finally {
+            release(); // Sperre freigeben
+        }
+    } catch (error) {
+        console.error(`Error writing to .env file at ${ENV_FILE}:`, error.message);
+        throw error;
+    }
 };
 
 module.exports = {

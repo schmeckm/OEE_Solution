@@ -18,7 +18,4 @@ const saveShiftModels = (shiftModels) => {
     fs.writeFileSync(SHIFT_MODEL_FILE, JSON.stringify(shiftModels, null, 4));
 };
 
-module.exports = {
-    loadShiftModels,
-    saveShiftModels
-};
+module.exports = { loadShiftModels, saveShiftModels };
