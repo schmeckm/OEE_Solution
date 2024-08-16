@@ -98,7 +98,7 @@ class OEECalculator {
     // Validate input OEE data before calculation
     validateInput(machineId) {
         const { plannedProduction, runtime, targetPerformance, goodProducts, totalProduction } = this.oeeData[machineId];
-        oeeLogger.debug(`Validating input data for machineId ${machineId}: ${JSON.stringify(this.oeeData[machineId])}`);
+        //oeeLogger.debug(`Validating input data for machineId ${machineId}: ${JSON.stringify(this.oeeData[machineId])}`);
 
         if (runtime <= 0) throw new Error('Invalid input data: runtime must be greater than 0');
         if (plannedProduction <= 0) throw new Error('Invalid input data: plannedProduction must be greater than 0');

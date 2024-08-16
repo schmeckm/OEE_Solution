@@ -13,7 +13,7 @@ const oeeCalculators = new Map(); // Map for OEE calculators for each machineId
  * Update a metric with a new value and process it immediately.
  * @param {string} name - The metric name.
  * @param {number} value - The metric value.
- * @param {string} machineId - The  machineId or workcenter.
+ * @param {string} machineId - The machineId or workcenter.
  */
 function updateMetric(name, value, machineId) {
     let calculator = oeeCalculators.get(machineId);
@@ -28,12 +28,12 @@ function updateMetric(name, value, machineId) {
 }
 
 /**
- * Process metrics, calculate OEE, and send data via WebSocket for a specific  machineId.
+ * Process metrics, calculate OEE, and send data via WebSocket for a specific machineId.
  * @param {string} machineId - The machineId or workcenter.
  */
 async function processMetrics(machineId) {
     try {
-        oeeLogger.info(`Starting metrics processing for machine': ${machineId}.`);
+        oeeLogger.info(`Starting metrics processing for machine: ${machineId}.`);
 
         let calculator = oeeCalculators.get(machineId);
         if (!calculator) {
@@ -48,7 +48,7 @@ async function processMetrics(machineId) {
             throw new Error('Invalid OEEData returned from loadDataAndPrepareOEE. Expected an object with a datasets array.');
         }
 
-        // Calculate total times from the chart data
+        // Calculate total times from the chart data, now including microstops
         const totalTimes = OEEData.datasets.reduce((totals, dataset, index) => {
             if (!Array.isArray(dataset.data)) {
                 throw new Error(`Invalid dataset found at index ${index}. Expected an array in dataset.data.`);
@@ -68,19 +68,23 @@ async function processMetrics(machineId) {
                 case 3:
                     totals.plannedDowntime = total;
                     break;
+                case 4:
+                    totals.microstops = total;
+                    break;
                 default:
                     break;
             }
             return totals;
-        }, { productionTime: 0, breakTime: 0, unplannedDowntime: 0, plannedDowntime: 0 });
+        }, { productionTime: 0, breakTime: 0, unplannedDowntime: 0, plannedDowntime: 0, microstops: 0 });
 
         oeeLogger.info(`Total production time: ${totalTimes.productionTime}`);
         oeeLogger.info(`Total break time: ${totalTimes.breakTime}`);
         oeeLogger.info(`Total unplanned downtime: ${totalTimes.unplannedDowntime}`);
         oeeLogger.info(`Total planned downtime: ${totalTimes.plannedDowntime}`);
+        oeeLogger.info(`Total microstops: ${totalTimes.microstops}`);
 
-        // Calculate metrics using the new total times
-        await calculator.calculateMetrics(machineId, totalTimes.unplannedDowntime, totalTimes.plannedDowntime + totalTimes.breakTime);
+        // Calculate metrics using the new total times, now including microstops in the downtime
+        await calculator.calculateMetrics(machineId, totalTimes.unplannedDowntime, totalTimes.plannedDowntime + totalTimes.breakTime + totalTimes.microstops);
 
         const metrics = calculator.getMetrics(machineId);
         if (!metrics) {
@@ -113,6 +117,7 @@ async function processMetrics(machineId) {
                 plannedProduction,
                 plannedDowntime: totalTimes.plannedDowntime,
                 unplannedDowntime: totalTimes.unplannedDowntime,
+                microstops: totalTimes.microstops,
                 MaterialNumber,
                 MaterialDescription,
                 machineId
@@ -137,6 +142,5 @@ async function processMetrics(machineId) {
         errorLogger.warn(`Error calculating metrics for line ${machineId}: ${error.message}`);
     }
 }
-
 
 module.exports = { updateMetric, processMetrics, setWebSocketServer };
