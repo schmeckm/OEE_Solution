@@ -12,7 +12,7 @@ const unplannedDowntimeFilePath = path.resolve(__dirname, '../data/unplannedDown
 const plannedDowntimeFilePath = path.resolve(__dirname, '../data/plannedDowntime.json');
 const processOrderFilePath = path.resolve(__dirname, '../data/processOrder.json');
 const shiftModelFilePath = path.resolve(__dirname, '../data/shiftModel.json');
-const machineStoppagesFilePath = path.resolve(__dirname, '../data/machineStoppages.json');
+const machineStoppagesFilePath = path.resolve(__dirname, '../data/microstops.json');
 const machineFilePath = path.resolve(__dirname, '../data/machine.json'); // Pfad zu machine.json
 
 // Caches for data

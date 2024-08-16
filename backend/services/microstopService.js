@@ -1,7 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 
-const MICROSTOPS_FILE = path.join(__dirname, '../data/machineStoppages.json');
+const MICROSTOPS_FILE = path.join(__dirname, '../data/microstops.json');
 
 // Hilfsfunktion zum Laden der Microstops
 const loadMicroStops = () => {

@@ -141,7 +141,6 @@ async function getMachineIdFromLineCode(lineCode) {
  * @returns {boolean} True if there is a running order, false otherwise.
  */
 async function checkForRunningOrder(machineId) {
-    oeeLogger.debug(`Checking for running order with machine ID: ${machineId}`);
     const processOrders = loadProcessOrderData(); // Funktion zum Laden von processOrder.json
 
     const runningOrder = processOrders.find(order => order.machine_id === machineId && order.ProcessOrderStatus === "REL");
