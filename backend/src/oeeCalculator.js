@@ -159,7 +159,7 @@ class OEECalculator {
             });
 
             // Log the calculated OEE data
-            oeeLogger.debug(`Calculated OEE data for machineId ${machineId}: ${JSON.stringify(this.oeeData[machineId])}`);
+            oeeLogger.info(`Calculated OEE data for machineId ${machineId}: ${JSON.stringify(this.oeeData[machineId])}`);
         } catch (error) {
             errorLogger.warn(`Warning calculating metrics for machineId ${machineId}: ${error.message}`);
             throw error;

@@ -7,14 +7,11 @@ const { influxdb } = require('../config/config');
 const { setWebSocketServer, sendWebSocketMessage } = require('../websocket/webSocketUtils');
 const moment = require('moment-timezone');
 
-const TIMEZONE = process.env.TIMEZONE || 'Europe/Berlin';
-
-const oeeCalculators = new Map(); // Map für OEE-Berechner pro MachineID
-const previousMetrics = new Map(); // Map zur Speicherung der vorherigen Metriken pro MachineID
+const oeeCalculators = new Map(); // Map to store OEE calculators per machine ID
 
 /**
- * Lädt die Maschinendaten aus der machine.json.
- * @returns {Array} Array der Maschinenobjekte.
+ * Loads machine data from machine.json.
+ * @returns {Array} Array of machine objects.
  */
 function loadMachineData() {
     const machineDataPath = path.join(__dirname, '../data/machine.json');
@@ -22,9 +19,9 @@ function loadMachineData() {
 }
 
 /**
- * Ermittelt das Werk und den Bereich basierend auf der MachineID.
- * @param {string} machineId - Die ID der Maschine.
- * @returns {Object} Ein Objekt, das das Werk und den Bereich enthält.
+ * Retrieves the plant and area based on the MachineID.
+ * @param {string} machineId - The ID of the machine.
+ * @returns {Object} An object containing the plant and area.
  */
 function getPlantAndArea(machineId) {
     const machines = loadMachineData();
@@ -34,11 +31,12 @@ function getPlantAndArea(machineId) {
         return {
             plant: machine.Plant || 'UnknownPlant',
             area: machine.area || 'UnknownArea',
-            lineId: machine.lineId || 'UnknownLine' // Hinzufügen der lineId, falls vorhanden
+            lineId: machine.lineId || 'UnknownLine' // Adding lineId if present
         };
     }
 
-    errorLogger.warn(`Plant, Area und LineID nicht gefunden für machineId: ${machineId}`);
+    // Log a warning if Plant, Area, and LineID are not found for the given machineId
+    errorLogger.warn(`Plant, Area, and LineID not found for machineId: ${machineId}`);
     return {
         plant: 'UnknownPlant',
         area: 'UnknownArea',
@@ -47,10 +45,10 @@ function getPlantAndArea(machineId) {
 }
 
 /**
- * Aktualisiert eine Metrik mit einem neuen Wert und verarbeitet sie sofort.
- * @param {string} name - Der Name der Metrik.
- * @param {number} value - Der Wert der Metrik.
- * @param {string} machineId - Die MachineID oder Workcenter.
+ * Updates a metric with a new value and processes it immediately.
+ * @param {string} name - The name of the metric.
+ * @param {number} value - The value of the metric.
+ * @param {string} machineId - The MachineID or Workcenter.
  */
 function updateMetric(name, value, machineId) {
     let calculator = oeeCalculators.get(machineId);
@@ -60,20 +58,20 @@ function updateMetric(name, value, machineId) {
     }
     calculator.updateData(name, value, machineId);
 
-    // Verarbeitet die Metrik sofort
+    // Immediately process the metric
     processMetrics(machineId);
 }
 
 /**
- * Verarbeitet die Metriken, berechnet OEE und sendet die Daten nur bei Änderungen via WebSocket für eine bestimmte MachineID.
- * @param {string} machineId - Die MachineID oder das Workcenter.
+ * Processes metrics, calculates OEE, and sends the data via WebSocket only if there are changes, for a specific MachineID.
+ * @param {string} machineId - The MachineID or Workcenter.
  */
 let processing = new Map(); // Map to keep track of whether a machine's metrics are being processed
 
 async function processMetrics(machineId) {
     // Prevent multiple processes from running for the same machine
     if (processing.get(machineId)) {
-        oeeLogger.warn(`Skipping metrics processing for machine ${machineId} as it's already being processed.`);
+        oeeLogger.debug(`Skipping metrics processing for machine ${machineId} as it's already being processed.`);
         return;
     }
 
@@ -140,7 +138,9 @@ async function processMetrics(machineId) {
 
         sendWebSocketMessage('OEEData', OEEData);
         oeeLogger.debug(`OEE Data: ${JSON.stringify(OEEData)}`);
+
     } catch (error) {
+        // Log the error using errorLogger
         errorLogger.warn(`Error calculating metrics for machine ${machineId}: ${error.message}`);
     } finally {
         processing.set(machineId, false); // Mark the machine as no longer being processed
@@ -152,10 +152,12 @@ function validateInputData(totalTimes, machineId) {
     const { unplannedDowntime, plannedDowntime, productionTime } = totalTimes;
 
     if (productionTime <= 0) {
+        // Log a validation error using errorLogger
         throw new Error(`Invalid input data for machine ${machineId}: productionTime must be greater than 0`);
     }
 
     if (unplannedDowntime < 0 || plannedDowntime < 0) {
+        // Log a validation error using errorLogger
         throw new Error(`Invalid input data for machine ${machineId}: downtime values must be non-negative`);
     }
 }

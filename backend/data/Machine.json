@@ -15,5 +15,14 @@
         "name": "Falcon12",
         "description": "Description of Falcon12",
         "OEE": false
+    },
+    {
+        "Plant": "Basel",
+        "area": "Packaging",
+        "machineGroup": "Blister",
+        "machine_id": "3",
+        "name": "Falcon13",
+        "description": "Description of Falcon13",
+        "OEE": false
     }
 ]

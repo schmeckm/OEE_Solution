@@ -22,13 +22,6 @@ const logToConsole = process.env.LOG_TO_CONSOLE === 'true';
 const logToFile = process.env.LOG_TO_FILE === 'true';
 
 /**
- * Custom filter for log levels.
- * @param {Object} info - Log information.
- * @returns {Object|boolean} Log information or false if the level is not included.
- */
-const customFilter = winston.format((info) => logLevels.includes(info.level) ? info : false);
-
-/**
  * Helper function to create a log transport.
  * @param {string} type - Type of transport ('console' or 'file').
  * @param {string} [filename] - Filename for file transport.
@@ -37,7 +30,7 @@ const customFilter = winston.format((info) => logLevels.includes(info.level) ? i
 const createTransport = (type, filename) => {
     if (type === 'console' && logToConsole) {
         return new winston.transports.Console({
-            level: logLevels[0], // Set the lowest level to include all higher levels
+            level: 'debug', // Set to 'debug' to include all levels from debug to error
             format: winston.format.combine(
                 winston.format.colorize(),
                 winston.format.timestamp(),
@@ -52,7 +45,7 @@ const createTransport = (type, filename) => {
             datePattern: 'YYYY-MM-DD',
             maxSize: '20m',
             maxFiles: `${retentionDays}d`,
-            level: logLevels[0], // Set the lowest level to include all higher levels
+            level: 'debug', // Set to 'debug' to include all levels from debug to error
             format: winston.format.combine(
                 winston.format.timestamp(),
                 logFormat
@@ -62,25 +55,6 @@ const createTransport = (type, filename) => {
 
     return null;
 };
-
-/**
- * Helper function to create exception and rejection handlers.
- * @param {string} name - Type of handler ('exceptions' or 'rejections').
- * @returns {Array} - Configured handlers.
- */
-const createHandlers = (name) => [
-    new DailyRotateFile({
-        filename: path.join(__dirname, `../logs/${name}-%DATE%.log`),
-        datePattern: 'YYYY-MM-DD',
-        maxSize: '20m',
-        maxFiles: `${retentionDays}d`,
-        level: logLevels[0], // Set the lowest level to include all higher levels
-        format: winston.format.combine(
-            winston.format.timestamp(),
-            logFormat
-        )
-    })
-];
 
 /**
  * Creates a Winston logger.
@@ -99,17 +73,16 @@ const createLogger = (logFilename = 'app') => {
     }
 
     return winston.createLogger({
-        level: logLevels[0], // Set the lowest level to include all higher levels
+        level: 'debug', // Set to 'debug' to ensure all levels are captured
         format: winston.format.combine(
             winston.format.timestamp(),
             winston.format.json()
         ),
         transports,
-        exceptionHandlers: createHandlers('exceptions'),
-        rejectionHandlers: createHandlers('rejections')
+        exceptionHandlers: createTransport('file', 'exceptions'),
+        rejectionHandlers: createTransport('file', 'rejections')
     });
 };
-
 
 // Create logger instances for different purposes
 const oeeLogger = createLogger('oee');

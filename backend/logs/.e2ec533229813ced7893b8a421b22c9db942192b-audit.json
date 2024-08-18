@@ -1,0 +1,15 @@
+{
+    "keep": {
+        "days": true,
+        "amount": 2
+    },
+    "auditLog": "C:\\Users\\marku\\OneDrive\\Dokumente\\markus_data\\Software Development\\Visual_Studio_Projects\\OEE_Event_Driven II\\backend\\logs\\.e2ec533229813ced7893b8a421b22c9db942192b-audit.json",
+    "files": [
+        {
+            "date": 1724010296494,
+            "name": "C:\\Users\\marku\\OneDrive\\Dokumente\\markus_data\\Software Development\\Visual_Studio_Projects\\OEE_Event_Driven II\\backend\\logs\\unplannedDowntime-2024-08-18.log",
+            "hash": "2077d65779cbf1ac24028cb709f175f42c8fee399d5656f8130bd4308b68a221"
+        }
+    ],
+    "hashType": "sha256"
+}
