@@ -8,21 +8,21 @@ const { handleHoldCommand, handleUnholdCommand } = require('./commandHandler');
  * and triggering the metric processing workflow.
  * 
  * @param {Object} decodedMessage - The decoded message containing OEE metrics.
- * @param {string} line - The production line or workcenter.
+ * @param {string} machineId - The machine ID.
  */
 function handleOeeMessage(decodedMessage, machineId) {
-    oeeLogger.debug(`handleOeeMessage called with decodedMessage: ${JSON.stringify(decodedMessage)}, line: ${machineId}`);
+    oeeLogger.debug(`handleOeeMessage called with decodedMessage: ${JSON.stringify(decodedMessage)}, machineId: ${machineId}`);
 
     try {
         // Iterate over each metric in the decoded message
         decodedMessage.metrics.forEach(metricData => {
             const { name, value } = metricData; // Destructure metric properties
-            oeeLogger.debug(`Received metric: ${name}, Value: ${value}, Line: ${machineId}`); // Log received metric
-            updateMetric(name, value, machineId); // Update the metric in the OEEProcessor with line information
+            oeeLogger.debug(`Received metric: ${name}, Value: ${value}, Machine ID: ${machineId}`); // Log received metric
+            updateMetric(name, value, machineId); // Update the metric in the OEEProcessor with machineId information
         });
 
         // Trigger the processing of all updated metrics
-        //processMetrics(machineId);
+        processMetrics(machineId);
 
     } catch (error) {
         errorLogger.error(`Error in handleOeeMessage: ${error.message}`); // Log error message
@@ -35,10 +35,10 @@ function handleOeeMessage(decodedMessage, machineId) {
  * based on the command type.
  * 
  * @param {Object} decodedMessage - The decoded message containing command metrics.
- * @param {string} machineId - The production line or workcenter.
+ * @param {string} machineId - The machine ID.
  */
 function handleCommandMessage(decodedMessage, machineId) {
-    oeeLogger.debug(`handleCommandMessage called with decodedMessage: ${JSON.stringify(decodedMessage)}, line: ${machineId}`);
+    oeeLogger.debug(`handleCommandMessage called with decodedMessage: ${JSON.stringify(decodedMessage)}, machineId: ${machineId}`);
 
     try {
         // Validate the format of the decoded message
@@ -49,17 +49,17 @@ function handleCommandMessage(decodedMessage, machineId) {
         // Iterate over each command metric in the decoded message
         decodedMessage.metrics.forEach(metricData => {
             const { name, value, type, alias } = metricData; // Destructure command metric properties
-            oeeLogger.info(`Received command: ${name}, Value: ${value}, Type: ${type}, Alias: ${JSON.stringify(alias)}, Line: ${machineId}`); // Log received command
+            oeeLogger.info(`Received command: ${name}, Value: ${value}, Type: ${type}, Alias: ${JSON.stringify(alias)}, Machine ID: ${machineId}`); // Log received command
 
             const startTime = Date.now(); // Record the start time of command processing
 
             // Handle different command types using a switch-case statement
             switch (name) {
                 case 'Command/Hold':
-                    handleHoldCommand(value, machineId); // Handle Hold command with line information
+                    handleHoldCommand(value, machineId); // Handle Hold command with machineId information
                     break;
                 case 'Command/Unhold':
-                    handleUnholdCommand(value, machineId); // Handle Unhold command with line information
+                    handleUnholdCommand(value, machineId); // Handle Unhold command with machineId information
                     break;
                     // Additional commands can be handled here
                 default:

@@ -1,17 +1,19 @@
 [{
-        "Plant": "Plant1",
+        "Plant": "Basel",
         "area": "Packaging",
         "machineGroup": "Blister",
         "machine_id": "1",
         "name": "Falcon11",
-        "description": "Description of Falcon11"
+        "description": "Description of Falcon11",
+        "OEE": true
     },
     {
-        "Plant": "Plant1",
+        "Plant": "Basel",
         "area": "Packaging",
         "machineGroup": "Blister",
         "machine_id": "2",
         "name": "Falcon12",
-        "description": "Description of Falcon12"
+        "description": "Description of Falcon12",
+        "OEE": false
     }
 ]

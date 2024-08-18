@@ -4,7 +4,7 @@ const { influxdb, oeeAsPercent } = require('../config/config');
 const { loadDataAndPrepareOEE } = require('../src/downtimeManager');
 const { loadProcessOrderData } = require('../src/dataLoader');
 
-// Constants for OEE classification
+// Constants for OEE classification thresholds
 const VALID_SCORE_THRESHOLD = 1.0;
 const MINIMUM_SCORE_THRESHOLD = 0.0;
 const CLASSIFICATION_LEVELS = {
@@ -14,13 +14,13 @@ const CLASSIFICATION_LEVELS = {
     AVERAGE: 0.4,
 };
 
-// OEECalculator class handles the calculation and management of OEE metrics
+// The OEECalculator class manages the calculation and storage of OEE metrics for different machines
 class OEECalculator {
     constructor() {
-        this.oeeData = {}; // Initialize as an empty object
+        this.oeeData = {}; // Initialize an empty object to store OEE data for different machines
     }
 
-    // Reset OEE data to default values
+    // Reset OEE data to default values for a specific machine
     resetOEEData() {
         return {
             ProcessOrderNumber: null,
@@ -40,7 +40,7 @@ class OEECalculator {
         };
     }
 
-    // Initialize OEE data with process order data
+    // Initialize OEE data with process order data for a specific machine
     async init(machineId) {
         try {
             oeeLogger.debug(`Initializing OEECalculator for machineId ${machineId}`);
@@ -48,20 +48,17 @@ class OEECalculator {
             if (processOrderData.length === 0) {
                 throw new Error(`No active process order found for machineId ${machineId}.`);
             }
-            // Add this line to log the processOrderData before validation
-            oeeLogger.debug(`Init Process Order Data I: ${JSON.stringify(processOrderData)}`);
-            oeeLogger.debug(`Init Process Order Data II: ${JSON.stringify(processOrderData[0])}`);
+            oeeLogger.debug(`Process Order Data: ${JSON.stringify(processOrderData[0])}`);
 
-
-            this.validateProcessOrderData(processOrderData); // Validate the data
-            this.setOEEData(processOrderData[0], machineId); // Set the OEE data for the specific machineId
+            this.validateProcessOrderData(processOrderData); // Validate the process order data
+            this.setOEEData(processOrderData[0], machineId); // Set OEE data for the specific machineId
         } catch (error) {
             errorLogger.error(`Error initializing OEECalculator for machineId ${machineId}: ${error.message}`);
             throw error;
         }
     }
 
-    // Validate the process order data
+    // Validate the process order data to ensure it contains the necessary fields
     validateProcessOrderData(data) {
         if (!data || !Array.isArray(data) || data.length === 0) {
             throw new Error('Process order data is null or undefined');
@@ -73,7 +70,7 @@ class OEECalculator {
         }
     }
 
-    // Set OEE data with validated process order data
+    // Set OEE data for a specific machine with validated process order data
     setOEEData(data, machineId) {
         if (!this.oeeData[machineId]) {
             this.oeeData[machineId] = this.resetOEEData();
@@ -94,7 +91,7 @@ class OEECalculator {
         this.oeeData[machineId].MaterialDescription = MaterialDescription || 'No Description';
     }
 
-    // Update specific OEE metric
+    // Update a specific OEE metric for a machine
     updateData(metric, value, machineId) {
         oeeLogger.debug(`Updating ${metric} with value: ${value} for machineId: ${machineId}`);
         if (!this.oeeData[machineId]) {
@@ -103,12 +100,12 @@ class OEECalculator {
         this.oeeData[machineId][metric] = value;
     }
 
-    // Validate input OEE data before calculation
+    // Validate the OEE data before performing calculations
     validateInput(machineId) {
         const { plannedProduction, runtime, targetPerformance, goodProducts, totalProduction } = this.oeeData[machineId];
 
         if (runtime <= 0) throw new Error('Invalid input data: runtime must be greater than 0');
-        if (plannedProduction <= 0) throw new Error('Invalid input data: plannedProduction must be greater than 0');
+        if (plannedProduction <= 0) throw new Error('Invalid input data:plannedProduction must be greater than 0');
         if (totalProduction < 0) throw new Error('Invalid input data: totalProduction must be non-negative');
         if (targetPerformance < 0) throw new Error('Invalid input data: targetPerformance must be non-negative');
         if (goodProducts < 0) throw new Error('Invalid input data: goodProducts must be non-negative');
@@ -116,7 +113,7 @@ class OEECalculator {
         if (goodProducts > totalProduction) throw new Error('Invalid input data: goodProducts cannot be greater than totalProduction');
     }
 
-    // Calculate OEE metrics
+    // Calculate OEE metrics based on input data
     async calculateMetrics(machineId, totalUnplannedDowntime, totalPlannedDowntime) {
         if (!this.oeeData[machineId]) {
             throw new Error(`No data found for machineId: ${machineId}`);
@@ -128,28 +125,28 @@ class OEECalculator {
         oeeLogger.info(`Calculating metrics for ProcessOrderNumber: ${ProcessOrderNumber} on machineId: ${machineId}`);
 
         try {
-
-            // Call loadDataAndPrepareOEE with the machineId
+            // Load and prepare OEE data for calculations
             const OEEData = loadDataAndPrepareOEE(machineId);
 
             if (!OEEData || !Array.isArray(OEEData.datasets)) {
                 throw new Error('Invalid OEEData returned from loadDataAndPrepareOEE. Expected an object with a datasets array.');
             }
 
+            // Calculate various times from the datasets
             const totalProductionTime = OEEData.datasets[0].data.reduce((a, b) => a + b, 0);
             const totalBreakTime = OEEData.datasets[1].data.reduce((a, b) => a + b, 0);
             const actualUnplannedDowntime = totalUnplannedDowntime || OEEData.datasets[2].data.reduce((a, b) => a + b, 0);
             const actualPlannedDowntime = totalPlannedDowntime || OEEData.datasets[3].data.reduce((a, b) => a + b, 0);
 
-            oeeLogger.info(`Total production time: ${totalProductionTime}`);
-            oeeLogger.info(`Total break time: ${totalBreakTime}`);
-            oeeLogger.info(`Total unplanned downtime: ${actualUnplannedDowntime}`);
-            oeeLogger.info(`Total planned downtime: ${actualPlannedDowntime}`);
+            oeeLogger.debug(`Total production time: ${totalProductionTime}`);
+            oeeLogger.debug(`Total break time: ${totalBreakTime}`);
+            oeeLogger.debug(`Total unplanned downtime: ${actualUnplannedDowntime}`);
+            oeeLogger.debug(`Total planned downtime: ${actualPlannedDowntime}`);
 
             // Log input values
-            oeeLogger.info(`Input values for machineId ${machineId} - plannedProduction: ${plannedProduction}, runtime: ${runtime}, targetPerformance: ${targetPerformance}, goodProducts: ${goodProducts}, totalProduction: ${totalProduction}, MaterialNumber: ${MaterialNumber}, MaterialDescription: ${MaterialDescription}`);
+            oeeLogger.info(`Input values for machineId ${machineId} -plannedProduction: ${plannedProduction}, runtime: ${runtime}, targetPerformance: ${targetPerformance}, goodProducts: ${goodProducts}, totalProduction: ${totalProduction}, MaterialNumber: ${MaterialNumber}, MaterialDescription: ${MaterialDescription}`);
 
-            // Perform OEE calculation
+            // Perform the OEE calculation
             this.calculateOEE({
                 plannedProduction,
                 runtime,
@@ -161,15 +158,15 @@ class OEECalculator {
                 machineId,
             });
 
-            // Log calculated OEE data
-            oeeLogger.info(`Calculated OEE data for machineId ${machineId}: ${JSON.stringify(this.oeeData[machineId])}`);
+            // Log the calculated OEE data
+            oeeLogger.debug(`Calculated OEE data for machineId ${machineId}: ${JSON.stringify(this.oeeData[machineId])}`);
         } catch (error) {
             errorLogger.warn(`Warning calculating metrics for machineId ${machineId}: ${error.message}`);
             throw error;
         }
     }
 
-    // Calculate OEE and its components: availability, performance, and quality
+    // Calculate the OEE and its components: availability, performance, and quality
     calculateOEE(data) {
         const { plannedProduction, runtime, targetPerformance, goodProducts, totalProduction, actualUnplannedDowntime, actualPlannedDowntime, machineId } = data;
         const operatingTime = runtime - (actualUnplannedDowntime / 60) - (actualPlannedDowntime / 60);
@@ -183,6 +180,7 @@ class OEECalculator {
             throw new Error(`Calculated OEE is not finite: ${this.oeeData[machineId].oee}`);
         }
 
+        // Classify the OEE score
         this.oeeData[machineId].classification = this.classifyOEE(this.oeeData[machineId].oee / 100);
     }
 
@@ -198,7 +196,7 @@ class OEECalculator {
         return "Poor";
     }
 
-    // Get calculated OEE metrics
+    // Get calculated OEE metrics for a specific machine
     getMetrics(machineId) {
         return this.oeeData[machineId];
     }
@@ -206,7 +204,7 @@ class OEECalculator {
 
 let writeApi = null;
 
-// Initialize InfluxDB write API
+// Initialize the InfluxDB write API
 try {
     if (influxdb.url && influxdb.token && influxdb.org && influxdb.bucket) {
         const influxDB = new InfluxDB({ url: influxdb.url, token: influxdb.token });
@@ -226,18 +224,15 @@ async function writeOEEToInfluxDB(metrics) {
     }
 
     try {
-        // Debugging: Log the entire processData to ensure it is as expected
-        defaultLogger.info(`Process Data before writing to InfluxDB: ${JSON.stringify(metrics.processData)}`);
-
         const point = new Point('oee_metrics')
-            .tag('plant', metrics.processData.plant || 'UnknownPlant') // Tag für Werk
-            .tag('area', metrics.processData.area || 'UnknownArea') // Tag für Area
-            .tag('machineId', metrics.processData.machineId || 'UnknownMachine') // Tag für MachineID
-            .tag('ProcessOrderNumber', metrics.processData.ProcessOrderNumber || 'UnknownOrder') // Tag für Auftrag
-            .tag('MaterialNumber', metrics.processData.MaterialNumber || 'UnknownMaterial') // Tag für Material
-            .tag('MaterialDescription', metrics.processData.MaterialDescription || 'No Description'); // Tag für Materialbeschreibung
+            .tag('plant', metrics.processData.plant || 'UnknownPlant') // Tag for the plant
+            .tag('area', metrics.processData.area || 'UnknownArea') // Tag for the area
+            .tag('machineId', metrics.processData.machineId || 'UnknownMachine') // Tag for the machine ID
+            .tag('ProcessOrderNumber', metrics.processData.ProcessOrderNumber || 'UnknownOrder') // Tag for the process order
+            .tag('MaterialNumber', metrics.processData.MaterialNumber || 'UnknownMaterial') // Tag for the material number
+            .tag('MaterialDescription', metrics.processData.MaterialDescription || 'No Description'); // Tag for the material description
 
-        // Felder für OEE und seine Komponenten
+        // Fields for OEE and its components
         point
             .floatField('oee', oeeAsPercent ? metrics.oee : metrics.oee / 100)
             .floatField('availability', oeeAsPercent ? metrics.availability * 100 : metrics.availability)
@@ -246,19 +241,17 @@ async function writeOEEToInfluxDB(metrics) {
             .floatField('plannedProduction', metrics.processData.plannedProduction)
             .floatField('plannedDowntime', metrics.processData.plannedDowntime)
             .floatField('unplannedDowntime', metrics.processData.unplannedDowntime)
-            .floatField('microstops', metrics.processData.microstops); // Felder für Downtimes und Microstops
+            .floatField('microstops', metrics.processData.microstops); // Fields for downtimes and microstops
 
-        // Schreibe den Datenpunkt in InfluxDB
+        // Write the data point to InfluxDB
         writeApi.writePoint(point);
         await writeApi.flush();
 
-        // Erfolgreiche Schreiboperation
-        defaultLogger.info(`Successfully wrote OEE metrics for machine ${metrics.processData.machineId || 'undefined'} to InfluxDB.`);
+        // Log successful write operation
+        defaultLogger.info(`Successfully wrote OEE metrics for machine ID: ${metrics.processData.machineId || 'undefined'} to InfluxDB.`);
     } catch (error) {
         errorLogger.error(`Error writing to InfluxDB: ${error.message}`);
     }
 }
-
-
 
 module.exports = { OEECalculator, writeOEEToInfluxDB };

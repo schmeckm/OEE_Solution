@@ -12,7 +12,7 @@
         "type": "number",
         "metadata": {
             "unit": "hours",
-            "description": "Actual runtime"
+            "description": "Planned runtime"
         }
     },
     "actualPerformance": {

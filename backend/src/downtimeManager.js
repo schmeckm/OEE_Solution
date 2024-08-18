@@ -17,7 +17,16 @@ let processOrderDataCache = null;
 let shiftModelDataCache = null;
 let microstopCache = null;
 
-// Load JSON data from a file with caching and validation
+// Invalidate cache
+function invalidateCache() {
+    unplannedDowntimeCache = null;
+    plannedDowntimeCache = null;
+    processOrderDataCache = null;
+    shiftModelDataCache = null;
+    microstopCache = null;
+}
+
+// Load JSON data from a file with caching
 function loadJsonData(filePath) {
     try {
         oeeLogger.debug(`Loading JSON data from ${filePath}`);
@@ -29,7 +38,7 @@ function loadJsonData(filePath) {
             return []; // Return an empty array if the data is not in the expected format
         }
 
-        oeeLogger.info(`Content of ${filePath} loaded successfully`);
+        oeeLogger.debug(`Content of ${filePath} loaded successfully`);
         return jsonData;
     } catch (error) {
         errorLogger.error(`Error loading JSON data from ${filePath}: ${error.message}`);
@@ -48,7 +57,7 @@ function loadMicrostopData() {
             } else if (microstopCache.length === 0) {
                 oeeLogger.warn(`Microstop array is empty in ${microstopFilePath}`);
             } else {
-                oeeLogger.info(`Microstop data successfully loaded: ${JSON.stringify(microstopCache, null, 2)}`);
+                oeeLogger.debug(`Microstop data successfully loaded: ${JSON.stringify(microstopCache, null, 2)}`);
             }
         } catch (error) {
             errorLogger.error(`Error reading or processing microstop.json: ${error.message}`);
@@ -58,55 +67,55 @@ function loadMicrostopData() {
     return microstopCache;
 }
 
-// Load and cache unplanned downtime data
+// Load all data in parallel
+async function loadAllData() {
+    try {
+        const [unplannedDowntime, plannedDowntime, processOrders, shifts, microstops] = await Promise.all([
+            loadJsonData(unplannedDowntimeFilePath),
+            loadJsonData(plannedDowntimeFilePath),
+            loadJsonData(processOrderFilePath),
+            loadJsonData(shiftModelFilePath),
+            loadJsonData(microstopFilePath)
+        ]);
+
+        unplannedDowntimeCache = unplannedDowntime;
+        plannedDowntimeCache = plannedDowntime;
+        processOrderDataCache = processOrders;
+        shiftModelDataCache = shifts;
+        microstopCache = microstops;
+
+        oeeLogger.info('All data loaded and cached successfully.');
+    } catch (error) {
+        errorLogger.error(`Error loading data in parallel: ${error.message}`);
+        throw error;
+    }
+}
+
+// Load specific data if not cached
 function loadUnplannedDowntimeData() {
     if (!unplannedDowntimeCache) {
         unplannedDowntimeCache = loadJsonData(unplannedDowntimeFilePath);
-        if (!Array.isArray(unplannedDowntimeCache)) {
-            oeeLogger.warn(`Expected an array in unplannedDowntime.json but received: ${typeof unplannedDowntimeCache}`);
-            unplannedDowntimeCache = [];
-        } else if (unplannedDowntimeCache.length === 0) {
-            oeeLogger.warn(`Unplanned downtime array is empty in ${unplannedDowntimeFilePath}`);
-        } else {
-            oeeLogger.debug(`Unplanned downtime data successfully loaded: ${JSON.stringify(unplannedDowntimeCache, null, 2)}`);
-        }
     }
     return unplannedDowntimeCache;
 }
 
-// Load and cache planned downtime data
 function loadPlannedDowntimeData() {
     if (!plannedDowntimeCache) {
         plannedDowntimeCache = loadJsonData(plannedDowntimeFilePath);
-        if (!Array.isArray(plannedDowntimeCache)) {
-            oeeLogger.warn(`Expected an array in plannedDowntime.json but received: ${typeof plannedDowntimeCache}`);
-            plannedDowntimeCache = [];
-        } else if (plannedDowntimeCache.length === 0) {
-            oeeLogger.warn(`Planned downtime array is empty in ${plannedDowntimeFilePath}`);
-        } else {
-            oeeLogger.debug(`Planned downtime data successfully loaded: ${JSON.stringify(plannedDowntimeCache, null, 2)}`);
-        }
     }
     return plannedDowntimeCache;
 }
 
-// Load and cache process order data
 function loadProcessOrderData() {
     if (!processOrderDataCache) {
         processOrderDataCache = loadJsonData(processOrderFilePath);
-        oeeLogger.info(`Process order data loaded from ${processOrderFilePath}`);
-    }
-    if (!Array.isArray(processOrderDataCache)) {
-        throw new Error("Expected an array from process order data");
     }
     return processOrderDataCache;
 }
 
-// Load and cache shift model data
 function loadShiftModelData() {
     if (!shiftModelDataCache) {
         shiftModelDataCache = loadJsonData(shiftModelFilePath);
-        oeeLogger.info(`Shift model data loaded from ${shiftModelFilePath}`);
     }
     return shiftModelDataCache;
 }
@@ -116,88 +125,37 @@ function parseDate(dateStr) {
     return moment.utc(dateStr);
 }
 
+// Filter data by machine ID and time range
+function filterDataByTimeRange(dataArray, machineId, orderStart, orderEnd) {
+    return dataArray.filter(entry => {
+        const start = parseDate(entry.Start);
+        const end = parseDate(entry.End);
+        const isMatchingMachine = entry.machine_id === machineId;
+        const isInRange = start.isBetween(orderStart, orderEnd, null, '[]') || end.isBetween(orderStart, orderEnd, null, '[]');
+        return isMatchingMachine && isInRange;
+    });
+}
+
+// Function to calculate overlap duration
+function calculateOverlap(start1, end1, start2, end2) {
+    const overlapStart = moment.max(start1, start2);
+    const overlapEnd = moment.min(end1, end2);
+    return Math.max(0, overlapEnd.diff(overlapStart, 'minutes'));
+}
+
 // Get microstops filtered by machine ID
 function getMicrostops(machineId) {
-    try {
-        const microstopEntries = loadMicrostopData();
-
-        const filteredEntries = microstopEntries.filter(entry => {
-            if (!entry.Start || !entry.End) {
-                oeeLogger.warn(`Undefined Start or End in entry: ${JSON.stringify(entry)}`);
-                return false;
-            }
-
-            const isMatchingMachine = entry.machine_id === machineId;
-
-            if (isMatchingMachine) {
-                oeeLogger.debug(`Microstop for machineId ${machineId}: Start: ${entry.Start}, End: ${entry.End}`);
-            }
-
-            return isMatchingMachine;
-        });
-
-        return filteredEntries;
-
-    } catch (error) {
-        errorLogger.error(`Error reading or processing microstop.json: ${error.message}`);
-        throw error;
-    }
+    return filterDataByTimeRange(loadMicrostopData(), machineId);
 }
 
 // Get planned downtime filtered by machine ID and time range
 function getPlannedDowntime(machineId) {
-    try {
-        const plannedDowntimeEntries = loadPlannedDowntimeData();
-
-        const filteredEntries = plannedDowntimeEntries.filter(entry => {
-            if (!entry.Start || !entry.End) {
-                oeeLogger.warn(`Undefined Start or End in entry: ${JSON.stringify(entry)}`);
-                return false;
-            }
-
-            const isMatchingMachine = entry.machine_id === machineId;
-
-            if (isMatchingMachine) {
-                oeeLogger.debug(`Planned Downtime for machineId ${machineId}: Start: ${entry.Start}, End: ${entry.End}`);
-            }
-
-            return isMatchingMachine;
-        });
-
-        return filteredEntries;
-
-    } catch (error) {
-        errorLogger.error(`Error reading or processing plannedDowntime.json: ${error.message}`);
-        throw error;
-    }
+    return filterDataByTimeRange(loadPlannedDowntimeData(), machineId);
 }
 
 // Get unplanned downtime filtered by machine ID and time range
 function getUnplannedDowntime(machineId) {
-    try {
-        const unplannedDowntimeEntries = loadUnplannedDowntimeData();
-
-        const filteredEntries = unplannedDowntimeEntries.filter(entry => {
-            if (!entry.Start || !entry.End) {
-                oeeLogger.warn(`Undefined Start or End in entry: ${JSON.stringify(entry)}`);
-                return false;
-            }
-
-            const isMatchingMachine = entry.machine_id === machineId;
-
-            if (isMatchingMachine) {
-                oeeLogger.debug(`Unplanned Downtime for machineId ${machineId}: Start: ${entry.Start}, End: ${entry.End}`);
-            }
-
-            return isMatchingMachine;
-        });
-
-        return filteredEntries;
-
-    } catch (error) {
-        errorLogger.error(`Error reading or processing unplannedDowntime.json: ${error.message}`);
-        throw error;
-    }
+    return filterDataByTimeRange(loadUnplannedDowntimeData(), machineId);
 }
 
 // Function to calculate break duration
@@ -284,12 +242,9 @@ function loadDataAndPrepareOEE(machineId) {
     }
 
     try {
-        oeeLogger.info('Loading data and preparing OEE data.');
-
-        // Load and filter process orders by machineId and status 'REL'
         const processOrders = loadProcessOrderData().filter(order => {
             if (order.machine_id === machineId && order.ProcessOrderStatus === 'REL') {
-                oeeLogger.info(`Matching process order found: ${JSON.stringify(order)}`);
+                oeeLogger.debug(`Matching process order found: ${JSON.stringify(order)}`);
                 return true;
             }
             return false;
@@ -305,11 +260,9 @@ function loadDataAndPrepareOEE(machineId) {
 
         oeeLogger.debug(`Current process order details: ${JSON.stringify(currentProcessOrder, null, 2)}`);
 
-        // Load planned, unplanned downtimes and microstops based on machineId and process order start/end times
         const plannedDowntime = getPlannedDowntime(machineId, processOrderStartTime, processOrderEndTime);
         const unplannedDowntime = getUnplannedDowntime(machineId, processOrderStartTime, processOrderEndTime);
         const microstops = getMicrostops(machineId, processOrderStartTime, processOrderEndTime);
-
         const shifts = loadShiftModelData().filter(shift => shift.machine_id === machineId);
 
         oeeLogger.debug(`Filtered shifts: ${JSON.stringify(shifts, null, 2)}`);
@@ -334,7 +287,6 @@ function loadDataAndPrepareOEE(machineId) {
         oeeLogger.debug(`Rounded order start time: ${currentTime.format()}`);
         oeeLogger.debug(`Rounded order end time: ${orderEnd.format()}`);
 
-        // Populate OEE data for each hour in the process order time range
         while (currentTime.isBefore(orderEnd)) {
             const nextTime = currentTime.clone().add(1, 'hour');
 
@@ -357,9 +309,7 @@ function loadDataAndPrepareOEE(machineId) {
                 const breakEnd = moment(breakInfo.breakEnd);
 
                 if (currentTime.isBefore(breakEnd) && nextTime.isAfter(breakStart)) {
-                    const overlapStart = moment.max(currentTime, breakStart);
-                    const overlapEnd = moment.min(nextTime, breakEnd);
-                    breakTime += overlapEnd.diff(overlapStart, 'minutes');
+                    breakTime += calculateOverlap(currentTime, nextTime, breakStart, breakEnd);
                 }
             });
 
@@ -367,9 +317,7 @@ function loadDataAndPrepareOEE(machineId) {
                 const downtimeStart = parseDate(downtime.Start);
                 const downtimeEnd = parseDate(downtime.End);
                 if (currentTime.isBefore(downtimeEnd) && nextTime.isAfter(downtimeStart)) {
-                    const overlapStart = moment.max(currentTime, downtimeStart);
-                    const overlapEnd = moment.min(nextTime, downtimeEnd);
-                    unplannedDowntime += overlapEnd.diff(overlapStart, 'minutes');
+                    unplannedDowntime += calculateOverlap(currentTime, nextTime, downtimeStart, downtimeEnd);
                 }
             });
 
@@ -377,9 +325,7 @@ function loadDataAndPrepareOEE(machineId) {
                 const downtimeStart = parseDate(downtime.Start);
                 const downtimeEnd = parseDate(downtime.End);
                 if (currentTime.isBefore(downtimeEnd) && nextTime.isAfter(downtimeStart)) {
-                    const overlapStart = moment.max(currentTime, downtimeStart);
-                    const overlapEnd = moment.min(nextTime, downtimeEnd);
-                    plannedDowntime += overlapEnd.diff(overlapStart, 'minutes');
+                    plannedDowntime += calculateOverlap(currentTime, nextTime, downtimeStart, downtimeEnd);
                 }
             });
 
@@ -387,13 +333,10 @@ function loadDataAndPrepareOEE(machineId) {
                 const microstopStart = parseDate(microstop.Start);
                 const microstopEnd = parseDate(microstop.End);
                 if (currentTime.isBefore(microstopEnd) && nextTime.isAfter(microstopStart)) {
-                    const overlapStart = moment.max(currentTime, microstopStart);
-                    const overlapEnd = moment.min(nextTime, microstopEnd);
-                    microstopTime += overlapEnd.diff(overlapStart, 'minutes');
+                    microstopTime += calculateOverlap(currentTime, nextTime, microstopStart, microstopEnd);
                 }
             });
 
-            // Ensure production time does not go negative
             const totalNonProductionTime = breakTime + unplannedDowntime + plannedDowntime + microstopTime;
             productionTime = Math.max(0, productionTime - totalNonProductionTime);
 
@@ -404,21 +347,16 @@ function loadDataAndPrepareOEE(machineId) {
             oeeLogger.debug(`  Planned downtime: ${plannedDowntime} minutes`);
             oeeLogger.debug(`  Microstop time: ${microstopTime} minutes`);
 
-            // Correctly assign the calculated values to their respective datasets
-            OEEData.datasets[0].data.push(productionTime); // Production time
-            OEEData.datasets[1].data.push(breakTime); // Break time
-            OEEData.datasets[2].data.push(unplannedDowntime); // Unplanned Downtime
-            OEEData.datasets[3].data.push(plannedDowntime); // Planned Downtime
-            OEEData.datasets[4].data.push(microstopTime); // Microstop time
+            OEEData.datasets[0].data.push(productionTime);
+            OEEData.datasets[1].data.push(breakTime);
+            OEEData.datasets[2].data.push(unplannedDowntime);
+            OEEData.datasets[3].data.push(plannedDowntime);
+            OEEData.datasets[4].data.push(microstopTime);
 
-            // Move to the next hour
             currentTime = nextTime;
         }
 
-
-        oeeLogger.info('OEE data prepared successfully.');
-        oeeLogger.info(`OEE Data: ${JSON.stringify(OEEData)}`);
-
+        oeeLogger.debug(`OEE Data: ${JSON.stringify(OEEData)}`);
         return OEEData;
     } catch (error) {
         errorLogger.error(`Error loading or preparing OEE data: ${error.message}`);
@@ -428,6 +366,8 @@ function loadDataAndPrepareOEE(machineId) {
 
 // Export the functions for use in other modules
 module.exports = {
+    invalidateCache,
+    loadAllData,
     getUnplannedDowntime,
     getPlannedDowntime,
     loadProcessOrderData,

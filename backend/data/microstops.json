@@ -1,7 +1,6 @@
 [{
         "ID": "ffb9873c-8c29-4614-98f5-2bf6459badb6",
         "ProcessOrderID": 1,
-        "ProcessOrderNumber": "47111",
         "Start": "2024-07-14T05:29:20+02:00",
         "End": "2024-07-14T05:40:23+02:00",
         "Reason": "IT-OT",
@@ -11,7 +10,6 @@
     {
         "ID": "b4f801c2-50ac-4d6b-a5cd-7ed748e7b67f",
         "ProcessOrderID": 1,
-        "ProcessOrderNumber": "47111",
         "Start": "2024-07-14T06:31:36+02:00",
         "End": "2024-07-14T06:38:39+02:00",
         "Reason": "IT-OT",
@@ -21,7 +19,6 @@
     {
         "ID": "32ba87bb-1b71-4c80-a9b8-a4fc9f2bd210",
         "ProcessOrderID": 1,
-        "ProcessOrderNumber": "47111",
         "Start": "2024-07-14T11:50:52+02:00",
         "End": "2024-07-14T11:59:57+02:00",
         "Reason": "IT-OT",
@@ -31,7 +28,6 @@
     {
         "ID": "6ca48eb2-d185-44a3-89de-c545ee6277b7",
         "ProcessOrderID": 1,
-        "ProcessOrderNumber": "47111",
         "Start": "2024-07-14T20:56:59+02:00",
         "End": "2024-07-14T20:57:02+02:00",
         "Reason": "IT-OT",

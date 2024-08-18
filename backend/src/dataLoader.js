@@ -103,11 +103,11 @@ function loadProcessOrderData() {
         let processOrderData = loadJsonData(processOrderFilePath, ['Start', 'End']);
 
         // Log the loaded data
-        oeeLogger.info(`Loaded process order data: ${JSON.stringify(processOrderData, null, 2)}`);
+        oeeLogger.debug(`Loaded process order data: ${JSON.stringify(processOrderData, null, 2)}`);
 
         processOrderData = validateProcessOrderData(processOrderData);
         processOrderDataCache = processOrderData;
-        oeeLogger.info(`Process order data loaded from ${processOrderFilePath}`);
+        oeeLogger.debug(`Process order data loaded from ${processOrderFilePath}`);
     }
     return processOrderDataCache;
 }
@@ -120,7 +120,7 @@ function loadProcessOrderData() {
 function loadShiftModelData() {
     if (!shiftModelDataCache) {
         shiftModelDataCache = loadJsonData(shiftModelFilePath, ['Start', 'End']);
-        oeeLogger.info(`Shift model data loaded from ${shiftModelFilePath}`);
+        oeeLogger.debug(`Shift model data loaded from ${shiftModelFilePath}`);
     }
     return shiftModelDataCache;
 }
@@ -132,7 +132,7 @@ function loadShiftModelData() {
 function loadMachineStoppagesData() {
     if (!machineStoppagesCache) {
         machineStoppagesCache = loadJsonData(machineStoppagesFilePath, ['Start', 'End']);
-        oeeLogger.info(`Machine stoppages data loaded from ${machineStoppagesFilePath}`);
+        oeeLogger.debug(`Machine stoppages data loaded from ${machineStoppagesFilePath}`);
     }
     return machineStoppagesCache;
 }
@@ -144,7 +144,7 @@ function loadMachineStoppagesData() {
  */
 function validateProcessOrderData(data) {
     data.forEach(order => {
-        oeeLogger.info(`Validating process order: ProcessOrderNumber=${order.ProcessOrderNumber}, MaterialNumber=${order.MaterialNumber}`);
+        oeeLogger.debug(`Validating process order: ProcessOrderNumber=${order.ProcessOrderNumber}, MaterialNumber=${order.MaterialNumber}`);
         if (!order.ProcessOrderNumber || !order.MaterialNumber || !order.MaterialDescription) {
             const errorMsg = `Invalid process order data: Missing essential fields in order ${JSON.stringify(order)}`;
             errorLogger.error(errorMsg);

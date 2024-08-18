@@ -3,17 +3,12 @@ const { get: getSparkplugPayload } = require('sparkplug-payload');
 const { oeeLogger, errorLogger } = require('../utils/logger');
 const { mqtt: mqttConfig, structure, topicFormat } = require('../config/config');
 const { handleCommandMessage, handleOeeMessage } = require('./messageHandler');
-const { loadProcessOrderData, loadMachineData } = require('../src/dataLoader'); // Sicherstellen, dass der Pfad korrekt ist
+const { loadProcessOrderData, loadMachineData } = require('../src/dataLoader');
 const oeeConfig = require('../config/oeeConfig.json');
 
 /**
  * Sets up the MQTT client, handles connection events, and subscribes to topics.
  * @returns {Object} The MQTT client instance.
- */
-/**
- * Sets up the MQTT client.
- * 
- * @returns {Object} The MQTT client object.
  */
 function setupMqttClient() {
     oeeLogger.info('Setting up MQTT client...');
@@ -28,38 +23,32 @@ function setupMqttClient() {
 
     client.on('connect', () => {
         oeeLogger.info('MQTT client connected');
-        subscribeToTopics(client);
+        tryToSubscribeToMachineTopics(client);
     });
 
     client.on('message', async(topic, message) => {
         try {
-            // Extrahiere die relevanten Teile des Topics
             const topicParts = topic.split('/');
-            const [version, location, dataType, line, metric] = topicParts;
+            const [version, location, area, dataType, machineName, metric] = topicParts;
 
-            oeeLogger.debug(`Received message on topic ${topic}: line=${line}, metric=${metric}`);
+            oeeLogger.info(`Received message on topic ${topic}: machine=${machineName}, metric=${metric}`);
 
-            // Erhalte die machine_id aus machine.json basierend auf dem Liniencode
-            const machineId = await getMachineIdFromLineCode(line);
-
+            // Erhalte die machine_id basierend auf dem Maschinenname (machineName)
+            const machineId = await getMachineIdFromLineCode(machineName);
             if (!machineId) {
-                oeeLogger.warn(`No machine found for line: ${line}`);
+                oeeLogger.warn(`No machine ID found for machine name: ${machineName}`);
                 return;
             }
 
-            // Überprüfe, ob ein Auftrag im Status "REL" existiert
             const hasRunningOrder = await checkForRunningOrder(machineId);
-
             if (!hasRunningOrder) {
-                oeeLogger.info(`No running order found for line ${line} (machine_id=${machineId}). Skipping OEE calculation.`);
-                return; // Keine OEE-Berechnung, da kein laufender Auftrag vorhanden ist
+                oeeLogger.info(`No running order found for machine ${machineName} (machine_id=${machineId}). Skipping OEE calculation.`);
+                return;
             }
 
-            // Decodiere die Sparkplug-Nachricht
             const sparkplug = getSparkplugPayload('spBv1.0');
             const decodedMessage = sparkplug.decodePayload(message);
 
-            // Verarbeite die Nachricht basierend auf dem dataType (DCMD oder DDATA)
             if (dataType === 'DCMD') {
                 handleCommandMessage(decodedMessage, machineId, metric);
             } else if (dataType === 'DDATA') {
@@ -72,6 +61,7 @@ function setupMqttClient() {
             errorLogger.error(`Received message: ${message.toString()}`);
         }
     });
+
 
     client.on('error', (error) => {
         errorLogger.error(`MQTT client error: ${error.message}`);
@@ -89,31 +79,63 @@ function setupMqttClient() {
 }
 
 /**
- * Subscribes the MQTT client to necessary topics based on the OEE configuration.
- * @param {Object} client - The MQTT client instance.
+ * Versucht nacheinander, die MQTT-Themen für die OEE-fähigen Maschinen zu abonnieren.
+ * @param {Object} client - Der MQTT-Client.
  */
-function subscribeToTopics(client) {
-    Object.keys(oeeConfig).forEach(metric => {
-        const topic = `${topicFormat.replace('group_id', structure.Group_id).replace('message_type', 'DDATA').replace('edge_node_id', structure.edge_node_id)}/${metric}`;
-        console.log(`Subscribing to topic: ${topic}`);
-        client.subscribe(topic, (err) => {
-            if (!err) {
-                oeeLogger.info(`Successfully subscribed to topic: ${topic}`);
-            } else {
-                errorLogger.error(`Error subscribing to topic ${topic}: ${err.message}`);
-            }
+function tryToSubscribeToMachineTopics(client) {
+    const allMachines = loadMachineData();
+    const oeeEnabledMachines = allMachines.filter(machine => machine.OEE === true);
+
+    function tryNextMachine(index) {
+        if (index >= oeeEnabledMachines.length) {
+            oeeLogger.info('No more machines to try for MQTT topics.');
+            return;
+        }
+
+        const machine = oeeEnabledMachines[index];
+        const topics = generateMqttTopics(machine);
+
+        let subscribed = false;
+        let pendingSubscriptions = topics.length;
+
+        topics.forEach((topic) => {
+            client.subscribe(topic, (err) => {
+                pendingSubscriptions--;
+                if (!err) {
+                    subscribed = true;
+                    oeeLogger.info(`Successfully subscribed to topic for machine ${machine.name}: ${topic}`);
+                } else {
+                    errorLogger.error(`Error subscribing to topic ${topic} for machine ${machine.name}: ${err.message}`);
+                }
+
+                if (pendingSubscriptions === 0) {
+                    if (!subscribed) {
+                        oeeLogger.warn(`No MQTT topics available for machine ${machine.name}. Trying next machine...`);
+                    }
+                    tryNextMachine(index + 1); // Try the next machine
+                }
+            });
         });
+    }
+
+    tryNextMachine(0); // Start with the first machine
+}
+
+/**
+ * Generate MQTT topics based on the machine data.
+ * @param {Object} machine - The machine data from machine.json.
+ * @returns {Array<string>} An array of MQTT topics.
+ */
+function generateMqttTopics(machine) {
+    const topics = [];
+    const oeeMetrics = Object.keys(oeeConfig); // Assuming oeeConfig is an object with OEE metrics
+
+    oeeMetrics.forEach(metric => {
+        const topic = `spBv1.0/${machine.Plant}/${machine.area}/DDATA/${machine.name}/${metric}`;
+        topics.push(topic);
     });
 
-    const commandTopic = `${topicFormat.replace('group_id', structure.Group_id).replace('message_type', 'DCMD').replace('edge_node_id', structure.edge_node_id)}/#`;
-    console.log(`Subscribing to command topic: ${commandTopic}`);
-    client.subscribe(commandTopic, (err) => {
-        if (!err) {
-            oeeLogger.info(`Successfully subscribed to command topic: ${commandTopic}`);
-        } else {
-            errorLogger.error(`Error subscribing to command topic ${commandTopic}: ${err.message}`);
-        }
-    });
+    return topics;
 }
 
 /**
@@ -123,7 +145,7 @@ function subscribeToTopics(client) {
  */
 async function getMachineIdFromLineCode(lineCode) {
     oeeLogger.debug(`Searching for machine ID with line code: ${lineCode}`);
-    const machines = loadMachineData(); // Funktion zum Laden von machine.json
+    const machines = loadMachineData();
     const machine = machines.find(m => m.name === lineCode);
 
     if (machine) {
@@ -141,18 +163,17 @@ async function getMachineIdFromLineCode(lineCode) {
  * @returns {boolean} True if there is a running order, false otherwise.
  */
 async function checkForRunningOrder(machineId) {
-
-    const processOrders = loadProcessOrderData(); // Funktion zum Laden von processOrder.json
+    const processOrders = loadProcessOrderData();
 
     const runningOrder = processOrders.find(order => order.machine_id === machineId && order.ProcessOrderStatus === "REL");
 
     if (runningOrder) {
-        oeeLogger.info(`Running order found: ProcessOrderNumber=${runningOrder.ProcessOrderNumber} for machine ID: ${machineId}`);
+        oeeLogger.debug(`Running order found: ProcessOrderNumber=${runningOrder.ProcessOrderNumber} for machine ID: ${machineId}`);
     } else {
-        oeeLogger.info(`No running order found for machine ID: ${machineId}`);
+        oeeLogger.error(`No running order found for machine ID: ${machineId}`);
     }
 
-    return !!runningOrder; // Return true if a running order is found, otherwise false
+    return !!runningOrder;
 }
 
 module.exports = { setupMqttClient };
