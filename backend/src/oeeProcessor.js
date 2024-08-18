@@ -1,4 +1,6 @@
-const { oeeLogger, errorLogger } = require('../utils/logger');
+const fs = require('fs');
+const path = require('path');
+const { oeeLogger, errorLogger, defaultLogger } = require('../utils/logger');
 const { OEECalculator, writeOEEToInfluxDB } = require('../src/oeeCalculator');
 const { loadDataAndPrepareOEE } = require('../src/downtimeManager');
 const { influxdb } = require('../config/config');
@@ -8,6 +10,38 @@ const moment = require('moment-timezone');
 const TIMEZONE = process.env.TIMEZONE || 'Europe/Berlin'; // Set timezone from .env or default to 'Europe/Berlin'
 
 const oeeCalculators = new Map(); // Map for OEE calculators for each machineId
+
+/**
+ * Load machine data from machine.json.
+ * @returns {Array} Array of machine objects.
+ */
+function loadMachineData() {
+    const machineDataPath = path.join(__dirname, '../data/machine.json');
+    return JSON.parse(fs.readFileSync(machineDataPath, 'utf8'));
+}
+
+/**
+ * Get plant and area based on the machineId.
+ * @param {string} machineId - The ID of the machine.
+ * @returns {Object} An object containing the plant and area.
+ */
+function getPlantAndArea(machineId) {
+    const machines = loadMachineData();
+    const machine = machines.find(m => m.machine_id === machineId);
+
+    if (machine) {
+        return {
+            plant: machine.Plant || 'UnknownPlant', // Handle cases where Plant is undefined or null
+            area: machine.area || 'UnknownArea' // Handle cases where area is undefined or null
+        };
+    }
+
+    errorLogger.warn(`Plant and Area not found for machineId: ${machineId}`);
+    return {
+        plant: 'UnknownPlant',
+        area: 'UnknownArea'
+    };
+}
 
 /**
  * Update a metric with a new value and process it immediately.
@@ -40,6 +74,9 @@ async function processMetrics(machineId) {
             calculator = new OEECalculator();
             oeeCalculators.set(machineId, calculator);
         }
+
+        // Get plant and area information based on machineId
+        const { plant, area } = getPlantAndArea(machineId);
 
         // Initialize OEE Calculator and load OEE data in parallel
         const OEEData = loadDataAndPrepareOEE(machineId);
@@ -88,44 +125,38 @@ async function processMetrics(machineId) {
 
         const metrics = calculator.getMetrics(machineId);
         if (!metrics) {
-            throw new Error(`Metrics could not be calculated or are undefined for line: ${machineId}.`);
+            throw new Error(`Metrics could not be calculated or are undefined for machineId: ${machineId}.`);
         }
 
-        const { oee, availability, performance, quality, ProcessOrderNumber, StartTime, EndTime, plannedProduction, machine_Id, MaterialNumber, MaterialDescription } = metrics;
-        const level = calculator.classifyOEE(oee / 100);
-
-        oeeLogger.info(`Calculated Availability: ${availability}`);
-        oeeLogger.info(`Calculated Performance: ${performance}`);
-        oeeLogger.info(`Calculated Quality: ${quality}`);
-        oeeLogger.info(`Calculated OEE: ${oee}% (Level: ${level})`);
-
         // Convert StartTime and EndTime to the desired timezone
-        const startTimeInTimezone = moment.tz(StartTime, "UTC").tz(TIMEZONE).format();
-        const endTimeInTimezone = moment.tz(EndTime, "UTC").tz(TIMEZONE).format();
+        const startTimeInTimezone = moment.tz(metrics.StartTime, "UTC").tz(TIMEZONE).format();
+        const endTimeInTimezone = moment.tz(metrics.EndTime, "UTC").tz(TIMEZONE).format();
 
         // Prepare payload with additional details
         const roundedMetrics = {
-            oee: Math.round(oee * 100) / 100,
-            availability: Math.round(availability * 10000) / 100,
-            performance: Math.round(performance * 10000) / 100,
-            quality: Math.round(quality * 10000) / 100,
-            level,
+            oee: Math.round(metrics.oee * 100) / 100,
+            availability: Math.round(metrics.availability * 10000) / 100,
+            performance: Math.round(metrics.performance * 10000) / 100,
+            quality: Math.round(metrics.quality * 10000) / 100,
+            level: calculator.classifyOEE(metrics.oee / 100),
             processData: {
-                ProcessOrderNumber,
+                ProcessOrderNumber: metrics.ProcessOrderNumber,
                 StartTime: startTimeInTimezone,
                 EndTime: endTimeInTimezone,
-                plannedProduction,
+                plannedProduction: metrics.plannedProduction,
                 plannedDowntime: totalTimes.plannedDowntime,
                 unplannedDowntime: totalTimes.unplannedDowntime,
                 microstops: totalTimes.microstops,
-                MaterialNumber,
-                MaterialDescription,
-                machineId
+                MaterialNumber: metrics.MaterialNumber,
+                MaterialDescription: metrics.MaterialDescription,
+                machineId,
+                plant, // Include the plant information
+                area // Include the area information
             }
         };
 
         // Log summary
-        oeeLogger.info(`OEE Metrics Summary for line ${machineId}: OEE=${roundedMetrics.oee}%, Availability=${roundedMetrics.availability}%, Performance=${roundedMetrics.performance}%, Quality=${roundedMetrics.quality}%, Level=${roundedMetrics.level}`);
+        oeeLogger.info(`OEE Metrics Summary for machine ${machineId}: OEE=${roundedMetrics.oee}%, Availability=${roundedMetrics.availability}%, Performance=${roundedMetrics.performance}%, Quality=${roundedMetrics.quality}%, Level=${roundedMetrics.level}`);
         oeeLogger.info(`Process Data: ${JSON.stringify(roundedMetrics.processData)}`);
 
         // Write metrics to InfluxDB if configured
@@ -139,7 +170,7 @@ async function processMetrics(machineId) {
         oeeLogger.debug(`Chart Data: ${JSON.stringify(OEEData)}`);
 
     } catch (error) {
-        errorLogger.warn(`Error calculating metrics for line ${machineId}: ${error.message}`);
+        errorLogger.warn(`Error calculating metrics for machine ${machineId}: ${error.message}`);
     }
 }
 

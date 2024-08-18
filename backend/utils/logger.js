@@ -3,6 +3,7 @@ const DailyRotateFile = require('winston-daily-rotate-file');
 const path = require('path');
 require('dotenv').config(); // Load the .env file
 
+// Log-Format definieren
 const logFormat = winston.format.printf(({ level, message, timestamp, ...metadata }) => {
     let logMessage = `${timestamp} ${level}: ${message}`;
     if (Object.keys(metadata).length) {
@@ -11,6 +12,7 @@ const logFormat = winston.format.printf(({ level, message, timestamp, ...metadat
     return logMessage;
 });
 
+// Log-Level und Einstellungen laden
 const logLevels = (process.env.LOG_LEVELS || 'debug').split(',').map(level => level.trim());
 const retentionDays = process.env.LOG_RETENTION_DAYS || 14;
 const logToConsole = process.env.LOG_TO_CONSOLE === 'true';
@@ -32,8 +34,8 @@ const customFilter = winston.format((info) => logLevels.includes(info.level) ? i
 const createTransport = (type, filename) => {
     if (type === 'console' && logToConsole) {
         return new winston.transports.Console({
+            level: logLevels[0], // Setzt das niedrigste Level, um alle höheren Levels einzuschließen
             format: winston.format.combine(
-                customFilter(),
                 winston.format.colorize(),
                 winston.format.timestamp(),
                 logFormat
@@ -47,8 +49,8 @@ const createTransport = (type, filename) => {
             datePattern: 'YYYY-MM-DD',
             maxSize: '20m',
             maxFiles: `${retentionDays}d`,
+            level: logLevels[0], // Setzt das niedrigste Level, um alle höheren Levels einzuschließen
             format: winston.format.combine(
-                customFilter(),
                 winston.format.timestamp(),
                 logFormat
             )
@@ -69,8 +71,8 @@ const createHandlers = (name) => [
         datePattern: 'YYYY-MM-DD',
         maxSize: '20m',
         maxFiles: `${retentionDays}d`,
+        level: logLevels[0], // Setzt das niedrigste Level, um alle höheren Levels einzuschließen
         format: winston.format.combine(
-            customFilter(),
             winston.format.timestamp(),
             logFormat
         )
@@ -83,13 +85,20 @@ const createHandlers = (name) => [
  * @returns {Object} Winston logger.
  */
 const createLogger = (logFilename = 'app') => {
-    const transports = [
-        createTransport('console'),
-        createTransport('file', logFilename)
-    ].filter(Boolean); // Filter out null transports
+    const transports = [];
+
+    // Console-Transport hinzufügen, wenn aktiviert
+    if (logToConsole) {
+        transports.push(createTransport('console'));
+    }
+
+    // File-Transport hinzufügen, wenn aktiviert
+    if (logToFile) {
+        transports.push(createTransport('file', logFilename));
+    }
 
     return winston.createLogger({
-        level: 'debug',
+        level: logLevels[0], // Setzt das niedrigste Level, um alle höheren Levels einzuschließen
         format: winston.format.combine(
             winston.format.timestamp(),
             winston.format.json()
@@ -100,7 +109,7 @@ const createLogger = (logFilename = 'app') => {
     });
 };
 
-// Create different logger instances for various logging purposes
+// Logger-Instanzen für verschiedene Zwecke erstellen
 const oeeLogger = createLogger('oee');
 const errorLogger = createLogger('error');
 const defaultLogger = createLogger();

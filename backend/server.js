@@ -14,6 +14,7 @@ const swaggerJsdoc = require('swagger-jsdoc');
 const { loadUsers, saveUsers } = require('./services/userService');
 const { authenticateToken, authorizeRole } = require('./middlewares/auth');
 
+
 /**
  * Load environment variables from .env file.
  * Ensures that environment-specific configurations are available throughout the application.
@@ -59,9 +60,10 @@ const swaggerOptions = {
     definition: {
         openapi: '3.0.0',
         info: {
-            title: 'API Documentation',
-            version: '1.0.0',
-            description: 'This is the API documentation for the REST API.',
+            title: 'API Documentation for OEE System',
+
+            version: '0.0.1',
+            description: 'This is the API documentation for the REST API',
         },
         servers: [{
             url: `http://localhost:${port}/api/v1`, // Ihre Basis-URL anpassen

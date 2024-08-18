@@ -1,6 +1,5 @@
 const { InfluxDB, Point } = require('@influxdata/influxdb-client');
-const { oeeLogger, errorLogger } = require('../utils/logger');
-
+const { oeeLogger, errorLogger, defaultLogger } = require('../utils/logger');
 const { influxdb, oeeAsPercent } = require('../config/config');
 const { loadDataAndPrepareOEE } = require('../src/downtimeManager');
 const { loadProcessOrderData } = require('../src/dataLoader');
@@ -44,11 +43,15 @@ class OEECalculator {
     // Initialize OEE data with process order data
     async init(machineId) {
         try {
+            oeeLogger.debug(`Initializing OEECalculator for machineId ${machineId}`);
             const processOrderData = await loadProcessOrderData(machineId);
-            oeeLogger.info(`Loaded process order data for machineId ${machineId}: ${JSON.stringify(processOrderData)}`);
             if (processOrderData.length === 0) {
                 throw new Error(`No active process order found for machineId ${machineId}.`);
             }
+            // Add this line to log the processOrderData before validation
+            oeeLogger.debug(`Init Process Order Data I: ${JSON.stringify(processOrderData)}`);
+            oeeLogger.debug(`Init Process Order Data II: ${JSON.stringify(processOrderData[0])}`);
+
 
             this.validateProcessOrderData(processOrderData); // Validate the data
             this.setOEEData(processOrderData[0], machineId); // Set the OEE data for the specific machineId
@@ -77,6 +80,10 @@ class OEECalculator {
         }
 
         const { ProcessOrderNumber, setupTime, processingTime, teardownTime, totalPartsToBeProduced, Start, End, MaterialNumber, MaterialDescription } = data;
+
+        // Log the data being set
+        oeeLogger.debug(`Setting OEE Data for machineId ${machineId}: ProcessOrderNumber=${ProcessOrderNumber}, MaterialNumber=${MaterialNumber}, MaterialDescription=${MaterialDescription}`);
+
         this.oeeData[machineId].ProcessOrderNumber = ProcessOrderNumber || 'UnknownOrder';
         this.oeeData[machineId].plannedProduction = setupTime + processingTime + teardownTime;
         this.oeeData[machineId].runtime = setupTime + processingTime + teardownTime;
@@ -99,7 +106,6 @@ class OEECalculator {
     // Validate input OEE data before calculation
     validateInput(machineId) {
         const { plannedProduction, runtime, targetPerformance, goodProducts, totalProduction } = this.oeeData[machineId];
-        //oeeLogger.debug(`Validating input data for machineId ${machineId}: ${JSON.stringify(this.oeeData[machineId])}`);
 
         if (runtime <= 0) throw new Error('Invalid input data: runtime must be greater than 0');
         if (plannedProduction <= 0) throw new Error('Invalid input data: plannedProduction must be greater than 0');
@@ -220,19 +226,18 @@ async function writeOEEToInfluxDB(metrics) {
     }
 
     try {
-        const point = new Point('oee')
-            .tag('plant', metrics.processData.group_id)
-            .tag('area', 'Packaging')
-            .tag('machineId', metrics.processData.edge_node_id);
+        // Debugging: Log the entire processData to ensure it is as expected
+        defaultLogger.info(`Process Data before writing to InfluxDB: ${JSON.stringify(metrics.processData)}`);
 
-        // Zusätzliche Tags hinzufügen, falls notwendig
-        Object.keys(metrics.processData).forEach(key => {
-            if (typeof metrics.processData[key] !== 'object') {
-                point.tag(key, metrics.processData[key]);
-            }
-        });
+        const point = new Point('oee_metrics')
+            .tag('plant', metrics.processData.plant || 'UnknownPlant') // Tag für Werk
+            .tag('area', metrics.processData.area || 'UnknownArea') // Tag für Area
+            .tag('machineId', metrics.processData.machineId || 'UnknownMachine') // Tag für MachineID
+            .tag('ProcessOrderNumber', metrics.processData.ProcessOrderNumber || 'UnknownOrder') // Tag für Auftrag
+            .tag('MaterialNumber', metrics.processData.MaterialNumber || 'UnknownMaterial') // Tag für Material
+            .tag('MaterialDescription', metrics.processData.MaterialDescription || 'No Description'); // Tag für Materialbeschreibung
 
-        // Felder hinzufügen
+        // Felder für OEE und seine Komponenten
         point
             .floatField('oee', oeeAsPercent ? metrics.oee : metrics.oee / 100)
             .floatField('availability', oeeAsPercent ? metrics.availability * 100 : metrics.availability)
@@ -240,13 +245,20 @@ async function writeOEEToInfluxDB(metrics) {
             .floatField('quality', oeeAsPercent ? metrics.quality * 100 : metrics.quality)
             .floatField('plannedProduction', metrics.processData.plannedProduction)
             .floatField('plannedDowntime', metrics.processData.plannedDowntime)
-            .floatField('unplannedDowntime', metrics.processData.unplannedDowntime);
+            .floatField('unplannedDowntime', metrics.processData.unplannedDowntime)
+            .floatField('microstops', metrics.processData.microstops); // Felder für Downtimes und Microstops
 
+        // Schreibe den Datenpunkt in InfluxDB
         writeApi.writePoint(point);
         await writeApi.flush();
+
+        // Erfolgreiche Schreiboperation
+        defaultLogger.info(`Successfully wrote OEE metrics for machine ${metrics.processData.machineId || 'undefined'} to InfluxDB.`);
     } catch (error) {
         errorLogger.error(`Error writing to InfluxDB: ${error.message}`);
     }
 }
+
+
 
 module.exports = { OEECalculator, writeOEEToInfluxDB };

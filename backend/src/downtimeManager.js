@@ -68,7 +68,7 @@ function loadUnplannedDowntimeData() {
         } else if (unplannedDowntimeCache.length === 0) {
             oeeLogger.warn(`Unplanned downtime array is empty in ${unplannedDowntimeFilePath}`);
         } else {
-            oeeLogger.info(`Unplanned downtime data successfully loaded: ${JSON.stringify(unplannedDowntimeCache, null, 2)}`);
+            oeeLogger.debug(`Unplanned downtime data successfully loaded: ${JSON.stringify(unplannedDowntimeCache, null, 2)}`);
         }
     }
     return unplannedDowntimeCache;
@@ -84,7 +84,7 @@ function loadPlannedDowntimeData() {
         } else if (plannedDowntimeCache.length === 0) {
             oeeLogger.warn(`Planned downtime array is empty in ${plannedDowntimeFilePath}`);
         } else {
-            oeeLogger.info(`Planned downtime data successfully loaded: ${JSON.stringify(plannedDowntimeCache, null, 2)}`);
+            oeeLogger.debug(`Planned downtime data successfully loaded: ${JSON.stringify(plannedDowntimeCache, null, 2)}`);
         }
     }
     return plannedDowntimeCache;

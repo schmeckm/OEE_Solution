@@ -1,7 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 
-const MACHINE_FILE = path.join(__dirname, '../data/Machine.json');
+const MACHINE_FILE = path.join(__dirname, '../data/machine.json');
 
 // Hilfsfunktion zum Laden der Maschinen
 const loadMachines = () => {

@@ -1,9 +1,15 @@
 [{
+        "Plant": "Plant1",
+        "area": "Packaging",
+        "machineGroup": "Blister",
         "machine_id": "1",
         "name": "Falcon11",
         "description": "Description of Falcon11"
     },
     {
+        "Plant": "Plant1",
+        "area": "Packaging",
+        "machineGroup": "Blister",
         "machine_id": "2",
         "name": "Falcon12",
         "description": "Description of Falcon12"

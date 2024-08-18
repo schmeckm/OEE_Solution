@@ -1,10 +1,36 @@
+const fs = require('fs');
+const path = require('path');
 const Joi = require('joi');
+const dotenv = require('dotenv');
 
+// Lade .env-Datei
+dotenv.config();
+
+// Lade config.json und structure.json
+const configPath = path.join(__dirname, '../config/config.json');
+const structurePath = path.join(__dirname, '../config/structure.json');
+
+let jsonConfig;
+let structure;
+
+try {
+    jsonConfig = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+} catch (err) {
+    throw new Error(`Failed to load config.json: ${err.message}`);
+}
+
+try {
+    structure = JSON.parse(fs.readFileSync(structurePath, 'utf8'));
+} catch (err) {
+    throw new Error(`Failed to load structure.json: ${err.message}`);
+}
+
+// Validierungsschema für die Umgebungsvariablen
 const envSchema = Joi.object({
-    MQTT_BROKER_URL: Joi.string().uri().required(),
+    MQTT_BROKER_URL: Joi.string().uri().optional(),
     MQTT_BROKER_PORT: Joi.number().integer().default(1883),
-    MQTT_USERNAME: Joi.string().required(),
-    MQTT_PASSWORD: Joi.string().required(),
+    MQTT_USERNAME: Joi.string().optional(),
+    MQTT_PASSWORD: Joi.string().optional(),
     TLS_KEY: Joi.string().allow(null),
     TLS_CERT: Joi.string().allow(null),
     TLS_CA: Joi.string().allow(null),
@@ -18,29 +44,44 @@ const envSchema = Joi.object({
     INFLUXDB_BUCKET: Joi.string().allow(null),
     TOPIC_FORMAT: Joi.string().default('spBv1.0/group_id/message_type/edge_node_id'),
     PLANNED_DOWNTIME_API_URL: Joi.alternatives().try(Joi.string().uri(), Joi.allow(null, '')),
-    THRESHOLD_SECONDS: Joi.number().integer().default(300) // Add the threshold in seconds here
+    THRESHOLD_SECONDS: Joi.number().integer().default(300),
+    DATE_FORMAT: Joi.string().default(jsonConfig.dateSettings.dateFormat),
+    TIMEZONE: Joi.string().default(jsonConfig.dateSettings.timezone)
 }).unknown().required();
 
-const { error, value: envVars } = envSchema.validate(process.env);
+const { error, value: envVars } = envSchema.validate({
+    ...process.env,
+    MQTT_BROKER_URL: process.env.MQTT_BROKER_URL || jsonConfig.mqtt.brokerUrl,
+    MQTT_BROKER_PORT: process.env.MQTT_BROKER_PORT || jsonConfig.mqtt.brokerPort,
+    MQTT_USERNAME: process.env.MQTT_USERNAME || jsonConfig.mqtt.username,
+    MQTT_PASSWORD: process.env.MQTT_PASSWORD || jsonConfig.mqtt.password
+});
+
 if (error) {
-    throw new Error(`Config validation error: ${error.message}`);
+    throw new Error(`Environment variables validation error: ${error.message}`);
 }
 
-const tlsKey = envVars.TLS_KEY === 'null' ? null : envVars.TLS_KEY;
-const tlsCert = envVars.TLS_CERT === 'null' ? null : envVars.TLS_CERT;
-const tlsCa = envVars.TLS_CA === 'null' ? null : envVars.TLS_CA;
+const tlsKey = envVars.TLS_KEY === 'null' ? null : envVars.TLS_KEY || jsonConfig.tls.key;
+const tlsCert = envVars.TLS_CERT === 'null' ? null : envVars.TLS_CERT || jsonConfig.tls.cert;
+const tlsCa = envVars.TLS_CA === 'null' ? null : envVars.TLS_CA || jsonConfig.tls.ca;
 
 module.exports = {
     mqtt: {
         brokers: {
-            area: { url: envVars.MQTT_BROKER_URL, port: envVars.MQTT_BROKER_PORT },
-            enterprise: { url: envVars.MQTT_BROKER_URL, port: envVars.MQTT_BROKER_PORT }
+            area: {
+                url: envVars.MQTT_BROKER_URL,
+                port: envVars.MQTT_BROKER_PORT
+            },
+            enterprise: {
+                url: envVars.MQTT_BROKER_URL,
+                port: envVars.MQTT_BROKER_PORT
+            }
         },
-        topics: {
+        topics: jsonConfig.topics || {
             parris: 'spBv1.0/Plant1:Area1:Line1:Cell1/DDATA/device1',
             schultz: 'spBv1.0/+/+/NDATA/+'
         },
-        namespace: 'spBv1.0',
+        namespace: jsonConfig.namespace || 'spBv1.0',
         tls: {
             key: tlsKey,
             cert: tlsCert,
@@ -51,26 +92,32 @@ module.exports = {
             password: envVars.MQTT_PASSWORD
         }
     },
-    method: envVars.METHOD,
-    structure: require('./structure.json'),
-    logRetentionDays: envVars.LOG_RETENTION_DAYS,
-    oeeAsPercent: envVars.OEE_AS_PERCENT,
+    method: envVars.METHOD || jsonConfig.method,
+    structure: structure,
+    logRetentionDays: envVars.LOG_RETENTION_DAYS || jsonConfig.logRetentionDays,
+    oeeAsPercent: envVars.OEE_AS_PERCENT || jsonConfig.oeeAsPercent,
     influxdb: {
-        url: envVars.INFLUXDB_URL,
-        token: envVars.INFLUXDB_TOKEN,
-        org: envVars.INFLUXDB_ORG,
-        bucket: envVars.INFLUXDB_BUCKET
+        url: envVars.INFLUXDB_URL || jsonConfig.influxdb.url,
+        token: envVars.INFLUXDB_TOKEN || jsonConfig.influxdb.token,
+        org: envVars.INFLUXDB_ORG || jsonConfig.influxdb.org,
+        bucket: envVars.INFLUXDB_BUCKET || jsonConfig.influxdb.bucket
     },
-    topicFormat: envVars.TOPIC_FORMAT,
+    topicFormat: envVars.TOPIC_FORMAT || jsonConfig.topicFormat,
     api: {
-        plannedDowntimeUrl: envVars.PLANNED_DOWNTIME_API_URL
+        plannedDowntimeUrl: envVars.PLANNED_DOWNTIME_API_URL || jsonConfig.plannedDowntimeApiUrl
     },
-    thresholdSeconds: envVars.THRESHOLD_SECONDS, // Add the threshold to the module exports
-    ratings: [
-            { id: 1, description: 'Maintenance', color: 'orange' },
-            { id: 2, description: 'Operator Error', color: 'red' },
-            { id: 3, description: 'Machine Fault', color: 'blue' },
-            { id: 4, description: 'Unknown', color: 'gray' },
-            { id: 5, description: 'IT-OT', color: 'green' }
-        ] // Add ratings here
+    thresholdSeconds: envVars.THRESHOLD_SECONDS || jsonConfig.thresholdSeconds,
+    dateSettings: {
+        dateFormat: envVars.DATE_FORMAT || jsonConfig.dateSettings.dateFormat,
+        timezone: envVars.TIMEZONE || jsonConfig.dateSettings.timezone
+    },
+    ratings: jsonConfig.ratings || [
+        { id: 1, description: 'Maintenance', color: 'orange' },
+        { id: 2, description: 'Operator Error', color: 'red' },
+        { id: 3, description: 'Machine Fault', color: 'blue' },
+        { id: 4, description: 'Unknown', color: 'gray' },
+        { id: 5, description: 'IT-OT', color: 'green' }
+    ]
 };
+
+console.log("Configuration loaded successfully.");
