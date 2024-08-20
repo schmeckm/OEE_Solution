@@ -58,18 +58,6 @@ function loadAndConvertMachineStoppagesData() {
     }
 }
 
-// Try to load process order data on module start
-try {
-    processOrderData = loadProcessOrderData();
-    oeeLogger.info(`Process order data loaded: ${JSON.stringify(processOrderData)}`);
-    if (processOrderData && processOrderData.length > 0) {
-        oeeLogger.info(`Loaded ProcessOrderNumber: ${processOrderData[0].ProcessOrderNumber}`);
-    } else {
-        oeeLogger.warn('Process order data is empty or undefined.');
-    }
-} catch (error) {
-    errorLogger.error(`Failed to load process order data: ${error.message}`);
-}
 
 // Send initial machine stoppages data to WebSocket clients
 try {

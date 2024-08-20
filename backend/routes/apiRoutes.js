@@ -16,8 +16,13 @@ const oeeLogsRouter = require('./oeeLogs');
 const calculateOEERouter = require('./calculateOEE');
 
 /**
- * Funktion zur Registrierung der API-Routen.
- * @param {Object} app - Express-Anwendung.
+ * Registers the API routes with the provided Express application.
+ * 
+ * This function sets up all the API endpoints related to OEE (Overall Equipment Effectiveness) 
+ * and additional endpoints. It attaches the routers that handle specific API paths to the 
+ * Express application instance.
+ * 
+ * @param {express.Express} app - The Express application instance.
  */
 function registerApiRoutes(app) {
     // OEE API Endpoints
@@ -30,7 +35,7 @@ function registerApiRoutes(app) {
     app.use('/api/v1/microstops', microStopsRouter);
 
     // Additional API Endpoints
-    // app.use('/api/v1/settings', settingsRouter)
+    // app.use('/api/v1/settings', settingsRouter);
     app.use('/api/v1/structure', structureRouter);
     app.use('/api/v1/oee-logs', oeeLogsRouter);
     app.use('/api/v1/calculateOEE', calculateOEERouter);

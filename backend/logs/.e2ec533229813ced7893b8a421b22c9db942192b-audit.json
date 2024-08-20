@@ -6,9 +6,9 @@
     "auditLog": "C:\\Users\\marku\\OneDrive\\Dokumente\\markus_data\\Software Development\\Visual_Studio_Projects\\OEE_Event_Driven II\\backend\\logs\\.e2ec533229813ced7893b8a421b22c9db942192b-audit.json",
     "files": [
         {
-            "date": 1724010296494,
-            "name": "C:\\Users\\marku\\OneDrive\\Dokumente\\markus_data\\Software Development\\Visual_Studio_Projects\\OEE_Event_Driven II\\backend\\logs\\unplannedDowntime-2024-08-18.log",
-            "hash": "2077d65779cbf1ac24028cb709f175f42c8fee399d5656f8130bd4308b68a221"
+            "date": 1724054475341,
+            "name": "C:\\Users\\marku\\OneDrive\\Dokumente\\markus_data\\Software Development\\Visual_Studio_Projects\\OEE_Event_Driven II\\backend\\logs\\unplannedDowntime-2024-08-19.log",
+            "hash": "d793b39f3ef8ef0d77ca93385d2c0a30b0a9e3cd4b256fbd5753c7463c3ef2c9"
         }
     ],
     "hashType": "sha256"

@@ -45,7 +45,29 @@ function getPlantAndArea(machineId) {
 }
 
 /**
+ * Logs the current content of the OEE calculators map for debugging purposes.
+ */
+function debugOeeCalculatorsMap() {
+    oeeLogger.info('Debugging OEE Calculators Map:');
+    oeeCalculators.forEach((calculator, machineId) => {
+        oeeLogger.info(`Machine ID: ${machineId}`);
+        oeeLogger.info(`OEE Data: ${JSON.stringify(calculator.getMetrics(machineId), null, 2)}`);
+    });
+}
+
+/**
+ * Logs the current content of the processing map for debugging purposes.
+ */
+function debugProcessingMap() {
+    oeeLogger.info('Debugging Processing Map:');
+    processing.forEach((isProcessing, machineId) => {
+        oeeLogger.info(`Machine ID: ${machineId}, isProcessing: ${isProcessing}`);
+    });
+}
+
+/**
  * Updates a metric with a new value and processes it immediately.
+ * If the OEECalculator for the machine does not exist, it initializes one.
  * @param {string} name - The name of the metric.
  * @param {number} value - The value of the metric.
  * @param {string} machineId - The MachineID or Workcenter.
@@ -54,20 +76,29 @@ function updateMetric(name, value, machineId) {
     let calculator = oeeCalculators.get(machineId);
     if (!calculator) {
         calculator = new OEECalculator();
-        oeeCalculators.set(machineId, calculator);
+        // Initialize the calculator and then update the metric
+        calculator.init(machineId).then(() => {
+            oeeCalculators.set(machineId, calculator);
+            calculator.updateData(name, value, machineId);
+            debugOeeCalculatorsMap(); // Debugging OEE Calculators Map
+            processMetrics(machineId);
+        }).catch(error => {
+            errorLogger.error(`Error during OEECalculator initialization: ${error.message}`);
+        });
+    } else {
+        calculator.updateData(name, value, machineId);
+        debugOeeCalculatorsMap(); // Debugging OEE Calculators Map
+        processMetrics(machineId);
     }
-    calculator.updateData(name, value, machineId);
-
-    // Immediately process the metric
-    processMetrics(machineId);
 }
+
+let processing = new Map(); // Map to keep track of whether a machine's metrics are being processed
 
 /**
  * Processes metrics, calculates OEE, and sends the data via WebSocket only if there are changes, for a specific MachineID.
+ * Prevents multiple processes from running for the same machine simultaneously.
  * @param {string} machineId - The MachineID or Workcenter.
  */
-let processing = new Map(); // Map to keep track of whether a machine's metrics are being processed
-
 async function processMetrics(machineId) {
     // Prevent multiple processes from running for the same machine
     if (processing.get(machineId)) {
@@ -76,6 +107,7 @@ async function processMetrics(machineId) {
     }
 
     processing.set(machineId, true); // Mark the machine as being processed
+    debugProcessingMap(); // Debugging Processing Map
 
     try {
         oeeLogger.info(`Starting metrics processing for machine: ${machineId}.`);
@@ -83,6 +115,7 @@ async function processMetrics(machineId) {
         let calculator = oeeCalculators.get(machineId);
         if (!calculator) {
             calculator = new OEECalculator();
+            await calculator.init(machineId);
             oeeCalculators.set(machineId, calculator);
         }
 
@@ -140,14 +173,18 @@ async function processMetrics(machineId) {
         oeeLogger.debug(`OEE Data: ${JSON.stringify(OEEData)}`);
 
     } catch (error) {
-        // Log the error using errorLogger
         errorLogger.warn(`Error calculating metrics for machine ${machineId}: ${error.message}`);
     } finally {
         processing.set(machineId, false); // Mark the machine as no longer being processed
+        debugProcessingMap(); // Debugging Processing Map after processing
     }
 }
 
-// Validation function to ensure that the data is valid before calculations
+/**
+ * Validation function to ensure that the data is valid before calculations.
+ * @param {Object} totalTimes - Object containing total production, downtime, and break times.
+ * @param {string} machineId - The MachineID or Workcenter.
+ */
 function validateInputData(totalTimes, machineId) {
     const { unplannedDowntime, plannedDowntime, productionTime } = totalTimes;
 
@@ -162,7 +199,16 @@ function validateInputData(totalTimes, machineId) {
     }
 }
 
-// Formatting function for metrics
+/**
+ * Formats the metrics into a structured object for logging and database storage.
+ * @param {Object} metrics - The metrics object from the OEECalculator.
+ * @param {string} machineId - The MachineID or Workcenter.
+ * @param {Object} totalTimes - Object containing total production, downtime, and break times.
+ * @param {string} plant - The plant associated with the machine.
+ * @param {string} area - The area associated with the machine.
+ * @param {string} lineId - The lineId associated with the machine.
+ * @returns {Object} Formatted metrics.
+ */
 function formatMetrics(metrics, machineId, totalTimes, plant, area, lineId) {
     return {
         oee: Math.round(metrics.oee * 100) / 100,

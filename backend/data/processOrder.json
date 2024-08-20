@@ -28,6 +28,6 @@
         "goodProducts": 780,
         "totalProduction": 800,
         "machine_id": "2",
-        "ProcessOrderStatus": "CRD"
+        "ProcessOrderStatus": "REL"
     }
 ]

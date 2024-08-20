@@ -14,7 +14,6 @@ const swaggerJsdoc = require('swagger-jsdoc');
 const { loadUsers, saveUsers } = require('./services/userService');
 const { authenticateToken, authorizeRole } = require('./middlewares/auth');
 
-
 /**
  * Load environment variables from .env file.
  * Ensures that environment-specific configurations are available throughout the application.
@@ -34,7 +33,7 @@ const app = express();
 const port = process.env.PORT || 3000;
 
 /**
- * Security Middleware
+ * Security Middleware Setup
  * - `helmet()`: Sets various HTTP headers to secure the app.
  * - `express.json()`: Parses incoming requests with JSON payloads and limits payload size to prevent DoS attacks.
  * - `express.urlencoded()`: Parses incoming requests with URL-encoded payloads and limits payload size.
@@ -54,22 +53,21 @@ const limiter = rateLimit({
 app.use(limiter);
 
 /**
- * Swagger Setup
+ * Swagger Setup for API Documentation
  */
 const swaggerOptions = {
     definition: {
         openapi: '3.0.0',
         info: {
             title: 'API Documentation for OEE System',
-
             version: '0.0.1',
             description: 'This is the API documentation for the REST API',
         },
         servers: [{
-            url: `http://localhost:${port}/api/v1`, // Ihre Basis-URL anpassen
+            url: `http://localhost:${port}/api/v1`, // Adjust your base URL
         }, ],
     },
-    apis: ['./routes/*.js'], // Pfad zu Ihren API-Routen
+    apis: ['./routes/*.js'], // Path to your API routes
 };
 
 const swaggerSpecs = swaggerJsdoc(swaggerOptions);
@@ -78,6 +76,7 @@ app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpecs));
 /**
  * Register API Endpoints
  * Centralized function to register all API routes, including OEE and additional endpoints.
+ * @param {express.Express} app - The Express application instance.
  */
 registerApiRoutes(app);
 
@@ -87,6 +86,13 @@ defaultLogger.info('Logger initialized successfully.');
  * User Registration Endpoint
  * Allows new users to register with a username, password, and role.
  * Password is hashed before saving to the JSON file.
+ * @name /register
+ * @function
+ * @memberof module:routes
+ * @param {string} username - The username for the new user.
+ * @param {string} password - The password for the new user.
+ * @param {string} role - The role of the new user (e.g., 'admin', 'user').
+ * @returns {JSON} Success or error message.
  */
 app.post('/register', async(req, res) => {
     const { username, password, role } = req.body;
@@ -116,6 +122,12 @@ app.post('/register', async(req, res) => {
 /**
  * User Login Endpoint
  * Authenticates the user and returns a JWT token if successful.
+ * @name /login
+ * @function
+ * @memberof module:routes
+ * @param {string} username - The username for the user.
+ * @param {string} password - The password for the user.
+ * @returns {JSON} JWT token or error message.
  */
 app.post('/login', async(req, res) => {
     const { username, password } = req.body;
@@ -141,6 +153,10 @@ app.post('/login', async(req, res) => {
 /**
  * Protected Admin Route
  * Example of a protected route that only users with the 'admin' role can access.
+ * @name /admin
+ * @function
+ * @memberof module:routes
+ * @returns {JSON} Success message if authorized.
  */
 app.get('/admin', authenticateToken, authorizeRole('admin'), (req, res) => {
     res.json({ message: 'Welcome, Admin!' });
@@ -149,6 +165,8 @@ app.get('/admin', authenticateToken, authorizeRole('admin'), (req, res) => {
 /**
  * Cron Job for Log Cleanup
  * Schedules a daily job to clean up old logs based on the retention policy.
+ * @function
+ * @memberof module:cronJobs
  */
 startLogCleanupJob(logRetentionDays);
 
@@ -156,6 +174,8 @@ startLogCleanupJob(logRetentionDays);
  * MQTT Client Initialization
  * Initializes the MQTT client for handling MQTT-based communication.
  * Logs success or failure of the initialization.
+ * @function
+ * @memberof module:mqttClientSetup
  */
 const mqttClient = initializeMqttClient();
 
@@ -163,6 +183,8 @@ const mqttClient = initializeMqttClient();
  * HTTP Server Initialization
  * Starts the Express server on the specified port.
  * Logs the success of the server start.
+ * @function
+ * @memberof module:server
  */
 const server = app.listen(port, () => {
     defaultLogger.info(`Server is running on port ${port}`);
@@ -172,6 +194,8 @@ const server = app.listen(port, () => {
  * WebSocket Server Setup
  * Initializes the WebSocket server, attaches it to the HTTP server, 
  * and delegates connection handling to a dedicated function.
+ * @function
+ * @memberof module:webSocketHandler
  */
 const wss = new Server({ server });
 
@@ -179,6 +203,8 @@ const wss = new Server({ server });
  * Handle WebSocket Connections
  * Delegates the handling of WebSocket connections, messages, and disconnections 
  * to an external handler function for modularity and clarity.
+ * @function
+ * @memberof module:webSocketHandler
  */
 handleWebSocketConnections(wss);
 
@@ -186,6 +212,8 @@ handleWebSocketConnections(wss);
  * Associate WebSocket Server with OEE Processor
  * Sets the WebSocket server instance within the OEE processor for 
  * further communication handling.
+ * @function
+ * @memberof module:oeeProcessor
  */
 setWebSocketServer(wss);
 
@@ -194,6 +222,8 @@ setWebSocketServer(wss);
  * Listens for termination signals (SIGTERM, SIGINT) to gracefully 
  * shut down the server and disconnect the MQTT client.
  * Ensures that the server closes properly without data loss.
+ * @function
+ * @memberof module:shutdown
  */
 process.on('SIGTERM', () => gracefulShutdown(server, mqttClient, 'SIGTERM'));
 process.on('SIGINT', () => gracefulShutdown(server, mqttClient, 'SIGINT'));

@@ -16,10 +16,19 @@ const logFormat = winston.format.printf(({ level, message, timestamp, ...metadat
 });
 
 // Load log levels and settings
-const logLevels = (process.env.LOG_LEVELS || 'debug').split(',').map(level => level.trim());
+const logLevels = (process.env.LOG_LEVELS || 'info').split(',').map(level => level.trim());
 const retentionDays = process.env.LOG_RETENTION_DAYS || 14;
 const logToConsole = process.env.LOG_TO_CONSOLE === 'true';
 const logToFile = process.env.LOG_TO_FILE === 'true';
+
+/**
+ * Custom filter to only allow specified log levels.
+ * @param {Object} info - Log information.
+ * @returns {Object|boolean} Log information or false if the level is not included.
+ */
+const customFilter = winston.format((info) => {
+    return logLevels.includes(info.level) ? info : false;
+});
 
 /**
  * Helper function to create a log transport.
@@ -30,8 +39,9 @@ const logToFile = process.env.LOG_TO_FILE === 'true';
 const createTransport = (type, filename) => {
     if (type === 'console' && logToConsole) {
         return new winston.transports.Console({
-            level: 'debug', // Set to 'debug' to include all levels from debug to error
+            level: logLevels[0], // Set the lowest level from LOG_LEVELS
             format: winston.format.combine(
+                customFilter(), // Apply custom filter
                 winston.format.colorize(),
                 winston.format.timestamp(),
                 logFormat
@@ -45,8 +55,9 @@ const createTransport = (type, filename) => {
             datePattern: 'YYYY-MM-DD',
             maxSize: '20m',
             maxFiles: `${retentionDays}d`,
-            level: 'debug', // Set to 'debug' to include all levels from debug to error
+            level: logLevels[0], // Set the lowest level from LOG_LEVELS
             format: winston.format.combine(
+                customFilter(), // Apply custom filter
                 winston.format.timestamp(),
                 logFormat
             )
@@ -73,8 +84,9 @@ const createLogger = (logFilename = 'app') => {
     }
 
     return winston.createLogger({
-        level: 'debug', // Set to 'debug' to ensure all levels are captured
+        level: logLevels[0], // Set the lowest level based on LOG_LEVELS from .env
         format: winston.format.combine(
+            customFilter(), // Apply custom filter
             winston.format.timestamp(),
             winston.format.json()
         ),

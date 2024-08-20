@@ -31,9 +31,9 @@ function setupMqttClient() {
             const topicParts = topic.split('/');
             const [version, location, area, dataType, machineName, metric] = topicParts;
 
-            oeeLogger.info(`Received message on topic ${topic}: machine=${machineName}, metric=${metric}`);
+            oeeLogger.debug(`Received message on topic ${topic}: machine=${machineName}, metric=${metric}`);
 
-            // Erhalte die machine_id basierend auf dem Maschinenname (machineName)
+            // Get the machine_id based on the machineName
             const machineId = await getMachineIdFromLineCode(machineName);
             if (!machineId) {
                 oeeLogger.warn(`No machine ID found for machine name: ${machineName}`);
@@ -62,7 +62,6 @@ function setupMqttClient() {
         }
     });
 
-
     client.on('error', (error) => {
         errorLogger.error(`MQTT client error: ${error.message}`);
     });
@@ -79,8 +78,8 @@ function setupMqttClient() {
 }
 
 /**
- * Versucht nacheinander, die MQTT-Themen für die OEE-fähigen Maschinen zu abonnieren.
- * @param {Object} client - Der MQTT-Client.
+ * Tries to subscribe to MQTT topics for OEE-enabled machines.
+ * @param {Object} client - The MQTT client instance.
  */
 function tryToSubscribeToMachineTopics(client) {
     const allMachines = loadMachineData();
@@ -112,23 +111,23 @@ function tryToSubscribeToMachineTopics(client) {
                     if (!subscribed) {
                         oeeLogger.warn(`No MQTT topics available for machine ${machine.name}. Trying next machine...`);
                     }
-                    tryNextMachine(index + 1); // Try the next machine
+                    tryNextMachine(index + 1);
                 }
             });
         });
     }
 
-    tryNextMachine(0); // Start with the first machine
+    tryNextMachine(0);
 }
 
 /**
- * Generate MQTT topics based on the machine data.
+ * Generates MQTT topics based on the machine data.
  * @param {Object} machine - The machine data from machine.json.
  * @returns {Array<string>} An array of MQTT topics.
  */
 function generateMqttTopics(machine) {
     const topics = [];
-    const oeeMetrics = Object.keys(oeeConfig); // Assuming oeeConfig is an object with OEE metrics
+    const oeeMetrics = Object.keys(oeeConfig);
 
     oeeMetrics.forEach(metric => {
         const topic = `spBv1.0/${machine.Plant}/${machine.area}/DDATA/${machine.name}/${metric}`;
@@ -139,9 +138,9 @@ function generateMqttTopics(machine) {
 }
 
 /**
- * Get machine ID from the line code by looking up in machine.json
+ * Retrieves the machine ID from the line code by looking up in machine.json.
  * @param {string} lineCode - The line code from the MQTT topic.
- * @returns {string|null} The machine ID or null if not found.
+ * @returns {Promise<string|null>} The machine ID or null if not found.
  */
 async function getMachineIdFromLineCode(lineCode) {
     oeeLogger.debug(`Searching for machine ID with line code: ${lineCode}`);
@@ -158,9 +157,9 @@ async function getMachineIdFromLineCode(lineCode) {
 }
 
 /**
- * Check if there is a running order (ProcessOrderStatus = "REL") for the given machine ID.
+ * Checks if there is a running order (ProcessOrderStatus = "REL") for the given machine ID.
  * @param {string} machineId - The machine ID.
- * @returns {boolean} True if there is a running order, false otherwise.
+ * @returns {Promise<boolean>} True if there is a running order, false otherwise.
  */
 async function checkForRunningOrder(machineId) {
     const processOrders = loadProcessOrderData();

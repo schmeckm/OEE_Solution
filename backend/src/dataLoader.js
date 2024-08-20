@@ -13,7 +13,7 @@ const plannedDowntimeFilePath = path.resolve(__dirname, '../data/plannedDowntime
 const processOrderFilePath = path.resolve(__dirname, '../data/processOrder.json');
 const shiftModelFilePath = path.resolve(__dirname, '../data/shiftModel.json');
 const machineStoppagesFilePath = path.resolve(__dirname, '../data/microstops.json');
-const machineFilePath = path.resolve(__dirname, '../data/machine.json'); // Pfad zu machine.json
+const machineFilePath = path.resolve(__dirname, '../data/machine.json'); // Path to machine.json
 
 // Caches for data
 let unplannedDowntimeCache = null;
@@ -21,7 +21,7 @@ let plannedDowntimeCache = null;
 let processOrderDataCache = null;
 let shiftModelDataCache = null;
 let machineStoppagesCache = null;
-let machineDataCache = null; // Cache für machine.json
+let machineDataCache = null; // Cache for machine.json
 
 // Load date format and timezone from environment variables
 const DATE_FORMAT = process.env.DATE_FORMAT || 'YYYY-MM-DDTHH:mm:ss.SSSZ';
@@ -29,9 +29,11 @@ const TIMEZONE = process.env.TIMEZONE || 'Europe/Berlin'; // Europe/Berlin is us
 
 /**
  * Load JSON data from a file and convert date strings to the specified timezone.
+ * 
  * @param {string} filePath - The path to the JSON file.
- * @param {Array<string>} dateFields - The fields that contain date strings.
+ * @param {Array<string>} [dateFields=[]] - The fields that contain date strings.
  * @returns {Object} The parsed and converted JSON data.
+ * @throws {Error} Will throw an error if the file cannot be read or parsed.
  */
 function loadJsonData(filePath, dateFields = []) {
     try {
@@ -60,11 +62,13 @@ function loadJsonData(filePath, dateFields = []) {
 
 /**
  * Load and cache machine data.
+ * 
  * @returns {Object} The machine data.
+ * @throws {Error} Will throw an error if the machine data cannot be loaded.
  */
 function loadMachineData() {
     if (!machineDataCache) {
-        machineDataCache = loadJsonData(machineFilePath); // Lade machine.json
+        machineDataCache = loadJsonData(machineFilePath); // Load machine.json
         oeeLogger.debug(`Machine data loaded from ${machineFilePath}`);
     }
     return machineDataCache;
@@ -72,7 +76,9 @@ function loadMachineData() {
 
 /**
  * Load and cache unplanned downtime data.
+ * 
  * @returns {Object} The unplanned downtime data.
+ * @throws {Error} Will throw an error if the unplanned downtime data cannot be loaded.
  */
 function loadUnplannedDowntimeData() {
     if (!unplannedDowntimeCache) {
@@ -84,7 +90,9 @@ function loadUnplannedDowntimeData() {
 
 /**
  * Load and cache planned downtime data.
+ * 
  * @returns {Object} The planned downtime data.
+ * @throws {Error} Will throw an error if the planned downtime data cannot be loaded.
  */
 function loadPlannedDowntimeData() {
     if (!plannedDowntimeCache) {
@@ -96,7 +104,9 @@ function loadPlannedDowntimeData() {
 
 /**
  * Load process order data once and cache it.
+ * 
  * @returns {Object} The process order data.
+ * @throws {Error} Will throw an error if the process order data is invalid or cannot be loaded.
  */
 function loadProcessOrderData() {
     if (!processOrderDataCache) {
@@ -107,15 +117,17 @@ function loadProcessOrderData() {
 
         processOrderData = validateProcessOrderData(processOrderData);
         processOrderDataCache = processOrderData;
+
         oeeLogger.debug(`Process order data loaded from ${processOrderFilePath}`);
     }
     return processOrderDataCache;
 }
 
-
 /**
  * Load shift model data once and cache it.
+ * 
  * @returns {Object} The shift model data.
+ * @throws {Error} Will throw an error if the shift model data cannot be loaded.
  */
 function loadShiftModelData() {
     if (!shiftModelDataCache) {
@@ -127,7 +139,9 @@ function loadShiftModelData() {
 
 /**
  * Load and cache machine stoppages data.
+ * 
  * @returns {Object} The machine stoppages data.
+ * @throws {Error} Will throw an error if the machine stoppages data cannot be loaded.
  */
 function loadMachineStoppagesData() {
     if (!machineStoppagesCache) {
@@ -139,8 +153,10 @@ function loadMachineStoppagesData() {
 
 /**
  * Validate process order data.
- * @param {Array} data - The process order data.
- * @returns {Array} The validated process order data.
+ * 
+ * @param {Array<Object>} data - The process order data.
+ * @returns {Array<Object>} The validated process order data.
+ * @throws {Error} Will throw an error if the data is invalid.
  */
 function validateProcessOrderData(data) {
     data.forEach(order => {
@@ -160,11 +176,13 @@ function validateProcessOrderData(data) {
 }
 
 /**
- * Get unplanned downtime for a specific machine
- * @param {string} machineId - The machine ID
- * @param {string} startTime - The start time of the process order
- * @param {string} endTime - The end time of the process order
- * @returns {number} - The total unplanned downtime in minutes
+ * Get unplanned downtime for a specific machine.
+ * 
+ * @param {string} machineId - The machine ID.
+ * @param {string} startTime - The start time of the process order.
+ * @param {string} endTime - The end time of the process order.
+ * @returns {number} - The total unplanned downtime in minutes.
+ * @throws {Error} Will throw an error if there is an issue with calculating unplanned downtime.
  */
 function getUnplannedDowntimeByMachine(machineId, startTime, endTime) {
     const unplannedDowntimes = loadUnplannedDowntimeData();
@@ -187,11 +205,13 @@ function getUnplannedDowntimeByMachine(machineId, startTime, endTime) {
 }
 
 /**
- * Get planned downtime for a specific machine
- * @param {string} machineId - The machine ID
- * @param {string} startTime - The start time of the process order
- * @param {string} endTime - The end time of the process order
- * @returns {number} - The total planned downtime in minutes
+ * Get planned downtime for a specific machine.
+ * 
+ * @param {string} machineId - The machine ID.
+ * @param {string} startTime - The start time of the process order.
+ * @param {string} endTime - The end time of the process order.
+ * @returns {number} - The total planned downtime in minutes.
+ * @throws {Error} Will throw an error if there is an issue with calculating planned downtime.
  */
 function getPlannedDowntimeByMachine(machineId, startTime, endTime) {
     const plannedDowntimes = loadPlannedDowntimeData();
@@ -215,25 +235,29 @@ function getPlannedDowntimeByMachine(machineId, startTime, endTime) {
 
 /**
  * Get total machine stoppage time for a specific process order.
+ * 
  * @param {string} processOrderNumber - The process order number.
  * @returns {number} - The total machine stoppage time in minutes.
+ * @throws {Error} Will throw an error if there is an issue with calculating machine stoppage time.
  */
 function getTotalMachineStoppageTimeByProcessOrder(processOrderNumber) {
     const stoppages = loadMachineStoppagesData();
     return stoppages
         .filter(stoppage => stoppage.ProcessOrderNumber === processOrderNumber)
         .reduce((total, stoppage) => {
-            total += stoppage.Differenz; // Summiere die Differenz (in Sekunden)
+            total += stoppage.Differenz; // Sum the difference (in seconds)
             return total;
-        }, 0) / 60; // Rückgabe in Minuten
+        }, 0) / 60; // Return in minutes
 }
 
 /**
  * Get total machine stoppage time for a specific machine and period.
+ * 
  * @param {string} machineId - The machine ID.
  * @param {string} startTime - The start time.
  * @param {string} endTime - The end time.
  * @returns {number} - The total machine stoppage time in minutes.
+ * @throws {Error} Will throw an error if there is an issue with calculating machine stoppage time.
  */
 function getTotalMachineStoppageTimeByLineAndPeriod(machineId, startTime, endTime) {
     const stoppages = loadMachineStoppagesData();
@@ -243,9 +267,9 @@ function getTotalMachineStoppageTimeByLineAndPeriod(machineId, startTime, endTim
     return stoppages
         .filter(stoppage => stoppage.machine_id === machineId && moment(stoppage.Start).isBetween(start, end, null, '[]'))
         .reduce((total, stoppage) => {
-            total += stoppage.Differenz; // Summiere die Differenz (in Sekunden)
+            total += stoppage.Differenz; // Sum the difference (in seconds)
             return total;
-        }, 0) / 60; // Rückgabe in Minuten
+        }, 0) / 60; // Return in minutes
 }
 
 module.exports = {
