@@ -27,10 +27,10 @@ const router = express.Router();
  */
 router.get('/env', (req, res) => {
     try {
-        const envConfig = loadEnvConfig();
-        res.json(envConfig);
+        const envConfig = loadEnvConfig(); // Load the current environment configuration
+        res.json(envConfig); // Return the configuration as JSON
     } catch (error) {
-        res.status(500).json({ message: error.message });
+        res.status(500).json({ message: error.message }); // Return an error if something goes wrong
     }
 });
 
@@ -56,11 +56,11 @@ router.get('/env', (req, res) => {
  */
 router.put('/env', (req, res) => {
     try {
-        const newEnvConfig = req.body;
-        saveEnvConfig(newEnvConfig);
-        res.status(200).json({ message: 'Environment configuration updated successfully' });
+        const newEnvConfig = req.body; // Get the new configuration from the request body
+        saveEnvConfig(newEnvConfig); // Save the updated configuration
+        res.status(200).json({ message: 'Environment configuration updated successfully' }); // Confirm the update
     } catch (error) {
-        res.status(500).json({ message: error.message });
+        res.status(500).json({ message: error.message }); // Handle any errors
     }
 });
 
@@ -95,17 +95,17 @@ router.put('/env', (req, res) => {
  */
 router.get('/env/:key', (req, res) => {
     try {
-        const envConfig = loadEnvConfig();
-        const key = req.params.key;
+        const envConfig = loadEnvConfig(); // Load the current environment configuration
+        const key = req.params.key; // Get the key from the URL parameter
         if (envConfig[key] !== undefined) {
             res.json({
                 [key]: envConfig[key]
-            });
+            }); // Return the key-value pair if it exists
         } else {
-            res.status(404).json({ message: `Key ${key} not found` });
+            res.status(404).json({ message: `Key ${key} not found` }); // Return a 404 error if the key is not found
         }
     } catch (error) {
-        res.status(500).json({ message: error.message });
+        res.status(500).json({ message: error.message }); // Handle any errors
     }
 });
 
@@ -142,14 +142,14 @@ router.get('/env/:key', (req, res) => {
  */
 router.put('/env/:key', (req, res) => {
     try {
-        const envConfig = loadEnvConfig();
-        const key = req.params.key;
-        const value = req.body.value;
-        envConfig[key] = value;
-        saveEnvConfig(envConfig);
-        res.status(200).json({ message: `Key ${key} updated successfully` });
+        const envConfig = loadEnvConfig(); // Load the current environment configuration
+        const key = req.params.key; // Get the key from the URL parameter
+        const value = req.body.value; // Get the new value from the request body
+        envConfig[key] = value; // Update the key with the new value
+        saveEnvConfig(envConfig); // Save the updated configuration
+        res.status(200).json({ message: `Key ${key} updated successfully` }); // Confirm the update
     } catch (error) {
-        res.status(500).json({ message: error.message });
+        res.status(500).json({ message: error.message }); // Handle any errors
     }
 });
 
@@ -176,15 +176,15 @@ router.put('/env/:key', (req, res) => {
  */
 router.post('/env', (req, res) => {
     try {
-        const envConfig = loadEnvConfig();
-        const newConfig = req.body;
+        const envConfig = loadEnvConfig(); // Load the current environment configuration
+        const newConfig = req.body; // Get the new configuration from the request body
         for (let key in newConfig) {
-            envConfig[key] = newConfig[key];
+            envConfig[key] = newConfig[key]; // Add each new key-value pair to the configuration
         }
-        saveEnvConfig(envConfig);
-        res.status(201).json({ message: 'New configuration added successfully' });
+        saveEnvConfig(envConfig); // Save the updated configuration
+        res.status(201).json({ message: 'New configuration added successfully' }); // Confirm the addition
     } catch (error) {
-        res.status(500).json({ message: error.message });
+        res.status(500).json({ message: error.message }); // Handle any errors
     }
 });
 
@@ -212,18 +212,18 @@ router.post('/env', (req, res) => {
  */
 router.delete('/env/:key', (req, res) => {
     try {
-        const envConfig = loadEnvConfig();
-        const key = req.params.key;
+        const envConfig = loadEnvConfig(); // Load the current environment configuration
+        const key = req.params.key; // Get the key from the URL parameter
         if (envConfig[key] !== undefined) {
-            delete envConfig[key];
-            saveEnvConfig(envConfig);
-            res.status(200).json({ message: `Key ${key} deleted successfully` });
+            delete envConfig[key]; // Delete the key-value pair if it exists
+            saveEnvConfig(envConfig); // Save the updated configuration
+            res.status(200).json({ message: `Key ${key} deleted successfully` }); // Confirm the deletion
         } else {
-            res.status(404).json({ message: `Key ${key} not found` });
+            res.status(404).json({ message: `Key ${key} not found` }); // Return a 404 error if the key is not found
         }
     } catch (error) {
-        res.status(500).json({ message: error.message });
+        res.status(500).json({ message: error.message }); // Handle any errors
     }
 });
 
-module.exports = router;
+module.exports = router; // Export the router object for use in other parts of the application

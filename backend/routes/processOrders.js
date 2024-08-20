@@ -27,8 +27,8 @@ const { loadProcessOrders, saveProcessOrders } = require('../services/processOrd
  *                 type: object
  */
 router.get('/', (req, res) => {
-    const data = loadProcessOrders();
-    res.json(data);
+    const data = loadProcessOrders(); // Load all process orders from the service
+    res.json(data); // Return the list of process orders as a JSON response
 });
 
 /**
@@ -61,11 +61,11 @@ router.get('/', (req, res) => {
  *                   type: string
  */
 router.post('/', (req, res) => {
-    const data = loadProcessOrders();
-    const newData = req.body;
-    data.push(newData);
-    saveProcessOrders(data);
-    res.status(201).json({ message: 'Process order added successfully' });
+    const data = loadProcessOrders(); // Load existing process orders
+    const newData = req.body; // Get the new process order data from the request body
+    data.push(newData); // Add the new process order to the list
+    saveProcessOrders(data); // Save the updated list of process orders
+    res.status(201).json({ message: 'Process order added successfully' }); // Send a success response
 });
 
 /**
@@ -105,16 +105,16 @@ router.post('/', (req, res) => {
  *         description: Process order not found.
  */
 router.put('/:id', (req, res) => {
-    const data = loadProcessOrders();
-    const id = parseInt(req.params.id);
-    const updatedData = req.body;
-    const index = data.findIndex(item => item.order_id === id);
+    const data = loadProcessOrders(); // Load all process orders
+    const id = parseInt(req.params.id); // Get the process order ID from the URL parameter
+    const updatedData = req.body; // Get the updated data from the request body
+    const index = data.findIndex(item => item.order_id === id); // Find the index of the process order to update
     if (index !== -1) {
-        data[index] = updatedData;
-        saveProcessOrders(data);
-        res.status(200).json({ message: 'Process order updated successfully' });
+        data[index] = updatedData; // Update the process order with the new data
+        saveProcessOrders(data); // Save the updated list of process orders
+        res.status(200).json({ message: 'Process order updated successfully' }); // Send a success response
     } else {
-        res.status(404).json({ message: 'Process order not found' });
+        res.status(404).json({ message: 'Process order not found' }); // Send a 404 response if the process order is not found
     }
 });
 
@@ -146,15 +146,15 @@ router.put('/:id', (req, res) => {
  *         description: Process order not found.
  */
 router.delete('/:id', (req, res) => {
-    const data = loadProcessOrders();
-    const id = parseInt(req.params.id);
-    const newData = data.filter(item => item.order_id !== id);
+    const data = loadProcessOrders(); // Load all process orders
+    const id = parseInt(req.params.id); // Get the process order ID from the URL parameter
+    const newData = data.filter(item => item.order_id !== id); // Filter out the process order to delete
     if (data.length !== newData.length) {
-        saveProcessOrders(newData);
-        res.status(200).json({ message: 'Process order deleted successfully' });
+        saveProcessOrders(newData); // Save the updated list of process orders
+        res.status(200).json({ message: 'Process order deleted successfully' }); // Send a success response
     } else {
-        res.status(404).json({ message: 'Process order not found' });
+        res.status(404).json({ message: 'Process order not found' }); // Send a 404 response if the process order is not found
     }
 });
 
-module.exports = router;
+module.exports = router; // Export the router for use in other parts of the application

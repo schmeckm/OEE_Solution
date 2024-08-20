@@ -28,8 +28,8 @@ const router = express.Router();
  *                 type: object
  */
 router.get('/', (req, res) => {
-    const data = loadPlannedDowntime();
-    res.json(data);
+    const data = loadPlannedDowntime(); // Load all planned downtimes from the service
+    res.json(data); // Return the list of planned downtimes as a JSON response
 });
 
 /**
@@ -57,13 +57,13 @@ router.get('/', (req, res) => {
  *         description: Planned downtime not found.
  */
 router.get('/:id', (req, res) => {
-    const data = loadPlannedDowntime();
-    const id = req.params.id;
-    const downtime = data.find(d => d.ID === id);
+    const data = loadPlannedDowntime(); // Load all planned downtimes from the service
+    const id = req.params.id; // Get the ID from the request parameters
+    const downtime = data.find(d => d.ID === id); // Find the downtime with the given ID
     if (downtime) {
-        res.json(downtime);
+        res.json(downtime); // Return the found downtime as a JSON response
     } else {
-        res.status(404).json({ message: 'Planned downtime not found' });
+        res.status(404).json({ message: 'Planned downtime not found' }); // Return a 404 error if not found
     }
 });
 
@@ -97,11 +97,11 @@ router.get('/:id', (req, res) => {
  *                   type: string
  */
 router.post('/', (req, res) => {
-    const data = loadPlannedDowntime();
-    const newData = req.body;
-    data.push(newData);
-    savePlannedDowntime(data);
-    res.status(201).json({ message: 'Planned downtime added successfully' });
+    const data = loadPlannedDowntime(); // Load all planned downtimes from the service
+    const newData = req.body; // Get the new downtime data from the request body
+    data.push(newData); // Add the new downtime to the list
+    savePlannedDowntime(data); // Save the updated list back to the service
+    res.status(201).json({ message: 'Planned downtime added successfully' }); // Return a success message
 });
 
 /**
@@ -141,16 +141,16 @@ router.post('/', (req, res) => {
  *         description: Planned downtime not found.
  */
 router.put('/:id', (req, res) => {
-    const data = loadPlannedDowntime();
-    const id = req.params.id;
-    const updatedData = req.body;
-    const index = data.findIndex(item => item.ID === id);
+    const data = loadPlannedDowntime(); // Load all planned downtimes from the service
+    const id = req.params.id; // Get the ID from the request parameters
+    const updatedData = req.body; // Get the updated downtime data from the request body
+    const index = data.findIndex(item => item.ID === id); // Find the index of the downtime to update
     if (index !== -1) {
-        data[index] = updatedData;
-        savePlannedDowntime(data);
-        res.status(200).json({ message: 'Planned downtime updated successfully' });
+        data[index] = updatedData; // Update the downtime data at the found index
+        savePlannedDowntime(data); // Save the updated list back to the service
+        res.status(200).json({ message: 'Planned downtime updated successfully' }); // Return a success message
     } else {
-        res.status(404).json({ message: 'Planned downtime not found' });
+        res.status(404).json({ message: 'Planned downtime not found' }); // Return a 404 error if not found
     }
 });
 
@@ -182,14 +182,14 @@ router.put('/:id', (req, res) => {
  *         description: Planned downtime not found.
  */
 router.delete('/:id', (req, res) => {
-    let data = loadPlannedDowntime();
-    const initialLength = data.length;
-    data = data.filter(item => item.ID !== req.params.id);
+    let data = loadPlannedDowntime(); // Load all planned downtimes from the service
+    const initialLength = data.length; // Store the initial length of the data
+    data = data.filter(item => item.ID !== req.params.id); // Filter out the downtime with the given ID
     if (data.length !== initialLength) {
-        savePlannedDowntime(data);
-        res.status(200).json({ message: 'Planned downtime deleted successfully' });
+        savePlannedDowntime(data); // Save the updated list back to the service
+        res.status(200).json({ message: 'Planned downtime deleted successfully' }); // Return a success message
     } else {
-        res.status(404).json({ message: 'Planned downtime not found' });
+        res.status(404).json({ message: 'Planned downtime not found' }); // Return a 404 error if not found
     }
 });
 

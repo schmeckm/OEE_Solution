@@ -1,5 +1,5 @@
 const express = require('express');
-const { loadShiftModels, saveShiftModels } = require('../services/shiftModelService'); // Importieren des Shiftmodel-Dienstes
+const { loadShiftModels, saveShiftModels } = require('../services/shiftModelService'); // Import Shift model service
 
 const router = express.Router();
 

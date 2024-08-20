@@ -28,6 +28,10 @@ const router = express.Router();
  *                 type: object
  */
 router.get('/', (req, res) => {
+    /**
+     * Retrieves all microstops.
+     * @returns {Array<Object>} A list of all microstops.
+     */
     const data = loadMicroStops();
     res.json(data);
 });
@@ -57,6 +61,11 @@ router.get('/', (req, res) => {
  *         description: Microstop not found.
  */
 router.get('/:id', (req, res) => {
+    /**
+     * Retrieves a specific microstop by ID.
+     * @param {string} req.params.id - The ID of the microstop to retrieve.
+     * @returns {Object|404} The microstop object if found, otherwise a 404 error.
+     */
     const data = loadMicroStops();
     const id = req.params.id;
     const microStop = data.find(d => d.ID === id);
@@ -99,6 +108,11 @@ router.get('/:id', (req, res) => {
  *                   type: object
  */
 router.post('/', (req, res) => {
+    /**
+     * Adds a new microstop.
+     * @param {Object} req.body - The new microstop data.
+     * @returns {Object} A success message and the added microstop.
+     */
     const data = loadMicroStops();
     const newData = req.body;
     data.push(newData);
@@ -145,6 +159,12 @@ router.post('/', (req, res) => {
  *         description: Microstop not found.
  */
 router.put('/:id', (req, res) => {
+    /**
+     * Updates an existing microstop by ID.
+     * @param {string} req.params.id - The ID of the microstop to update.
+     * @param {Object} req.body - The updated microstop data.
+     * @returns {Object|404} A success message and the updated microstop, or a 404 error if not found.
+     */
     const data = loadMicroStops();
     const id = req.params.id;
     const updatedData = req.body;
@@ -186,6 +206,11 @@ router.put('/:id', (req, res) => {
  *         description: Microstop not found.
  */
 router.delete('/:id', (req, res) => {
+    /**
+     * Deletes a microstop by ID.
+     * @param {string} req.params.id - The ID of the microstop to delete.
+     * @returns {Object|404} A success message or a 404 error if the microstop is not found.
+     */
     let data = loadMicroStops();
     const initialLength = data.length;
     data = data.filter(item => item.ID !== req.params.id);

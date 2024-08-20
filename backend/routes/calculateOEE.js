@@ -7,13 +7,14 @@ const router = express.Router();
 
 /**
  * Route to calculate OEE (Overall Equipment Effectiveness).
- * It validates the incoming data and then calculates the OEE based on the validated data.
+ * This route receives OEE data in the request body, validates it using middleware, and calculates the OEE based on the provided data.
  * 
  * @route POST /calculateOEE
- * @param {express.Request} req - Express request object containing OEE data in the body.
- * @param {express.Response} res - Express response object to send the calculated OEE result.
+ * @param {express.Request} req - The request object, containing OEE data in the body.
+ * @param {express.Response} res - The response object, used to send the calculated OEE result.
  * @returns {Object} JSON response containing the calculated OEE result.
- * @throws {Error} If an error occurs during OEE calculation, a 500 status code is returned.
+ * 
+ * @throws {Error} Returns a 500 status code if an error occurs during OEE calculation.
  */
 router.post('/', validateOEEData, (req, res) => {
     try {

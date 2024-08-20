@@ -28,8 +28,8 @@ const router = express.Router();
  *                 type: object
  */
 router.get('/', (req, res) => {
-    const machines = loadMachines();
-    res.json(machines);
+    const machines = loadMachines(); // Load all machines from the service
+    res.json(machines); // Return the list of machines as a JSON response
 });
 
 /**
@@ -57,12 +57,12 @@ router.get('/', (req, res) => {
  *         description: Machine not found.
  */
 router.get('/:id', (req, res) => {
-    const machines = loadMachines();
-    const machine = machines.find(m => m.machine_id === req.params.id);
+    const machines = loadMachines(); // Load all machines from the service
+    const machine = machines.find(m => m.machine_id === req.params.id); // Find the machine by ID
     if (machine) {
-        res.json(machine);
+        res.json(machine); // Return the machine as a JSON response
     } else {
-        res.status(404).json({ message: `Machine with ID ${req.params.id} not found` });
+        res.status(404).json({ message: `Machine with ID ${req.params.id} not found` }); // Send a 404 response if not found
     }
 });
 
@@ -98,12 +98,12 @@ router.get('/:id', (req, res) => {
  *                   type: object
  */
 router.post('/', (req, res) => {
-    const machines = loadMachines();
-    const newMachine = req.body;
-    newMachine.machine_id = (machines.length ? Math.max(...machines.map(m => parseInt(m.machine_id))) + 1 : 1).toString();
-    machines.push(newMachine);
-    saveMachines(machines);
-    res.status(201).json({ message: 'New machine added successfully', machine: newMachine });
+    const machines = loadMachines(); // Load existing machines
+    const newMachine = req.body; // Get the new machine data from the request body
+    newMachine.machine_id = (machines.length ? Math.max(...machines.map(m => parseInt(m.machine_id))) + 1 : 1).toString(); // Generate a new machine ID
+    machines.push(newMachine); // Add the new machine to the list
+    saveMachines(machines); // Save the updated list of machines
+    res.status(201).json({ message: 'New machine added successfully', machine: newMachine }); // Send a success response
 });
 
 /**
@@ -147,14 +147,14 @@ router.post('/', (req, res) => {
  *         description: Machine not found.
  */
 router.put('/:id', (req, res) => {
-    const machines = loadMachines();
-    const index = machines.findIndex(m => m.machine_id === req.params.id);
+    const machines = loadMachines(); // Load all machines from the service
+    const index = machines.findIndex(m => m.machine_id === req.params.id); // Find the index of the machine to update
     if (index !== -1) {
-        machines[index] = {...machines[index], ...req.body };
-        saveMachines(machines);
-        res.status(200).json({ message: 'Machine updated successfully', machine: machines[index] });
+        machines[index] = {...machines[index], ...req.body }; // Update the machine with the new data
+        saveMachines(machines); // Save the updated list of machines
+        res.status(200).json({ message: 'Machine updated successfully', machine: machines[index] }); // Send a success response
     } else {
-        res.status(404).json({ message: `Machine with ID ${req.params.id} not found` });
+        res.status(404).json({ message: `Machine with ID ${req.params.id} not found` }); // Send a 404 response if not found
     }
 });
 
@@ -179,15 +179,15 @@ router.put('/:id', (req, res) => {
  *         description: Machine not found.
  */
 router.delete('/:id', (req, res) => {
-    let machines = loadMachines();
-    const initialLength = machines.length;
-    machines = machines.filter(m => m.machine_id !== req.params.id);
+    let machines = loadMachines(); // Load all machines from the service
+    const initialLength = machines.length; // Store the initial length of the machine list
+    machines = machines.filter(m => m.machine_id !== req.params.id); // Filter out the machine to delete
     if (machines.length !== initialLength) {
-        saveMachines(machines);
-        res.status(200).json({ message: 'Machine deleted successfully' });
+        saveMachines(machines); // Save the updated list of machines
+        res.status(200).json({ message: 'Machine deleted successfully' }); // Send a success response
     } else {
-        res.status(404).json({ message: `Machine with ID ${req.params.id} not found` });
+        res.status(404).json({ message: `Machine with ID ${req.params.id} not found` }); // Send a 404 response if not found
     }
 });
 
-module.exports = router;
+module.exports = router; // Export the router for use in other parts of the application
