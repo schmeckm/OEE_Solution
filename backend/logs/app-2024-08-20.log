@@ -933,3 +933,199 @@
 2024-08-20T07:57:15.770Z info: Successfully wrote OEE metrics for machine ID: 1 to InfluxDB.
 2024-08-20T07:57:29.114Z info: SIGINT signal received: closing HTTP server
 2024-08-20T07:57:29.115Z info: HTTP server closed
+2024-08-20T07:58:45.201Z info: Default Logger initialized successfully.
+2024-08-20T07:58:45.617Z info: Logger initialized successfully.
+2024-08-20T07:58:45.666Z info: MQTT client initialized successfully.
+2024-08-20T07:58:45.671Z info: Server is running on port 3000
+2024-08-20T07:58:49.444Z info: Successfully wrote OEE metrics for machine ID: 1 to InfluxDB.
+2024-08-20T07:58:51.666Z info: SIGINT signal received: closing HTTP server
+2024-08-20T07:58:51.667Z info: HTTP server closed
+2024-08-20T08:05:55.413Z info: Default Logger initialized successfully.
+2024-08-20T08:05:55.932Z info: Logger initialized successfully.
+2024-08-20T08:05:55.986Z info: MQTT client initialized successfully.
+2024-08-20T08:05:55.993Z info: Server is running on port 3000
+2024-08-20T08:05:59.482Z info: Successfully wrote OEE metrics for machine ID: 1 to InfluxDB.
+2024-08-20T08:06:04.437Z info: Successfully wrote OEE metrics for machine ID: 1 to InfluxDB.
+2024-08-20T08:06:05.864Z info: Successfully wrote OEE metrics for machine ID: 1 to InfluxDB.
+2024-08-20T08:06:14.447Z info: Successfully wrote OEE metrics for machine ID: 1 to InfluxDB.
+2024-08-20T08:06:15.800Z info: Successfully wrote OEE metrics for machine ID: 1 to InfluxDB.
+2024-08-20T08:06:16.027Z info: Successfully wrote OEE metrics for machine ID: 1 to InfluxDB.
+2024-08-20T08:06:24.428Z info: Successfully wrote OEE metrics for machine ID: 1 to InfluxDB.
+2024-08-20T08:06:25.798Z info: Successfully wrote OEE metrics for machine ID: 1 to InfluxDB.
+2024-08-20T08:06:39.470Z info: Successfully wrote OEE metrics for machine ID: 1 to InfluxDB.
+2024-08-20T08:06:40.806Z info: Successfully wrote OEE metrics for machine ID: 1 to InfluxDB.
+2024-08-20T08:06:44.437Z info: Successfully wrote OEE metrics for machine ID: 1 to InfluxDB.
+2024-08-20T08:06:45.808Z info: Successfully wrote OEE metrics for machine ID: 1 to InfluxDB.
+2024-08-20T08:07:10.976Z info: Successfully wrote OEE metrics for machine ID: 1 to InfluxDB.
+2024-08-20T08:07:14.467Z info: Successfully wrote OEE metrics for machine ID: 1 to InfluxDB.
+2024-08-20T08:07:16.129Z info: Successfully wrote OEE metrics for machine ID: 1 to InfluxDB.
+2024-08-20T08:07:29.347Z info: Default Logger initialized successfully.
+2024-08-20T08:07:29.766Z info: Logger initialized successfully.
+2024-08-20T08:07:29.813Z info: MQTT client initialized successfully.
+2024-08-20T08:07:29.819Z info: Server is running on port 3000
+2024-08-20T08:07:31.199Z info: Successfully wrote OEE metrics for machine ID: 1 to InfluxDB.
+2024-08-20T08:07:44.504Z info: Successfully wrote OEE metrics for machine ID: 1 to InfluxDB.
+2024-08-20T08:07:46.201Z info: Successfully wrote OEE metrics for machine ID: 1 to InfluxDB.
+2024-08-20T08:07:54.484Z info: Successfully wrote OEE metrics for machine ID: 1 to InfluxDB.
+2024-08-20T08:07:55.928Z info: Successfully wrote OEE metrics for machine ID: 1 to InfluxDB.
+2024-08-20T08:08:05.868Z info: Successfully wrote OEE metrics for machine ID: 1 to InfluxDB.
+2024-08-20T08:08:09.446Z info: Successfully wrote OEE metrics for machine ID: 1 to InfluxDB.
+2024-08-20T08:08:10.825Z info: Successfully wrote OEE metrics for machine ID: 1 to InfluxDB.
+2024-08-20T08:08:14.429Z info: Successfully wrote OEE metrics for machine ID: 1 to InfluxDB.
+2024-08-20T08:08:15.811Z info: Successfully wrote OEE metrics for machine ID: 1 to InfluxDB.
+2024-08-20T08:08:34.465Z info: Successfully wrote OEE metrics for machine ID: 1 to InfluxDB.
+2024-08-20T08:08:35.801Z info: Successfully wrote OEE metrics for machine ID: 1 to InfluxDB.
+2024-08-20T08:08:36.010Z info: Successfully wrote OEE metrics for machine ID: 1 to InfluxDB.
+2024-08-20T08:08:39.637Z info: Default Logger initialized successfully.
+2024-08-20T08:08:40.083Z info: Logger initialized successfully.
+2024-08-20T08:08:40.131Z info: MQTT client initialized successfully.
+2024-08-20T08:08:40.136Z info: Server is running on port 3000
+2024-08-20T08:08:40.947Z info: Successfully wrote OEE metrics for machine ID: 1 to InfluxDB.
+2024-08-20T08:08:44.419Z info: Successfully wrote OEE metrics for machine ID: 1 to InfluxDB.
+2024-08-20T08:08:45.901Z info: Successfully wrote OEE metrics for machine ID: 1 to InfluxDB.
+2024-08-20T08:08:49.454Z info: Successfully wrote OEE metrics for machine ID: 1 to InfluxDB.
+2024-08-20T08:08:50.878Z info: Successfully wrote OEE metrics for machine ID: 1 to InfluxDB.
+2024-08-20T08:08:55.962Z info: Successfully wrote OEE metrics for machine ID: 1 to InfluxDB.
+2024-08-20T08:08:59.553Z info: Successfully wrote OEE metrics for machine ID: 1 to InfluxDB.
+2024-08-20T08:09:00.850Z info: Successfully wrote OEE metrics for machine ID: 1 to InfluxDB.
+2024-08-20T08:09:00.946Z info: Successfully wrote OEE metrics for machine ID: 1 to InfluxDB.
+2024-08-20T08:09:04.590Z info: Successfully wrote OEE metrics for machine ID: 1 to InfluxDB.
+2024-08-20T08:09:05.921Z info: Successfully wrote OEE metrics for machine ID: 1 to InfluxDB.
+2024-08-20T08:09:19.443Z info: Successfully wrote OEE metrics for machine ID: 1 to InfluxDB.
+2024-08-20T08:09:20.833Z info: Successfully wrote OEE metrics for machine ID: 1 to InfluxDB.
+2024-08-20T08:09:29.456Z info: Successfully wrote OEE metrics for machine ID: 1 to InfluxDB.
+2024-08-20T08:09:30.839Z info: Successfully wrote OEE metrics for machine ID: 1 to InfluxDB.
+2024-08-20T08:09:34.888Z info: Successfully wrote OEE metrics for machine ID: 1 to InfluxDB.
+2024-08-20T08:09:36.032Z info: Successfully wrote OEE metrics for machine ID: 1 to InfluxDB.
+2024-08-20T08:09:39.430Z info: Successfully wrote OEE metrics for machine ID: 1 to InfluxDB.
+2024-08-20T08:09:40.833Z info: Successfully wrote OEE metrics for machine ID: 1 to InfluxDB.
+2024-08-20T08:09:44.413Z info: Successfully wrote OEE metrics for machine ID: 1 to InfluxDB.
+2024-08-20T08:09:45.834Z info: Successfully wrote OEE metrics for machine ID: 1 to InfluxDB.
+2024-08-20T08:10:04.565Z info: Successfully wrote OEE metrics for machine ID: 1 to InfluxDB.
+2024-08-20T08:10:05.871Z info: Successfully wrote OEE metrics for machine ID: 1 to InfluxDB.
+2024-08-20T08:10:19.548Z info: Successfully wrote OEE metrics for machine ID: 1 to InfluxDB.
+2024-08-20T08:10:20.857Z info: Successfully wrote OEE metrics for machine ID: 1 to InfluxDB.
+2024-08-20T08:10:24.464Z info: Successfully wrote OEE metrics for machine ID: 1 to InfluxDB.
+2024-08-20T08:10:25.850Z info: Successfully wrote OEE metrics for machine ID: 1 to InfluxDB.
+2024-08-20T08:10:31.184Z info: Successfully wrote OEE metrics for machine ID: 1 to InfluxDB.
+2024-08-20T08:10:34.390Z info: Successfully wrote OEE metrics for machine ID: 1 to InfluxDB.
+2024-08-20T08:10:36.019Z info: Successfully wrote OEE metrics for machine ID: 1 to InfluxDB.
+2024-08-20T08:10:36.396Z info: Successfully wrote OEE metrics for machine ID: 1 to InfluxDB.
+2024-08-20T08:10:40.846Z info: Successfully wrote OEE metrics for machine ID: 1 to InfluxDB.
+2024-08-20T08:10:44.414Z info: Successfully wrote OEE metrics for machine ID: 1 to InfluxDB.
+2024-08-20T08:10:46.064Z info: Successfully wrote OEE metrics for machine ID: 1 to InfluxDB.
+2024-08-20T08:10:55.442Z info: Default Logger initialized successfully.
+2024-08-20T08:10:56.093Z info: Logger initialized successfully.
+2024-08-20T08:10:56.177Z info: MQTT client initialized successfully.
+2024-08-20T08:10:56.200Z info: Server is running on port 3000
+2024-08-20T08:10:59.502Z info: Successfully wrote OEE metrics for machine ID: 1 to InfluxDB.
+2024-08-20T08:11:04.807Z info: Successfully wrote OEE metrics for machine ID: 1 to InfluxDB.
+2024-08-20T08:11:05.836Z info: Successfully wrote OEE metrics for machine ID: 1 to InfluxDB.
+2024-08-20T08:11:09.415Z info: Successfully wrote OEE metrics for machine ID: 1 to InfluxDB.
+2024-08-20T08:11:10.894Z info: Successfully wrote OEE metrics for machine ID: 1 to InfluxDB.
+2024-08-20T08:11:10.959Z info: Successfully wrote OEE metrics for machine ID: 1 to InfluxDB.
+2024-08-20T08:11:14.463Z info: Successfully wrote OEE metrics for machine ID: 1 to InfluxDB.
+2024-08-20T08:11:15.809Z info: Successfully wrote OEE metrics for machine ID: 1 to InfluxDB.
+2024-08-20T08:11:15.857Z info: Successfully wrote OEE metrics for machine ID: 1 to InfluxDB.
+2024-08-20T08:11:25.075Z info: Successfully wrote OEE metrics for machine ID: 1 to InfluxDB.
+2024-08-20T08:11:25.803Z info: Successfully wrote OEE metrics for machine ID: 1 to InfluxDB.
+2024-08-20T08:11:25.849Z info: Successfully wrote OEE metrics for machine ID: 1 to InfluxDB.
+2024-08-20T08:11:34.478Z info: Successfully wrote OEE metrics for machine ID: 1 to InfluxDB.
+2024-08-20T08:11:35.815Z info: Successfully wrote OEE metrics for machine ID: 1 to InfluxDB.
+2024-08-20T08:11:35.895Z info: Successfully wrote OEE metrics for machine ID: 1 to InfluxDB.
+2024-08-20T08:11:49.476Z info: Successfully wrote OEE metrics for machine ID: 1 to InfluxDB.
+2024-08-20T08:11:50.802Z info: Successfully wrote OEE metrics for machine ID: 1 to InfluxDB.
+2024-08-20T08:11:51.009Z info: Successfully wrote OEE metrics for machine ID: 1 to InfluxDB.
+2024-08-20T08:11:54.422Z info: Successfully wrote OEE metrics for machine ID: 1 to InfluxDB.
+2024-08-20T08:11:55.864Z info: Successfully wrote OEE metrics for machine ID: 1 to InfluxDB.
+2024-08-20T08:11:59.453Z info: Successfully wrote OEE metrics for machine ID: 1 to InfluxDB.
+2024-08-20T08:12:00.830Z info: Successfully wrote OEE metrics for machine ID: 1 to InfluxDB.
+2024-08-20T08:12:14.727Z info: Successfully wrote OEE metrics for machine ID: 1 to InfluxDB.
+2024-08-20T08:12:15.818Z info: Successfully wrote OEE metrics for machine ID: 1 to InfluxDB.
+2024-08-20T08:12:29.457Z info: Successfully wrote OEE metrics for machine ID: 1 to InfluxDB.
+2024-08-20T08:12:30.830Z info: Successfully wrote OEE metrics for machine ID: 1 to InfluxDB.
+2024-08-20T08:12:30.910Z info: Successfully wrote OEE metrics for machine ID: 1 to InfluxDB.
+2024-08-20T08:12:34.504Z info: Successfully wrote OEE metrics for machine ID: 1 to InfluxDB.
+2024-08-20T08:12:38.847Z info: Successfully wrote OEE metrics for machine ID: 1 to InfluxDB.
+2024-08-20T08:12:40.293Z info: Successfully wrote OEE metrics for machine ID: 1 to InfluxDB.
+2024-08-20T08:12:41.005Z info: Successfully wrote OEE metrics for machine ID: 1 to InfluxDB.
+2024-08-20T08:12:44.606Z info: Successfully wrote OEE metrics for machine ID: 1 to InfluxDB.
+2024-08-20T08:12:45.855Z info: Successfully wrote OEE metrics for machine ID: 1 to InfluxDB.
+2024-08-20T08:12:49.467Z info: Successfully wrote OEE metrics for machine ID: 1 to InfluxDB.
+2024-08-20T08:12:50.953Z info: Successfully wrote OEE metrics for machine ID: 1 to InfluxDB.
+2024-08-20T08:12:54.466Z info: Successfully wrote OEE metrics for machine ID: 1 to InfluxDB.
+2024-08-20T08:12:56.123Z info: Successfully wrote OEE metrics for machine ID: 1 to InfluxDB.
+2024-08-20T08:12:59.424Z info: Successfully wrote OEE metrics for machine ID: 1 to InfluxDB.
+2024-08-20T08:13:00.819Z info: Successfully wrote OEE metrics for machine ID: 1 to InfluxDB.
+2024-08-20T08:13:29.432Z info: Successfully wrote OEE metrics for machine ID: 1 to InfluxDB.
+2024-08-20T08:13:30.856Z info: Successfully wrote OEE metrics for machine ID: 1 to InfluxDB.
+2024-08-20T08:13:34.494Z info: Successfully wrote OEE metrics for machine ID: 1 to InfluxDB.
+2024-08-20T08:13:35.850Z info: Successfully wrote OEE metrics for machine ID: 1 to InfluxDB.
+2024-08-20T08:13:44.448Z info: Successfully wrote OEE metrics for machine ID: 1 to InfluxDB.
+2024-08-20T08:13:45.843Z info: Successfully wrote OEE metrics for machine ID: 1 to InfluxDB.
+2024-08-20T08:13:45.895Z info: Successfully wrote OEE metrics for machine ID: 1 to InfluxDB.
+2024-08-20T08:14:04.973Z info: Successfully wrote OEE metrics for machine ID: 1 to InfluxDB.
+2024-08-20T08:14:05.831Z info: Successfully wrote OEE metrics for machine ID: 1 to InfluxDB.
+2024-08-20T08:14:14.451Z info: Successfully wrote OEE metrics for machine ID: 1 to InfluxDB.
+2024-08-20T08:14:15.834Z info: Successfully wrote OEE metrics for machine ID: 1 to InfluxDB.
+2024-08-20T08:15:04.452Z info: Successfully wrote OEE metrics for machine ID: 1 to InfluxDB.
+2024-08-20T08:15:05.831Z info: Successfully wrote OEE metrics for machine ID: 1 to InfluxDB.
+2024-08-20T08:15:14.483Z info: Successfully wrote OEE metrics for machine ID: 1 to InfluxDB.
+2024-08-20T08:15:15.830Z info: Successfully wrote OEE metrics for machine ID: 1 to InfluxDB.
+2024-08-20T08:15:24.455Z info: Successfully wrote OEE metrics for machine ID: 1 to InfluxDB.
+2024-08-20T08:15:25.982Z info: Successfully wrote OEE metrics for machine ID: 1 to InfluxDB.
+2024-08-20T08:15:39.470Z info: Successfully wrote OEE metrics for machine ID: 1 to InfluxDB.
+2024-08-20T08:15:40.863Z info: Successfully wrote OEE metrics for machine ID: 1 to InfluxDB.
+2024-08-20T08:15:59.441Z info: Successfully wrote OEE metrics for machine ID: 1 to InfluxDB.
+2024-08-20T08:16:00.846Z info: Successfully wrote OEE metrics for machine ID: 1 to InfluxDB.
+2024-08-20T08:16:04.459Z info: Successfully wrote OEE metrics for machine ID: 1 to InfluxDB.
+2024-08-20T08:16:05.824Z info: Successfully wrote OEE metrics for machine ID: 1 to InfluxDB.
+2024-08-20T08:16:05.887Z info: Successfully wrote OEE metrics for machine ID: 1 to InfluxDB.
+2024-08-20T08:16:09.456Z info: Successfully wrote OEE metrics for machine ID: 1 to InfluxDB.
+2024-08-20T08:16:10.919Z info: Successfully wrote OEE metrics for machine ID: 1 to InfluxDB.
+2024-08-20T08:16:17.268Z info: Default Logger initialized successfully.
+2024-08-20T08:16:18.085Z info: Logger initialized successfully.
+2024-08-20T08:16:18.180Z info: MQTT client initialized successfully.
+2024-08-20T08:16:18.187Z info: Server is running on port 3000
+2024-08-20T08:16:19.528Z info: Successfully wrote OEE metrics for machine ID: 1 to InfluxDB.
+2024-08-20T08:16:29.477Z info: Successfully wrote OEE metrics for machine ID: 1 to InfluxDB.
+2024-08-20T08:16:30.970Z info: Successfully wrote OEE metrics for machine ID: 1 to InfluxDB.
+2024-08-20T08:16:44.451Z info: Successfully wrote OEE metrics for machine ID: 1 to InfluxDB.
+2024-08-20T08:16:45.850Z info: Successfully wrote OEE metrics for machine ID: 1 to InfluxDB.
+2024-08-20T08:16:49.430Z info: Successfully wrote OEE metrics for machine ID: 1 to InfluxDB.
+2024-08-20T08:16:50.863Z info: Successfully wrote OEE metrics for machine ID: 1 to InfluxDB.
+2024-08-20T08:17:14.490Z info: Successfully wrote OEE metrics for machine ID: 1 to InfluxDB.
+2024-08-20T08:17:15.896Z info: Successfully wrote OEE metrics for machine ID: 1 to InfluxDB.
+2024-08-20T08:17:34.479Z info: Successfully wrote OEE metrics for machine ID: 1 to InfluxDB.
+2024-08-20T08:17:35.839Z info: Successfully wrote OEE metrics for machine ID: 1 to InfluxDB.
+2024-08-20T08:17:39.438Z info: Successfully wrote OEE metrics for machine ID: 1 to InfluxDB.
+2024-08-20T08:17:40.838Z info: Successfully wrote OEE metrics for machine ID: 1 to InfluxDB.
+2024-08-20T08:17:45.647Z info: Default Logger initialized successfully.
+2024-08-20T08:17:46.241Z info: Logger initialized successfully.
+2024-08-20T08:17:46.311Z info: MQTT client initialized successfully.
+2024-08-20T08:17:46.321Z info: Server is running on port 3000
+2024-08-20T08:17:49.746Z info: Successfully wrote OEE metrics for machine ID: 1 to InfluxDB.
+2024-08-20T08:17:54.505Z info: Successfully wrote OEE metrics for machine ID: 1 to InfluxDB.
+2024-08-20T08:17:55.861Z info: Successfully wrote OEE metrics for machine ID: 1 to InfluxDB.
+2024-08-20T08:18:09.460Z info: Successfully wrote OEE metrics for machine ID: 1 to InfluxDB.
+2024-08-20T08:18:10.974Z info: Successfully wrote OEE metrics for machine ID: 1 to InfluxDB.
+2024-08-20T08:18:19.480Z info: Successfully wrote OEE metrics for machine ID: 1 to InfluxDB.
+2024-08-20T08:18:21.001Z info: Successfully wrote OEE metrics for machine ID: 1 to InfluxDB.
+2024-08-20T08:18:34.471Z info: Successfully wrote OEE metrics for machine ID: 1 to InfluxDB.
+2024-08-20T08:18:35.836Z info: Successfully wrote OEE metrics for machine ID: 1 to InfluxDB.
+2024-08-20T08:18:36.272Z info: Successfully wrote OEE metrics for machine ID: 1 to InfluxDB.
+2024-08-20T08:18:39.448Z info: Successfully wrote OEE metrics for machine ID: 1 to InfluxDB.
+2024-08-20T08:18:40.841Z info: Successfully wrote OEE metrics for machine ID: 1 to InfluxDB.
+2024-08-20T08:18:40.921Z info: Successfully wrote OEE metrics for machine ID: 1 to InfluxDB.
+2024-08-20T08:18:49.503Z info: Successfully wrote OEE metrics for machine ID: 1 to InfluxDB.
+2024-08-20T08:18:50.854Z info: Successfully wrote OEE metrics for machine ID: 1 to InfluxDB.
+2024-08-20T08:19:10.970Z info: Successfully wrote OEE metrics for machine ID: 1 to InfluxDB.
+2024-08-20T08:19:29.478Z info: Successfully wrote OEE metrics for machine ID: 1 to InfluxDB.
+2024-08-20T08:19:30.858Z info: Successfully wrote OEE metrics for machine ID: 1 to InfluxDB.
+2024-08-20T08:19:30.919Z info: Successfully wrote OEE metrics for machine ID: 1 to InfluxDB.
+2024-08-20T08:19:34.470Z info: Successfully wrote OEE metrics for machine ID: 1 to InfluxDB.
+2024-08-20T08:19:35.898Z info: Successfully wrote OEE metrics for machine ID: 1 to InfluxDB.
+2024-08-20T08:19:39.599Z info: Successfully wrote OEE metrics for machine ID: 1 to InfluxDB.
+2024-08-20T08:19:40.886Z info: Successfully wrote OEE metrics for machine ID: 1 to InfluxDB.
+2024-08-20T08:19:42.252Z info: SIGINT signal received: closing HTTP server
+2024-08-20T08:19:42.253Z info: HTTP server closed

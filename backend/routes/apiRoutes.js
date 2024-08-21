@@ -7,12 +7,14 @@ const processOrdersRouter = require('./processOrders');
 const shiftModelRouter = require('./shiftModels');
 const unplannedDowntimeRouter = require('./unplannedDowntime');
 const oeeConfigRouter = require('./oeeConfig');
-const microStopsRouter = require('./microstops');
+const microStopsRouter = require('./microstops'); // CRUD operations for Microstops
 const userRouter = require('./users');
 const topicsRouter = require('./topics');
+const ratingsRouter = require('./ratings');
+const microstopMachineAggregationRouter = require('./microstopByMachine'); // Aggregation by Machine
+const microstopProcessOrderAggregationRouter = require('./microstopByProcessOrder');
 
 // Additional Routes
-// const settingsRouter = require('./settings');
 const structureRouter = require('./structure');
 const oeeLogsRouter = require('./oeeLogs');
 const calculateOEERouter = require('./calculateOEE');
@@ -28,23 +30,25 @@ const calculateOEERouter = require('./calculateOEE');
  */
 function registerApiRoutes(app) {
     // OEE API Endpoints
-    app.use('/api/v1/machines', machinesRouter); // Endpoint to manage machine data
-    app.use('/api/v1/planneddowntime', plannedDowntimeRouter); // Endpoint to manage planned downtime data
-    app.use('/api/v1/processorders', processOrdersRouter); // Endpoint to manage process orders
-    app.use('/api/v1/shiftmodels', shiftModelRouter); // Endpoint to manage shift models
-    app.use('/api/v1/unplanneddowntime', unplannedDowntimeRouter); // Endpoint to manage unplanned downtime data
-    app.use('/api/v1/oeeconfig', oeeConfigRouter); // Endpoint to manage OEE configuration settings
-    app.use('/api/v1/microstops', microStopsRouter); // Endpoint to manage microstops data
-    app.use('/api/v1/users', userRouter); // Endpoint to manage microstops data
-    app.use('/api/v1', topicsRouter);
+    app.use('/api/v1/machines', machinesRouter);
+    app.use('/api/v1/planneddowntime', plannedDowntimeRouter);
+    app.use('/api/v1/processorders', processOrdersRouter);
+    app.use('/api/v1/shiftmodels', shiftModelRouter);
+    app.use('/api/v1/unplanneddowntime', unplannedDowntimeRouter);
+    app.use('/api/v1/oeeconfig', oeeConfigRouter);
+    app.use('/api/v1/microstops', microStopsRouter); // CRUD operations for Microstops
+
+    // Register microstop aggregation routes
+    app.use('/api/v1/microstop-aggregation/machine', microstopMachineAggregationRouter); // Aggregation by machine ID
+    app.use('/api/v1/microstop-aggregation/process-order', microstopProcessOrderAggregationRouter); // Aggregation by process order
 
     // Additional API Endpoints
-    // app.use('/api/v1/settings', settingsRouter); // (Currently commented out) Endpoint to manage settings
-    app.use('/api/v1/structure', structureRouter); // Endpoint to manage structure configuration
-    app.use('/api/v1/oee-logs', oeeLogsRouter); // Endpoint to manage OEE logs
-    app.use('/api/v1/calculateOEE', calculateOEERouter); // Endpoint to calculate OEE based on provided data
-    app.use('/api/v1/calculateOEE', calculateOEERouter); // Endpoint to calculate OEE based on provided data
-
+    app.use('/api/v1/structure', structureRouter);
+    app.use('/api/v1/oee-logs', oeeLogsRouter);
+    app.use('/api/v1/calculateOEE', calculateOEERouter);
+    app.use('/api/v1/topics', topicsRouter);
+    app.use('/api/v1/users', userRouter);
+    app.use('/api/v1/ratings', ratingsRouter);
 }
 
 module.exports = registerApiRoutes;

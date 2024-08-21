@@ -35,5 +35,12 @@
     "webSocket": {
         "username": "schmeckm",
         "password": "loris2023"
-    }
+    },
+    "ratings": [
+        { "id": 1, "description": "Maintenance", "color": "orange" },
+        { "id": 2, "description": "Operator Error", "color": "red" },
+        { "id": 3, "description": "Machine Fault", "color": "blue" },
+        { "id": 4, "description": "Unknown", "color": "gray" },
+        { "id": 5, "description": "IT-OT", "color": "green" }
+    ]
 }
