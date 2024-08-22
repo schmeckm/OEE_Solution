@@ -1,15 +1,11 @@
 const mqtt = require('mqtt');
 const { get: getSparkplugPayload } = require('sparkplug-payload');
 const { oeeLogger, errorLogger } = require('../utils/logger');
-const { mqtt: mqttConfig, structure, topicFormat } = require('../config/config');
+const { mqtt: mqttConfig } = require('../config/config');
 const { handleCommandMessage, handleOeeMessage } = require('./messageHandler');
-const { loadProcessOrderData, loadMachineData } = require('../src/dataLoader');
 const oeeConfig = require('../config/oeeConfig.json');
+const { loadProcessOrderData, loadMachineData } = require('./dataLoader'); // Import from dataLoader
 
-/**
- * Sets up the MQTT client, handles connection events, and subscribes to topics.
- * @returns {Object} The MQTT client instance.
- */
 function setupMqttClient() {
     oeeLogger.info('Setting up MQTT client...');
 
@@ -33,7 +29,6 @@ function setupMqttClient() {
 
             oeeLogger.debug(`Received message on topic ${topic}: machine=${machineName}, metric=${metric}`);
 
-            // Get the machine_id based on the machineName
             const machineId = await getMachineIdFromLineCode(machineName);
             if (!machineId) {
                 oeeLogger.warn(`No machine ID found for machine name: ${machineName}`);
@@ -77,10 +72,6 @@ function setupMqttClient() {
     return client;
 }
 
-/**
- * Tries to subscribe to MQTT topics for OEE-enabled machines.
- * @param {Object} client - The MQTT client instance.
- */
 function tryToSubscribeToMachineTopics(client) {
     const allMachines = loadMachineData();
     const oeeEnabledMachines = allMachines.filter(machine => machine.OEE === true);
@@ -120,11 +111,6 @@ function tryToSubscribeToMachineTopics(client) {
     tryNextMachine(0);
 }
 
-/**
- * Generates MQTT topics based on the machine data.
- * @param {Object} machine - The machine data from machine.json.
- * @returns {Array<string>} An array of MQTT topics.
- */
 function generateMqttTopics(machine) {
     const topics = [];
     const oeeMetrics = Object.keys(oeeConfig);
@@ -137,11 +123,6 @@ function generateMqttTopics(machine) {
     return topics;
 }
 
-/**
- * Retrieves the machine ID from the line code by looking up in machine.json.
- * @param {string} lineCode - The line code from the MQTT topic.
- * @returns {Promise<string|null>} The machine ID or null if not found.
- */
 async function getMachineIdFromLineCode(lineCode) {
     oeeLogger.debug(`Searching for machine ID with line code: ${lineCode}`);
     const machines = loadMachineData();
@@ -156,11 +137,6 @@ async function getMachineIdFromLineCode(lineCode) {
     return machine ? machine.machine_id : null;
 }
 
-/**
- * Checks if there is a running order (ProcessOrderStatus = "REL") for the given machine ID.
- * @param {string} machineId - The machine ID.
- * @returns {Promise<boolean>} True if there is a running order, false otherwise.
- */
 async function checkForRunningOrder(machineId) {
     const processOrders = loadProcessOrderData();
 

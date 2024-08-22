@@ -3,6 +3,7 @@ const path = require('path');
 const moment = require('moment-timezone');
 const dotenv = require('dotenv');
 const { oeeLogger, errorLogger } = require('../utils/logger');
+const { loadJsonData } = require('./dataService');
 
 // Load environment variables from .env file
 dotenv.config();
@@ -23,52 +24,15 @@ let shiftModelDataCache = null;
 let machineStoppagesCache = null;
 let machineDataCache = null; // Cache for machine.json
 
-// Load date format and timezone from environment variables
-const DATE_FORMAT = process.env.DATE_FORMAT || 'YYYY-MM-DDTHH:mm:ss.SSSZ';
-const TIMEZONE = process.env.TIMEZONE || 'Europe/Berlin'; // Europe/Berlin is used for both CET and CEST
-
-/**
- * Load JSON data from a file and convert date strings to the specified timezone.
- * 
- * @param {string} filePath - The path to the JSON file.
- * @param {Array<string>} [dateFields=[]] - The fields that contain date strings.
- * @returns {Object} The parsed and converted JSON data.
- * @throws {Error} Will throw an error if the file cannot be read or parsed.
- */
-function loadJsonData(filePath, dateFields = []) {
-    try {
-        oeeLogger.debug(`Loading JSON data from ${filePath}`);
-        const data = fs.readFileSync(filePath, 'utf8');
-        const jsonData = JSON.parse(data);
-
-        // Convert date fields to the specified timezone
-        if (dateFields.length > 0) {
-            jsonData.forEach(item => {
-                dateFields.forEach(field => {
-                    if (item[field]) {
-                        item[field] = moment.tz(item[field], 'UTC').tz(TIMEZONE).format(DATE_FORMAT);
-                    }
-                });
-            });
-        }
-
-        oeeLogger.info(`Content of ${filePath} loaded and converted successfully`);
-        return jsonData;
-    } catch (error) {
-        errorLogger.error(`Error loading JSON data from ${filePath}: ${error.message}`);
-        throw error;
-    }
-}
-
 /**
  * Load and cache machine data.
  * 
- * @returns {Object} The machine data.
+ * @returns {Array} The machine data.
  * @throws {Error} Will throw an error if the machine data cannot be loaded.
  */
 function loadMachineData() {
     if (!machineDataCache) {
-        machineDataCache = loadJsonData(machineFilePath); // Load machine.json
+        machineDataCache = loadJsonData(machineFilePath);
         oeeLogger.debug(`Machine data loaded from ${machineFilePath}`);
     }
     return machineDataCache;
@@ -273,14 +237,15 @@ function getTotalMachineStoppageTimeByLineAndPeriod(machineId, startTime, endTim
 }
 
 module.exports = {
+    loadMachineData,
+    loadProcessOrderData,
+    loadUnplannedDowntimeData,
+    loadPlannedDowntimeData,
+    loadShiftModelData,
+    loadMachineStoppagesData,
+    validateProcessOrderData,
     getUnplannedDowntimeByMachine,
     getPlannedDowntimeByMachine,
     getTotalMachineStoppageTimeByProcessOrder,
     getTotalMachineStoppageTimeByLineAndPeriod,
-    loadProcessOrderData,
-    loadUnplannedDowntimeData,
-    loadPlannedDowntimeData,
-    loadMachineData,
-    loadMachineStoppagesData,
-    validateProcessOrderData
 };

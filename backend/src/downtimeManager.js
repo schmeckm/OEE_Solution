@@ -2,28 +2,23 @@ const fs = require('fs');
 const path = require('path');
 const moment = require('moment');
 const { oeeLogger, errorLogger } = require('../utils/logger');
+const { loadJsonData } = require('./dataService');
 
-/**
- * Paths to JSON data files used in OEE calculations.
- * @constant
- * @type {string}
- */
+// Paths to JSON data files used in OEE calculations
 const unplannedDowntimeFilePath = path.resolve(__dirname, '../data/unplannedDowntime.json');
 const plannedDowntimeFilePath = path.resolve(__dirname, '../data/plannedDowntime.json');
 const processOrderFilePath = path.resolve(__dirname, '../data/processOrder.json');
 const shiftModelFilePath = path.resolve(__dirname, '../data/shiftModel.json');
 const microstopFilePath = path.resolve(__dirname, '../data/microstops.json');
 
-// Cache variables to store loaded data and avoid redundant file reads.
+// Cache variables to store loaded data and avoid redundant file reads
 let unplannedDowntimeCache = null;
 let plannedDowntimeCache = null;
 let processOrderDataCache = null;
 let shiftModelDataCache = null;
 let microstopCache = null;
 
-/**
- * Invalidates all caches to force reloading data from files.
- */
+// Invalidates all caches to force reloading data from files
 function invalidateCache() {
     unplannedDowntimeCache = null;
     plannedDowntimeCache = null;
@@ -32,37 +27,7 @@ function invalidateCache() {
     microstopCache = null;
 }
 
-/**
- * Loads and parses JSON data from a specified file with caching.
- * 
- * @param {string} filePath - The path to the JSON file.
- * @returns {Array|Object} - The parsed JSON data.
- * @throws Will throw an error if the file cannot be read or parsed.
- */
-function loadJsonData(filePath) {
-    try {
-        oeeLogger.debug(`Loading JSON data from ${filePath}`);
-        const data = fs.readFileSync(filePath, 'utf8');
-        const jsonData = JSON.parse(data);
-
-        if (!Array.isArray(jsonData)) {
-            oeeLogger.warn(`Data in ${filePath} is not an array.`);
-            return []; // Return an empty array if the data is not in the expected format
-        }
-
-        oeeLogger.debug(`Content of ${filePath} loaded successfully`);
-        return jsonData;
-    } catch (error) {
-        errorLogger.error(`Error loading JSON data from ${filePath}: ${error.message}`);
-        throw error;
-    }
-}
-
-/**
- * Loads and caches microstop data from the JSON file.
- * 
- * @returns {Array} - The cached microstop data.
- */
+// Loads and caches microstop data from the JSON file
 function loadMicrostopData() {
     if (!microstopCache) {
         try {
@@ -83,9 +48,7 @@ function loadMicrostopData() {
     return microstopCache;
 }
 
-/**
- * Loads all JSON data files in parallel and caches the data.
- */
+// Loads all JSON data files in parallel and caches the data
 async function loadAllData() {
     try {
         const [unplannedDowntime, plannedDowntime, processOrders, shifts, microstops] = await Promise.all([
@@ -109,11 +72,7 @@ async function loadAllData() {
     }
 }
 
-/**
- * Loads unplanned downtime data if not already cached.
- * 
- * @returns {Array} - The unplanned downtime data.
- */
+// Loads unplanned downtime data if not already cached
 function loadUnplannedDowntimeData() {
     if (!unplannedDowntimeCache) {
         unplannedDowntimeCache = loadJsonData(unplannedDowntimeFilePath);
@@ -121,11 +80,7 @@ function loadUnplannedDowntimeData() {
     return unplannedDowntimeCache;
 }
 
-/**
- * Loads planned downtime data if not already cached.
- * 
- * @returns {Array} - The planned downtime data.
- */
+// Loads planned downtime data if not already cached
 function loadPlannedDowntimeData() {
     if (!plannedDowntimeCache) {
         plannedDowntimeCache = loadJsonData(plannedDowntimeFilePath);
@@ -133,11 +88,7 @@ function loadPlannedDowntimeData() {
     return plannedDowntimeCache;
 }
 
-/**
- * Loads process order data if not already cached.
- * 
- * @returns {Array} - The process order data.
- */
+// Loads process order data if not already cached
 function loadProcessOrderData() {
     if (!processOrderDataCache) {
         processOrderDataCache = loadJsonData(processOrderFilePath);
@@ -145,11 +96,7 @@ function loadProcessOrderData() {
     return processOrderDataCache;
 }
 
-/**
- * Loads shift model data if not already cached.
- * 
- * @returns {Array} - The shift model data.
- */
+// Loads shift model data if not already cached
 function loadShiftModelData() {
     if (!shiftModelDataCache) {
         shiftModelDataCache = loadJsonData(shiftModelFilePath);
@@ -157,103 +104,58 @@ function loadShiftModelData() {
     return shiftModelDataCache;
 }
 
-/**
- * Parses a date string to a Moment object in UTC.
- * 
- * @param {string} dateStr - The date string to parse.
- * @returns {Object} - A Moment object representing the parsed date.
- */
+// Parses a date string to a Moment object in UTC
 function parseDate(dateStr) {
     return moment.utc(dateStr);
 }
 
-/**
- * Filters data by machine ID and time range.
- * 
- * @param {Array} dataArray - The data array to filter.
- * @param {string} machineId - The machine ID to filter by.
- * @param {string} orderStart - The start time of the order.
- * @param {string} orderEnd - The end time of the order.
- * @returns {Array} - The filtered data array.
- */
+// Filters data by machine ID and time range
 function filterDataByTimeRange(dataArray, machineId, orderStart, orderEnd) {
+    oeeLogger.warn(`Filtering data for machine ID: ${machineId} between ${orderStart} and ${orderEnd}`);
+
     return dataArray.filter(entry => {
         const start = parseDate(entry.Start);
         const end = parseDate(entry.End);
         const isMatchingMachine = entry.machine_id === machineId;
         const isInRange = start.isBetween(orderStart, orderEnd, null, '[]') || end.isBetween(orderStart, orderEnd, null, '[]');
+
+        // Add detailed logging for each entry
+        oeeLogger.warn(`  Machine Match: ${isMatchingMachine}, In Range: ${isInRange}`);
+
         return isMatchingMachine && isInRange;
     });
 }
 
-/**
- * Calculates the overlap duration between two time intervals.
- * 
- * @param {Object} start1 - The start time of the first interval.
- * @param {Object} end1 - The end time of the first interval.
- * @param {Object} start2 - The start time of the second interval.
- * @param {Object} end2 - The end time of the second interval.
- * @returns {number} - The overlap duration in minutes.
- */
+// Calculates the overlap duration between two time intervals
 function calculateOverlap(start1, end1, start2, end2) {
     const overlapStart = moment.max(start1, start2);
     const overlapEnd = moment.min(end1, end2);
     return Math.max(0, overlapEnd.diff(overlapStart, 'minutes'));
 }
 
-/**
- * Gets microstops filtered by machine ID.
- * 
- * @param {string} machineId - The machine ID to filter by.
- * @returns {Array} - The filtered microstops.
- */
-function getMicrostops(machineId) {
-    return filterDataByTimeRange(loadMicrostopData(), machineId);
+// Gets microstops filtered by machine ID and time range
+function getMicrostops(machineId, processOrderStartTime, processOrderEndTime) {
+    return filterDataByTimeRange(loadMicrostopData(), machineId, processOrderStartTime, processOrderEndTime);
 }
 
-/**
- * Gets planned downtime filtered by machine ID and time range.
- * 
- * @param {string} machineId - The machine ID to filter by.
- * @returns {Array} - The filtered planned downtime.
- */
-function getPlannedDowntime(machineId) {
-    return filterDataByTimeRange(loadPlannedDowntimeData(), machineId);
+// Gets planned downtime filtered by machine ID and time range
+function getPlannedDowntime(machineId, processOrderStartTime, processOrderEndTime) {
+    return filterDataByTimeRange(loadPlannedDowntimeData(), machineId, processOrderStartTime, processOrderEndTime);
 }
 
-/**
- * Gets unplanned downtime filtered by machine ID and time range.
- * 
- * @param {string} machineId - The machine ID to filter by.
- * @returns {Array} - The filtered unplanned downtime.
- */
-function getUnplannedDowntime(machineId) {
-    return filterDataByTimeRange(loadUnplannedDowntimeData(), machineId);
+// Gets unplanned downtime filtered by machine ID and time range
+function getUnplannedDowntime(machineId, processOrderStartTime, processOrderEndTime) {
+    return filterDataByTimeRange(loadUnplannedDowntimeData(), machineId, processOrderStartTime, processOrderEndTime);
 }
 
-/**
- * Calculates the duration of a break given its start and end time.
- * 
- * @param {string} breakStart - The start time of the break.
- * @param {string} breakEnd - The end time of the break.
- * @returns {number} - The duration of the break in minutes.
- */
+// Calculates the duration of a break given its start and end time
 function calculateBreakDuration(breakStart, breakEnd) {
     const breakStartTime = moment(breakStart, "HH:mm");
     const breakEndTime = moment(breakEnd, "HH:mm");
     return breakEndTime.diff(breakStartTime, 'minutes');
 }
 
-/**
- * Filters and calculates durations for OEE calculation.
- * 
- * @param {Object} processOrder - The process order details.
- * @param {Array} plannedDowntime - The planned downtime data.
- * @param {Array} unplannedDowntime - The unplanned downtime data.
- * @param {Array} microstops - The microstop data.
- * @param {Array} shifts - The shift data.
- * @returns {Object} - The filtered and calculated durations.
- */
+// Filters and calculates durations for OEE calculation
 function filterAndCalculateDurations(processOrder, plannedDowntime, unplannedDowntime, microstops, shifts) {
     const orderStart = parseDate(processOrder.Start).startOf('hour');
     const orderEnd = parseDate(processOrder.End).endOf('hour');
@@ -321,13 +223,7 @@ function filterAndCalculateDurations(processOrder, plannedDowntime, unplannedDow
     };
 }
 
-/**
- * Main function to load data and prepare OEE calculations.
- * 
- * @param {string} machineId - The machine ID for which to prepare OEE data.
- * @returns {Object} - The prepared OEE data.
- * @throws Will throw an error if the machine ID is not provided or if no process orders are found.
- */
+// Main function to load data and prepare OEE calculations
 function loadDataAndPrepareOEE(machineId) {
     oeeLogger.debug(`Inside loadDataAndPrepareOEE with machineId: ${machineId}`);
 
@@ -354,8 +250,12 @@ function loadDataAndPrepareOEE(machineId) {
 
         oeeLogger.debug(`Current process order details: ${JSON.stringify(currentProcessOrder, null, 2)}`);
 
-        const plannedDowntime = getPlannedDowntime(machineId, processOrderStartTime, processOrderEndTime);
+        // Get and log the filtered unplanned downtime data
         const unplannedDowntime = getUnplannedDowntime(machineId, processOrderStartTime, processOrderEndTime);
+        oeeLogger.debug(`Filtered unplanned downtime data: ${JSON.stringify(unplannedDowntime, null, 2)}`);
+
+        // Similar logging can be done for planned downtime and microstops if needed
+        const plannedDowntime = getPlannedDowntime(machineId, processOrderStartTime, processOrderEndTime);
         const microstops = getMicrostops(machineId, processOrderStartTime, processOrderEndTime);
         const shifts = loadShiftModelData().filter(shift => shift.machine_id === machineId);
 

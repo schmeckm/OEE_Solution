@@ -68,10 +68,27 @@ const swaggerOptions = {
     definition: {
         openapi: '3.0.0',
         info: {
-            title: 'API Documentation for OEE System',
-            version: '0.0.1',
-            description: 'This is the API documentation for the REST API',
+            title: 'OEE System API Documentation',
+            version: '1.0.0',
+            description: `
+                Welcome to the OEE (Overall Equipment Effectiveness) System API documentation.
+                
+                This API provides a comprehensive interface for interacting with the OEE system, designed to monitor, track, 
+                and optimize the performance of manufacturing equipment. Through this API, you can manage machine data, log and 
+                analyze downtime events, handle production orders, calculate OEE metrics, and much more.
+        
+                Key functionalities include:
+                - **Real-time Monitoring**: Capture and analyze real-time data from production machines.
+                - **Downtime Management**: Log, retrieve, and analyze both planned and unplanned downtimes.
+                - **OEE Calculation**: Calculate OEE metrics based on availability, performance, and quality data.
+                - **Shift and Production Order Management**: Associate machine performance with specific production orders and shifts.
+                - **Alerting and Notifications**: Set up alerts for critical events, such as unexpected downtimes.
+                - **Integration**: Seamlessly integrate with other systems, such as ERP and MES.
+        
+                This documentation provides all the necessary details for developers and system integrators to effectively use the 
+                API, including endpoint descriptions, request parameters, response formats, and example use cases.`,
         },
+
         servers: [{
             url: `http://localhost:${port}/api/v1`, // Adjust your base URL
         }, ],

@@ -5,15 +5,16 @@ const {
     getPlannedDowntimeByProcessOrderNumber,
     getPlannedDowntimeByMachineId
 } = require('../services/plannedDowntimeService');
+const moment = require('moment'); // Moment.js für die Datumsmanipulation
 
 const router = express.Router();
 
-/**
- * @swagger
- * tags:
- *   name: Planned Downtime
- *   description: API for managing planned downtimes
- */
+// Utility function to calculate duration in minutes
+function calculateDurationInMinutes(start, end) {
+    const startTime = moment(start);
+    const endTime = moment(end);
+    return endTime.diff(startTime, 'minutes');
+}
 
 /**
  * @swagger
@@ -33,7 +34,14 @@ const router = express.Router();
  *                 type: object
  */
 router.get('/', (req, res) => {
-    const data = loadPlannedDowntime();
+    let data = loadPlannedDowntime();
+
+    // Calculate the duration in minutes for each downtime entry
+    data = data.map(downtime => ({
+        ...downtime,
+        durationInMinutes: calculateDurationInMinutes(downtime.Start, downtime.End)
+    }));
+
     res.json(data);
 });
 
@@ -65,9 +73,13 @@ router.get('/', (req, res) => {
  */
 router.get('/processorder/:processOrderNumber', async(req, res) => {
     const processOrderNumber = req.params.processOrderNumber;
-    const data = await getPlannedDowntimeByProcessOrderNumber(processOrderNumber);
+    let data = await getPlannedDowntimeByProcessOrderNumber(processOrderNumber);
 
     if (data.length > 0) {
+        data = data.map(downtime => ({
+            ...downtime,
+            durationInMinutes: calculateDurationInMinutes(downtime.Start, downtime.End)
+        }));
         res.json(data);
     } else {
         res.status(404).json({ message: 'No planned downtime found for the specified process order number' });
@@ -102,9 +114,13 @@ router.get('/processorder/:processOrderNumber', async(req, res) => {
  */
 router.get('/machine/:machineId', async(req, res) => {
     const machineId = req.params.machineId;
-    const data = await getPlannedDowntimeByMachineId(machineId);
+    let data = await getPlannedDowntimeByMachineId(machineId);
 
     if (data.length > 0) {
+        data = data.map(downtime => ({
+            ...downtime,
+            durationInMinutes: calculateDurationInMinutes(downtime.Start, downtime.End)
+        }));
         res.json(data);
     } else {
         res.status(404).json({ message: 'No planned downtime found for the specified machine ID' });
@@ -136,11 +152,15 @@ router.get('/machine/:machineId', async(req, res) => {
  *         description: Planned downtime not found.
  */
 router.get('/:id', (req, res) => {
-    const data = loadPlannedDowntime();
+    let data = loadPlannedDowntime();
     const id = req.params.id;
     const downtime = data.find(d => d.ID === id);
     if (downtime) {
-        res.json(downtime);
+        const downtimeWithDuration = {
+            ...downtime,
+            durationInMinutes: calculateDurationInMinutes(downtime.Start, downtime.End)
+        };
+        res.json(downtimeWithDuration);
     } else {
         res.status(404).json({ message: 'Planned downtime not found' });
     }
