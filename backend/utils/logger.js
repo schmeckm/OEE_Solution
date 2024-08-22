@@ -104,7 +104,7 @@ const unplannedDowntimeLogger = createLogger('unplannedDowntime');
 
 // Log initialization messages
 oeeLogger.info('OEE Logger initialized successfully.');
-errorLogger.error('Error Logger initialized successfully.');
+errorLogger.info('Error Logger initialized successfully.');
 defaultLogger.info('Default Logger initialized successfully.');
 unplannedDowntimeLogger.info('Unplanned Downtime Logger initialized successfully.');
 

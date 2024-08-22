@@ -1,5 +1,10 @@
 const express = require('express');
-const { loadPlannedDowntime, savePlannedDowntime } = require('../services/plannedDowntimeService');
+const {
+    loadPlannedDowntime,
+    savePlannedDowntime,
+    getPlannedDowntimeByProcessOrderNumber,
+    getPlannedDowntimeByMachineId
+} = require('../services/plannedDowntimeService');
 
 const router = express.Router();
 
@@ -28,8 +33,82 @@ const router = express.Router();
  *                 type: object
  */
 router.get('/', (req, res) => {
-    const data = loadPlannedDowntime(); // Load all planned downtimes from the service
-    res.json(data); // Return the list of planned downtimes as a JSON response
+    const data = loadPlannedDowntime();
+    res.json(data);
+});
+
+/**
+ * @swagger
+ * /planneddowntime/processorder/{processOrderNumber}:
+ *   get:
+ *     summary: Get planned downtime by Process Order Number
+ *     tags: [Planned Downtime]
+ *     description: Retrieve planned downtimes for a specific process order.
+ *     parameters:
+ *       - in: path
+ *         name: processOrderNumber
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: The process order number to filter by.
+ *     responses:
+ *       200:
+ *         description: A list of planned downtimes for the specified process order.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 type: object
+ *       404:
+ *         description: No planned downtime found for the specified process order number.
+ */
+router.get('/processorder/:processOrderNumber', async(req, res) => {
+    const processOrderNumber = req.params.processOrderNumber;
+    const data = await getPlannedDowntimeByProcessOrderNumber(processOrderNumber);
+
+    if (data.length > 0) {
+        res.json(data);
+    } else {
+        res.status(404).json({ message: 'No planned downtime found for the specified process order number' });
+    }
+});
+
+/**
+ * @swagger
+ * /planneddowntime/machine/{machineId}:
+ *   get:
+ *     summary: Get planned downtime by Machine ID
+ *     tags: [Planned Downtime]
+ *     description: Retrieve planned downtimes for a specific machine.
+ *     parameters:
+ *       - in: path
+ *         name: machineId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: The machine ID to filter by.
+ *     responses:
+ *       200:
+ *         description: A list of planned downtimes for the specified machine ID.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 type: object
+ *       404:
+ *         description: No planned downtime found for the specified machine ID.
+ */
+router.get('/machine/:machineId', async(req, res) => {
+    const machineId = req.params.machineId;
+    const data = await getPlannedDowntimeByMachineId(machineId);
+
+    if (data.length > 0) {
+        res.json(data);
+    } else {
+        res.status(404).json({ message: 'No planned downtime found for the specified machine ID' });
+    }
 });
 
 /**
@@ -57,13 +136,13 @@ router.get('/', (req, res) => {
  *         description: Planned downtime not found.
  */
 router.get('/:id', (req, res) => {
-    const data = loadPlannedDowntime(); // Load all planned downtimes from the service
-    const id = req.params.id; // Get the ID from the request parameters
-    const downtime = data.find(d => d.ID === id); // Find the downtime with the given ID
+    const data = loadPlannedDowntime();
+    const id = req.params.id;
+    const downtime = data.find(d => d.ID === id);
     if (downtime) {
-        res.json(downtime); // Return the found downtime as a JSON response
+        res.json(downtime);
     } else {
-        res.status(404).json({ message: 'Planned downtime not found' }); // Return a 404 error if not found
+        res.status(404).json({ message: 'Planned downtime not found' });
     }
 });
 
@@ -97,11 +176,11 @@ router.get('/:id', (req, res) => {
  *                   type: string
  */
 router.post('/', (req, res) => {
-    const data = loadPlannedDowntime(); // Load all planned downtimes from the service
-    const newData = req.body; // Get the new downtime data from the request body
-    data.push(newData); // Add the new downtime to the list
-    savePlannedDowntime(data); // Save the updated list back to the service
-    res.status(201).json({ message: 'Planned downtime added successfully' }); // Return a success message
+    const data = loadPlannedDowntime();
+    const newData = req.body;
+    data.push(newData);
+    savePlannedDowntime(data);
+    res.status(201).json({ message: 'Planned downtime added successfully' });
 });
 
 /**
@@ -141,16 +220,16 @@ router.post('/', (req, res) => {
  *         description: Planned downtime not found.
  */
 router.put('/:id', (req, res) => {
-    const data = loadPlannedDowntime(); // Load all planned downtimes from the service
-    const id = req.params.id; // Get the ID from the request parameters
-    const updatedData = req.body; // Get the updated downtime data from the request body
-    const index = data.findIndex(item => item.ID === id); // Find the index of the downtime to update
+    const data = loadPlannedDowntime();
+    const id = req.params.id;
+    const updatedData = req.body;
+    const index = data.findIndex(item => item.ID === id);
     if (index !== -1) {
-        data[index] = updatedData; // Update the downtime data at the found index
-        savePlannedDowntime(data); // Save the updated list back to the service
-        res.status(200).json({ message: 'Planned downtime updated successfully' }); // Return a success message
+        data[index] = updatedData;
+        savePlannedDowntime(data);
+        res.status(200).json({ message: 'Planned downtime updated successfully' });
     } else {
-        res.status(404).json({ message: 'Planned downtime not found' }); // Return a 404 error if not found
+        res.status(404).json({ message: 'Planned downtime not found' });
     }
 });
 
@@ -182,14 +261,14 @@ router.put('/:id', (req, res) => {
  *         description: Planned downtime not found.
  */
 router.delete('/:id', (req, res) => {
-    let data = loadPlannedDowntime(); // Load all planned downtimes from the service
-    const initialLength = data.length; // Store the initial length of the data
-    data = data.filter(item => item.ID !== req.params.id); // Filter out the downtime with the given ID
+    let data = loadPlannedDowntime();
+    const initialLength = data.length;
+    data = data.filter(item => item.ID !== req.params.id);
     if (data.length !== initialLength) {
-        savePlannedDowntime(data); // Save the updated list back to the service
-        res.status(200).json({ message: 'Planned downtime deleted successfully' }); // Return a success message
+        savePlannedDowntime(data);
+        res.status(200).json({ message: 'Planned downtime deleted successfully' });
     } else {
-        res.status(404).json({ message: 'Planned downtime not found' }); // Return a 404 error if not found
+        res.status(404).json({ message: 'Planned downtime not found' });
     }
 });
 

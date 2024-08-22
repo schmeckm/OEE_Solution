@@ -27,6 +27,7 @@ const startLogCleanupJob = require('./cronJobs/logCleanupJob');
 const initializeMqttClient = require('./src/mqttClientSetup');
 const handleWebSocketConnections = require('./websocket/webSocketHandler');
 const gracefulShutdown = require('./src/shutdown');
+const { initializeInfluxDB } = require('./services/influxDBService');
 const registerApiRoutes = require('./routes/apiRoutes'); // Centralized API route registration
 
 const app = express();
@@ -44,6 +45,14 @@ app.use(helmet()); // Set security-related HTTP headers
 app.use(express.json({ limit: '10kb' })); // Limit payload size to prevent DoS attacks
 app.use(express.urlencoded({ extended: true, limit: '10kb' })); // Limit URL-encoded data size
 app.use(express.static(path.join(__dirname, 'public'))); // Serve static files
+
+initializeInfluxDB(); // Initialize InfluxDB
+
+app.use((err, req, res, next) => {
+    console.error(err.stack);
+    res.status(500).send('Something broke!');
+});
+
 
 // Rate limiting to prevent DoS attacks
 const limiter = rateLimit({
@@ -72,6 +81,7 @@ const swaggerOptions = {
 
 const swaggerSpecs = swaggerJsdoc(swaggerOptions);
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpecs));
+
 
 /**
  * Register API Endpoints

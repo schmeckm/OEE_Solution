@@ -1,21 +1,31 @@
 const fs = require('fs');
 const path = require('path');
 
-const SHIFT_MODEL_FILE = path.join(__dirname, '../data/shiftModel.json');
+const SHIFT_MODELS_FILE = path.join(__dirname, '../data/shiftModel.json');
 
-// Hilfsfunktion zum Laden der Shiftmodelle
+// Function to load all shift models
 const loadShiftModels = () => {
-    if (fs.existsSync(SHIFT_MODEL_FILE)) {
-        const data = fs.readFileSync(SHIFT_MODEL_FILE, 'utf8');
+    if (fs.existsSync(SHIFT_MODELS_FILE)) {
+        const data = fs.readFileSync(SHIFT_MODELS_FILE, 'utf8');
         return JSON.parse(data);
     } else {
         return [];
     }
 };
 
-// Hilfsfunktion zum Speichern der Shiftmodelle
-const saveShiftModels = (shiftModels) => {
-    fs.writeFileSync(SHIFT_MODEL_FILE, JSON.stringify(shiftModels, null, 4));
+// Function to load shift models by machine ID
+const loadShiftModelsByMachineId = (machineId) => {
+    const shiftModels = loadShiftModels();
+    return shiftModels.filter(sm => sm.machine_id === machineId);
 };
 
-module.exports = { loadShiftModels, saveShiftModels };
+// Function to save shift models
+const saveShiftModels = (shiftModels) => {
+    fs.writeFileSync(SHIFT_MODELS_FILE, JSON.stringify(shiftModels, null, 4));
+};
+
+module.exports = {
+    loadShiftModels,
+    loadShiftModelsByMachineId, // Export the function here
+    saveShiftModels,
+};

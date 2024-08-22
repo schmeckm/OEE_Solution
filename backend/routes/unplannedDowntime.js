@@ -1,5 +1,5 @@
 const express = require('express');
-const { loadUnplannedDowntime, saveUnplannedDowntime } = require('../services/unplannedDowntimeService');
+const { loadUnplannedDowntime, saveUnplannedDowntime, getUnplannedDowntimeByProcessOrderNumber, getUnplannedDowntimeByMachineId } = require('../services/unplannedDowntimeService');
 
 const router = express.Router();
 
@@ -30,6 +30,80 @@ const router = express.Router();
 router.get('/', (req, res) => {
     const data = loadUnplannedDowntime();
     res.json(data);
+});
+
+/**
+ * @swagger
+ * /unplanneddowntime/processorder/{processOrderNumber}:
+ *   get:
+ *     summary: Get unplanned downtime by Process Order Number
+ *     tags: [Unplanned Downtime]
+ *     description: Retrieve unplanned downtimes for a specific process order.
+ *     parameters:
+ *       - in: path
+ *         name: processOrderNumber
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: The process order number to filter by.
+ *     responses:
+ *       200:
+ *         description: A list of unplanned downtimes for the specified process order.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 type: object
+ *       404:
+ *         description: No unplanned downtime found for the specified process order number.
+ */
+router.get('/processorder/:processOrderNumber', async(req, res) => {
+    const processOrderNumber = req.params.processOrderNumber;
+    const data = await getUnplannedDowntimeByProcessOrderNumber(processOrderNumber);
+
+    if (data.length > 0) {
+        res.json(data);
+    } else {
+        res.status(404).json({ message: 'No unplanned downtime found for the specified process order number' });
+    }
+});
+
+/**
+ * @swagger
+ * /unplanneddowntime/machine/{machineId}:
+ *   get:
+ *     summary: Get unplanned downtime by Machine ID
+ *     tags: [Unplanned Downtime]
+ *     description: Retrieve unplanned downtimes for a specific machine.
+ *     parameters:
+ *       - in: path
+ *         name: machineId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: The machine ID to filter by.
+ *     responses:
+ *       200:
+ *         description: A list of unplanned downtimes for the specified machine ID.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 type: object
+ *       404:
+ *         description: No unplanned downtime found for the specified machine ID.
+ */
+router.get('/machine/:machineId', async(req, res) => {
+    const machineId = req.params.machineId;
+    const data = await getUnplannedDowntimeByMachineId(machineId);
+
+    if (data.length > 0) {
+        res.json(data);
+    } else {
+        res.status(404).json({ message: 'No unplanned downtime found for the specified machine ID' });
+    }
 });
 
 /**

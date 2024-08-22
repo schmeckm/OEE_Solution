@@ -1,5 +1,5 @@
 const express = require('express');
-const { loadShiftModels, saveShiftModels } = require('../services/shiftModelService'); // Import Shift model service
+const { loadShiftModels, saveShiftModels, loadShiftModelsByMachineId } = require('../services/shiftModelService'); // Import Shift model service
 
 const router = express.Router();
 
@@ -63,6 +63,43 @@ router.get('/:id', (req, res) => {
         res.json(shiftModel);
     } else {
         res.status(404).json({ message: `Shift model with ID ${req.params.id} not found` });
+    }
+});
+
+/**
+ * @swagger
+ * /shiftmodels/machine/{machine_id}:
+ *   get:
+ *     summary: Get shift models by machine ID
+ *     tags: [Shift Models]
+ *     description: Retrieve shift models associated with a specific machine ID.
+ *     parameters:
+ *       - in: path
+ *         name: machine_id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: The machine ID to filter shift models by.
+ *     responses:
+ *       200:
+ *         description: A list of shift models associated with the machine ID.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 type: object
+ *       404:
+ *         description: No shift models found for the given machine ID.
+ */
+router.get('/machine/:machine_id', (req, res) => {
+    const machineId = req.params.machine_id;
+    const shiftModels = loadShiftModelsByMachineId(machineId);
+
+    if (shiftModels.length > 0) {
+        res.json(shiftModels);
+    } else {
+        res.status(404).json({ message: `No shift models found for machine ID ${machineId}` });
     }
 });
 

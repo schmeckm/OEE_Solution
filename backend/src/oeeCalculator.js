@@ -3,9 +3,10 @@
  * Module for calculating OEE (Overall Equipment Effectiveness) metrics.
  */
 
+const axios = require('axios');
 const { InfluxDB, Point } = require('@influxdata/influxdb-client');
 const { oeeLogger, errorLogger, defaultLogger } = require('../utils/logger');
-const { influxdb, oeeAsPercent } = require('../config/config');
+const { influxdb, oeeAsPercent, oeeApiUrl } = require('../config/config');
 const { loadDataAndPrepareOEE } = require('../src/downtimeManager');
 const { loadProcessOrderData } = require('../src/dataLoader');
 
@@ -296,49 +297,20 @@ class OEECalculator {
  * @async
  * @param {Object} metrics - The OEE metrics to write to the database.
  */
+
+/**
+ * Writes the OEE data to InfluxDB via the API.
+ * @async
+ * @param {Object} metrics - The OEE metrics to send to the API.
+ */
 async function writeOEEToInfluxDB(metrics) {
-    if (!writeApi) {
-        errorLogger.error('InfluxDB write API is not initialized.');
-        return;
-    }
-
     try {
-        const point = new Point('oee_metrics')
-            .tag('plant', metrics.processData.plant || 'UnknownPlant')
-            .tag('area', metrics.processData.area || 'UnknownArea')
-            .tag('machineId', metrics.processData.machineId || 'UnknownMachine')
-            .tag('ProcessOrderNumber', metrics.processData.ProcessOrderNumber || 'UnknownOrder')
-            .tag('MaterialNumber', metrics.processData.MaterialNumber || 'UnknownMaterial')
-            .tag('MaterialDescription', metrics.processData.MaterialDescription || 'No Description')
-            .floatField('oee', oeeAsPercent ? metrics.oee : metrics.oee / 100)
-            .floatField('availability', oeeAsPercent ? metrics.availability * 100 : metrics.availability)
-            .floatField('performance', oeeAsPercent ? metrics.performance * 100 : metrics.performance)
-            .floatField('quality', oeeAsPercent ? metrics.quality * 100 : metrics.quality)
-            .floatField('plannedProduction', metrics.processData.plannedProduction)
-            .floatField('plannedDowntime', metrics.processData.plannedDowntime)
-            .floatField('unplannedDowntime', metrics.processData.unplannedDowntime)
-            .floatField('microstops', metrics.processData.microstops);
-
-        writeApi.writePoint(point);
-        await writeApi.flush();
-
-        defaultLogger.info(`Successfully wrote OEE metrics for machine ID: ${metrics.processData.machineId || 'undefined'} to InfluxDB.`);
+        const response = await axios.post(`${oeeApiUrl}/write-oee-metrics`, metrics);
+        return response.data; // Optional: return data from API if needed
     } catch (error) {
-        errorLogger.error(`Error writing to InfluxDB: ${error.message}`);
+        oeeLogger.error('Error sending OEE metrics to API:', error.response ? error.response.data : error.message);
+        throw error; // Rethrowing the error to be handled by the caller
     }
-}
-
-// Initialize InfluxDB API for writing OEE data
-let writeApi = null;
-try {
-    if (influxdb.url && influxdb.token && influxdb.org && influxdb.bucket) {
-        const influxDB = new InfluxDB({ url: influxdb.url, token: influxdb.token });
-        writeApi = influxDB.getWriteApi(influxdb.org, influxdb.bucket);
-    } else {
-        throw new Error('InfluxDB configuration is incomplete.');
-    }
-} catch (error) {
-    errorLogger.error(`InfluxDB initialization error: ${error.message}`);
 }
 
 // Export the OEECalculator class and writeOEEToInfluxDB function for use in other modules

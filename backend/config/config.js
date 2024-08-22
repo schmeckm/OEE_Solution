@@ -3,10 +3,9 @@ const path = require('path');
 const Joi = require('joi');
 const dotenv = require('dotenv');
 
-// Lade .env-Datei
+// Load .env file
 dotenv.config();
 
-// Lade config.json und structure.json
 const configPath = path.join(__dirname, '../config/config.json');
 const structurePath = path.join(__dirname, '../config/structure.json');
 
@@ -25,7 +24,6 @@ try {
     throw new Error(`Failed to load structure.json: ${err.message}`);
 }
 
-// Validierungsschema für die Umgebungsvariablen
 const envSchema = Joi.object({
     MQTT_BROKER_URL: Joi.string().uri().optional(),
     MQTT_BROKER_PORT: Joi.number().integer().default(1883),
@@ -44,6 +42,7 @@ const envSchema = Joi.object({
     INFLUXDB_BUCKET: Joi.string().allow(null),
     TOPIC_FORMAT: Joi.string().default('spBv1.0/group_id/message_type/edge_node_id'),
     PLANNED_DOWNTIME_API_URL: Joi.alternatives().try(Joi.string().uri(), Joi.allow(null, '')),
+    OEE_API_URL: Joi.string().uri().default(jsonConfig.oeeApiUrl),
     THRESHOLD_SECONDS: Joi.number().integer().default(300),
     DATE_FORMAT: Joi.string().default(jsonConfig.dateSettings.dateFormat),
     TIMEZONE: Joi.string().default(jsonConfig.dateSettings.timezone)
@@ -54,7 +53,8 @@ const { error, value: envVars } = envSchema.validate({
     MQTT_BROKER_URL: process.env.MQTT_BROKER_URL || jsonConfig.mqtt.brokerUrl,
     MQTT_BROKER_PORT: process.env.MQTT_BROKER_PORT || jsonConfig.mqtt.brokerPort,
     MQTT_USERNAME: process.env.MQTT_USERNAME || jsonConfig.mqtt.username,
-    MQTT_PASSWORD: process.env.MQTT_PASSWORD || jsonConfig.mqtt.password
+    MQTT_PASSWORD: process.env.MQTT_PASSWORD || jsonConfig.mqtt.password,
+    OEE_API_URL: process.env.OEE_API_URL || jsonConfig.oeeApiUrl, // Add OEE API URL
 });
 
 if (error) {
@@ -96,6 +96,7 @@ module.exports = {
     structure: structure,
     logRetentionDays: envVars.LOG_RETENTION_DAYS || jsonConfig.logRetentionDays,
     oeeAsPercent: envVars.OEE_AS_PERCENT || jsonConfig.oeeAsPercent,
+    oeeApiUrl: 'http://localhost:3000/api/v1', // Der grundlegende API-URL
     influxdb: {
         url: envVars.INFLUXDB_URL || jsonConfig.influxdb.url,
         token: envVars.INFLUXDB_TOKEN || jsonConfig.influxdb.token,
@@ -104,7 +105,8 @@ module.exports = {
     },
     topicFormat: envVars.TOPIC_FORMAT || jsonConfig.topicFormat,
     api: {
-        plannedDowntimeUrl: envVars.PLANNED_DOWNTIME_API_URL || jsonConfig.plannedDowntimeApiUrl
+        plannedDowntimeUrl: envVars.PLANNED_DOWNTIME_API_URL || jsonConfig.plannedDowntimeApiUrl,
+        oeeApiUrl: envVars.OEE_API_URL || jsonConfig.oeeApiUrl
     },
     thresholdSeconds: envVars.THRESHOLD_SECONDS || jsonConfig.thresholdSeconds,
     dateSettings: {
@@ -119,5 +121,3 @@ module.exports = {
         { id: 5, description: 'IT-OT', color: 'green' }
     ]
 };
-
-console.log("Configuration loaded successfully.");

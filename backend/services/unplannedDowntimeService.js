@@ -1,24 +1,30 @@
-const fs = require('fs');
 const path = require('path');
+const fs = require('fs').promises;
 
-const UNPLANNED_DOWNTIME_FILE = path.join(__dirname, '../data/unplannedDowntime.json');
+const filePath = path.resolve(__dirname, '../data/unplannedDowntime.json');
 
-// Hilfsfunktion zum Laden der ungeplanten Ausfallzeiten
-const loadUnplannedDowntime = () => {
-    if (fs.existsSync(UNPLANNED_DOWNTIME_FILE)) {
-        const data = fs.readFileSync(UNPLANNED_DOWNTIME_FILE, 'utf8');
-        return JSON.parse(data);
-    } else {
-        return [];
-    }
-};
+async function loadUnplannedDowntime() {
+    const data = await fs.readFile(filePath, 'utf8');
+    return JSON.parse(data);
+}
 
-// Hilfsfunktion zum Speichern der ungeplanten Ausfallzeiten
-const saveUnplannedDowntime = (downtimes) => {
-    fs.writeFileSync(UNPLANNED_DOWNTIME_FILE, JSON.stringify(downtimes, null, 4));
-};
+async function saveUnplannedDowntime(data) {
+    await fs.writeFile(filePath, JSON.stringify(data, null, 2));
+}
+
+async function getUnplannedDowntimeByProcessOrderNumber(processOrderNumber) {
+    const data = await loadUnplannedDowntime();
+    return data.filter(downtime => downtime.ProcessOrderNumber === processOrderNumber);
+}
+
+async function getUnplannedDowntimeByMachineId(machineId) {
+    const data = await loadUnplannedDowntime();
+    return data.filter(downtime => downtime.machine_id === machineId);
+}
 
 module.exports = {
     loadUnplannedDowntime,
-    saveUnplannedDowntime
+    saveUnplannedDowntime,
+    getUnplannedDowntimeByProcessOrderNumber,
+    getUnplannedDowntimeByMachineId
 };
