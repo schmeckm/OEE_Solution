@@ -1,62 +1,77 @@
-const path = require('path');
-const fs = require('fs').promises;
+// microstopsService.js
+const path = require("path");
+const moment = require("moment");
+const fs = require("fs").promises;
+const { defaultLogger, errorLogger } = require("../utils/logger");
 
 // Helper function to load JSON data from a file
-const loadJsonFile = async(filePath) => {
-    const data = await fs.readFile(filePath, 'utf8');
+const loadJsonFile = async (filePath) => {
+  try {
+    const data = await fs.readFile(filePath, "utf8");
     return JSON.parse(data);
+  } catch (err) {
+    errorLogger.error(`Failed to load JSON file: ${filePath}`, {
+      error: err.message,
+    });
+    throw err;
+  }
 };
 
 /**
- * Aggregates microstop data for a specific machine, optionally filtered by a date range.
- * 
- * @param {string} machineId - The ID of the machine.
+ * Aggregates microstop data by machine, filtered by machine ID and optional date range.
+ * If no machine ID or date range is given, aggregates all microstop data.
+ *
+ * @param {string|null} machineId - The machine ID to filter by, or null to ignore.
  * @param {Date|null} startDate - The start date for filtering, or null to ignore start date.
  * @param {Date|null} endDate - The end date for filtering, or null to ignore end date.
  * @returns {Object} An object where the keys are reasons and the values are the aggregated differenz values, sorted by differenz in descending order.
  */
-const aggregateMicrostopsByMachine = async(machineId, startDate = null, endDate = null) => {
-    const microstopsFilePath = path.resolve(__dirname, '../data/microstops.json');
-    const machinesFilePath = path.resolve(__dirname, '../data/machine.json');
+async function aggregateMicrostopsByMachine(
+  machineId = null,
+  startDate = null,
+  endDate = null
+) {
+  const microstopsFilePath = path.resolve(__dirname, "../data/microstops.json");
+  const microstops = await loadJsonFile(microstopsFilePath);
 
-    const microstops = await loadJsonFile(microstopsFilePath);
-    const machines = await loadJsonFile(machinesFilePath);
+  // Filter microstops based on the provided machine ID and date range
+  const filteredMicrostops = microstops.filter((ms) => {
+    if (machineId && ms.machine_id !== machineId) return false;
+    const msDate = moment(ms.Start);
+    if (startDate && msDate.isBefore(moment(startDate))) return false;
+    if (endDate && msDate.isAfter(moment(endDate))) return false;
+    return true;
+  });
 
-    // Check if the machine exists
-    const machineExists = machines.some(machine => machine.machine_id === machineId);
-    if (!machineExists) {
-        throw new Error(`Machine with ID ${machineId} not found`);
+  const aggregatedData = {};
+
+  filteredMicrostops.forEach((ms) => {
+    const machineKey = ms.machine_id;
+
+    if (!aggregatedData[machineKey]) {
+      aggregatedData[machineKey] = { microstops: [], total: 0 };
     }
 
-    // Filter microstops by machine_id and optionally by date range
-    const filteredMicrostops = microstops.filter(ms => {
-        if (ms.machine_id !== machineId) {
-            return false;
-        }
-        if (startDate && new Date(ms.Start) < startDate) {
-            return false;
-        }
-        if (endDate && new Date(ms.End) > endDate) {
-            return false;
-        }
-        return true;
-    });
+    const reasonIndex = aggregatedData[machineKey].microstops.findIndex(
+      (r) => r.reason === ms.Reason
+    );
 
-    // Aggregate by Reason and sum up Differenz values
-    const aggregatedData = filteredMicrostops.reduce((acc, curr) => {
-        acc[curr.Reason] = (acc[curr.Reason] || 0) + curr.Differenz;
-        return acc;
-    }, {});
+    if (reasonIndex >= 0) {
+      // If reason already exists, increment the total for this reason
+      aggregatedData[machineKey].microstops[reasonIndex].total += ms.Differenz;
+    } else {
+      // If reason does not exist, add a new entry with the reason code
+      aggregatedData[machineKey].microstops.push({
+        reason: ms.Reason,
+        total: ms.Differenz,
+      });
+    }
 
-    // Sort by the aggregated Differenz in descending order
-    const sortedAggregatedData = Object.entries(aggregatedData)
-        .sort(([, a], [, b]) => b - a)
-        .reduce((obj, [key, value]) => {
-            obj[key] = value;
-            return obj;
-        }, {});
+    // Increment the overall total sum for the machine
+    aggregatedData[machineKey].total += ms.Differenz;
+  });
 
-    return sortedAggregatedData;
-};
+  return aggregatedData;
+}
 
 module.exports = { aggregateMicrostopsByMachine };

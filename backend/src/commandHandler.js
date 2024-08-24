@@ -1,213 +1,269 @@
-const fs = require('fs');
-const path = require('path');
-const moment = require('moment-timezone');
-const dotenv = require('dotenv');
-const { v4: uuidv4 } = require('uuid');
-const { oeeLogger, errorLogger } = require('../utils/logger');
-const { loadProcessOrderData, loadMachineStoppagesData } = require('../src/dataLoader');
-const config = require('../config/config'); // Import the config
-const { setWebSocketServer, sendWebSocketMessage } = require('../websocket/webSocketUtils'); // Import WebSocket utilities
-
-dotenv.config(); // Load environment variables from .env file
+const { v4: uuidv4 } = require("uuid");
+const moment = require("moment-timezone");
+const axios = require("axios");
+const { oeeLogger, errorLogger } = require("../utils/logger");
+const { oeeApiUrl } = require("../config/config");
+const {
+  loadAndConvertMachineStoppagesData,
+  saveMachineStoppagesData,
+} = require("./dataLoader");
+const {
+  sendWebSocketMessage,
+  setWebSocketServer,
+} = require("../websocket/webSocketUtils");
 
 let currentHoldStatus = {};
-let processOrderData = null;
-
-// Use the threshold value from the config
-const THRESHOLD_SECONDS = config.thresholdSeconds;
-
-// Path to the Microstops.json file
-const dbFilePath = path.join(__dirname, '../data/microstops.json');
-
-// Load environment variables
-const DATE_FORMAT = process.env.DATE_FORMAT || 'YYYY-MM-DDTHH:mm:ss.SSSZ';
-const TIMEZONE = process.env.TIMEZONE || 'Europe/Berlin'; // Europe/Berlin wird sowohl für CET als auch für CEST verwendet
 
 /**
- * Parse a date string into a Moment.js object and convert it to CEST.
- * @param {string} dateStr - The date string.
- * @returns {Object} Moment.js object.
+ * Initializes machine stoppages data and sends it via WebSocket.
+ * @async
+ * @function initializeMachineStoppages
+ * @returns {Promise<void>}
  */
-function parseDate(dateStr) {
-    const date = moment.tz(dateStr, TIMEZONE);
-    if (!date.isValid()) {
-        const errorMsg = `Invalid date: ${dateStr}`;
-        errorLogger.error(errorMsg);
-        throw new Error(errorMsg);
-    }
-    return date;
-}
-
-/**
- * Load and convert machine stoppages data from JSON.
- * @returns {Array} The machine stoppages data with converted timestamps.
- */
-function loadAndConvertMachineStoppagesData() {
-    try {
-        const data = fs.readFileSync(dbFilePath, 'utf8');
-        const machineStoppages = JSON.parse(data);
-
-        return machineStoppages.map(stoppage => ({
-            ...stoppage,
-            Start: moment.tz(stoppage.Start, 'UTC').format(DATE_FORMAT),
-            End: moment.tz(stoppage.End, 'UTC').format(DATE_FORMAT)
-        }));
-    } catch (error) {
-        errorLogger.error(`Failed to load and convert machine stoppages data: ${error.message}`);
-        throw error;
-    }
-}
-
-
-// Send initial machine stoppages data to WebSocket clients
-try {
+async function initializeMachineStoppages() {
+  try {
     const initialMicrostops = loadAndConvertMachineStoppagesData();
-    sendWebSocketMessage('Microstops', initialMicrostops);
-} catch (error) {
-    errorLogger.error(`Failed to load initial machine stoppages data: ${error.message}`);
+    sendWebSocketMessage("Microstops", initialMicrostops);
+  } catch (error) {
+    logError("Failed to load initial machine stoppages data", error);
+  }
+}
+initializeMachineStoppages();
+
+/**
+ * Fetches the current process order for a specific machine.
+ *
+ * This function sends an HTTP GET request to fetch the process order associated with the given machine ID.
+ * It assumes that the API returns an array of process orders and returns the first entry in the array.
+ *
+ * @async
+ * @function fetchProcessOrder
+ * @param {string} machineId - The ID of the machine to fetch the process order for.
+ * @returns {Promise<Object|null>} The first process order object if found, or null if an error occurs or no process order is found.
+ */
+async function fetchProcessOrder(machineId) {
+  try {
+    const response = await axios.get(`${oeeApiUrl}/api/v1/processorders/rel`, {
+      params: { machineId, mark: true },
+    });
+    return response.data[0]; // Assuming the first entry is the relevant one
+  } catch (error) {
+    logError(`Failed to fetch process order for machineId ${machineId}`, error);
+    return null;
+  }
 }
 
-// Handle Hold command
-function handleHoldCommand(value) {
-    const timestamp = moment().tz(TIMEZONE).toISOString();
-
-    oeeLogger.debug(`handleHoldCommand called with value: ${value}`);
-
-    if (value === 1) {
-        oeeLogger.info('Machine is on Hold');
-        stopMachineOperations();
-        logEventToDatabase('Hold', timestamp);
-        notifyPersonnel('Machine has been put on hold.');
-
-        const processOrderNumber = processOrderData && processOrderData[0] && processOrderData[0].ProcessOrderNumber;
-        if (processOrderNumber) {
-            if (!currentHoldStatus[processOrderNumber]) {
-                currentHoldStatus[processOrderNumber] = [];
-            }
-            currentHoldStatus[processOrderNumber].push({ timestamp });
-
-            console.log(`Hold signal recorded in Microstops.json at ${timestamp}`);
-        } else {
-            oeeLogger.warn('No valid process order data found. Hold signal ignored.');
-        }
-    } else {
-        oeeLogger.info('Hold command received, but value is not 1');
-    }
+/**
+ * Logs an error message.
+ * @function logError
+ * @param {string} message - The error message to log.
+ * @param {Error} error - The error object containing details about the error.
+ */
+function logError(message, error) {
+  errorLogger.error(`${message}: ${error.message}`);
 }
 
-// Handle Unhold command
-function handleUnholdCommand(value) {
-    const timestamp = moment().tz(TIMEZONE).toISOString();
-
-    oeeLogger.debug(`handleUnholdCommand called with value: ${value}`);
-
-    if (value === 1) {
-        const processOrderNumber = processOrderData && processOrderData[0] && processOrderData[0].ProcessOrderNumber;
-        const order_id = processOrderData && processOrderData[0] && processOrderData[0].order_id;
-
-        if (processOrderNumber && order_id) {
-            if (currentHoldStatus[processOrderNumber] && currentHoldStatus[processOrderNumber].length > 0) {
-                handleUnholdMachine(processOrderNumber, order_id, timestamp);
-            } else {
-                oeeLogger.info('Unhold command received, but no previous Hold signal found.');
-                console.log('Current Hold Status:', currentHoldStatus);
-            }
-        } else {
-            oeeLogger.warn('No valid process order data found. Unhold signal ignored.');
-        }
-    } else {
-        oeeLogger.info('Unhold command received, but value is not 1');
-    }
+/**
+ * Logs an informational message.
+ * @function logInfo
+ * @param {string} message - The informational message to log.
+ */
+function logInfo(message) {
+  oeeLogger.info(message);
 }
 
-// Helper function to handle unholding the machine
-function handleUnholdMachine(processOrderNumber, order_id, timestamp) {
-    oeeLogger.info('Machine is now Unhold');
-    startMachineOperations();
-    logEventToDatabase('Unhold', timestamp);
-    notifyPersonnel('Machine has been unhold and resumed operations.');
-
-    const holdTimestamp = parseDate(currentHoldStatus[processOrderNumber][currentHoldStatus[processOrderNumber].length - 1].timestamp);
-    const unholdTimestamp = parseDate(timestamp);
-
-    oeeLogger.debug(`holdTimestamp: ${holdTimestamp}`);
-    oeeLogger.debug(`unholdTimestamp: ${unholdTimestamp}`);
-
-    const downtimeSeconds = Math.round(unholdTimestamp.diff(holdTimestamp, 'seconds'));
-
-    oeeLogger.debug(`Calculated downtimeSeconds: ${downtimeSeconds}`);
-
-    if (downtimeSeconds >= THRESHOLD_SECONDS) {
-        const machineStoppageEntry = {
-            "ID": uuidv4(),
-            "ProcessOrderID": order_id,
-            "ProcessOrderNumber": processOrderNumber,
-            "Start": holdTimestamp.toISOString(),
-            "End": unholdTimestamp.toISOString(),
-            "Reason": "tbd",
-            "Differenz": downtimeSeconds
-        };
-
-        try {
-            let Microstops = [];
-            if (fs.existsSync(dbFilePath)) {
-                const MicrostopsContent = fs.readFileSync(dbFilePath, 'utf8');
-                try {
-                    Microstops = JSON.parse(MicrostopsContent);
-                } catch (jsonError) {
-                    oeeLogger.warn('Microstops.json is empty or invalid. Initializing with an empty array.');
-                    Microstops = [];
-                }
-            }
-
-            Microstops.push(machineStoppageEntry);
-
-            fs.writeFileSync(dbFilePath, JSON.stringify(Microstops, null, 2), 'utf8');
-            console.log(`Unhold signal recorded in Microstops.json at ${timestamp}`);
-            console.log(`Downtime for Order ${processOrderNumber}: ${downtimeSeconds} seconds`);
-
-            sendWebSocketMessage('Microstops', Microstops);
-        } catch (error) {
-            console.error('Error writing Microstops.json:', error.message);
-        }
-    } else {
-        oeeLogger.info(`Downtime of ${downtimeSeconds} seconds did not meet the threshold of ${THRESHOLD_SECONDS} seconds. No entry recorded.`);
-    }
-
-    currentHoldStatus[processOrderNumber].pop();
-
-    if (currentHoldStatus[processOrderNumber].length === 0) {
-        delete currentHoldStatus[processOrderNumber];
-    }
-}
-
-// Function to stop machine operations
-function stopMachineOperations() {
-    oeeLogger.info('Stopping machine operations...');
-}
-
-// Function to start machine operations
-function startMachineOperations() {
-    oeeLogger.info('Starting machine operations...');
-}
-
-// Function to log events to the database
+/**
+ * Logs an event to the database with a timestamp.
+ * @function logEventToDatabase
+ * @param {string} event - The event type to log.
+ * @param {string} timestamp - The ISO timestamp of the event.
+ */
 function logEventToDatabase(event, timestamp) {
-    try {
-        if (!event || !timestamp) {
-            throw new Error('Event or timestamp missing or invalid.');
-        }
-
-        oeeLogger.info(`Logging event to database: ${event} at ${timestamp}`);
-    } catch (error) {
-        errorLogger.error(`Error logging event to database: ${error.message}`);
-    }
+  if (!event || !timestamp) {
+    logError("Event or timestamp missing or invalid", new Error());
+    return;
+  }
+  logInfo(`Logging event to database: ${event} at ${timestamp}`);
 }
 
-// Function to notify personnel
+/**
+ * Notifies personnel about a specific event.
+ * @function notifyPersonnel
+ * @param {string} message - The message to send to personnel.
+ */
 function notifyPersonnel(message) {
-    oeeLogger.info(`Notifying personnel: ${message}`);
+  logInfo(`Notifying personnel: ${message}`);
 }
 
-// Export the functions to be used in other modules
-module.exports = { handleHoldCommand, handleUnholdCommand, setWebSocketServer };
+/**
+ * Handles the "Hold" command, which places the machine on hold.
+ * @function handleHoldCommand
+ * @param {number} value - The value indicating whether to hold the machine (1 for hold).
+ */
+function handleHoldCommand(value) {
+  const timestamp = moment().tz(TIMEZONE).toISOString();
+  logInfo(`handleHoldCommand called with value: ${value}`);
+
+  if (value !== 1) {
+    logInfo("Hold command received, but value is not 1");
+    return;
+  }
+
+  logInfo("Machine is on Hold");
+  stopMachineOperations();
+  logEventToDatabase("Hold", timestamp);
+  notifyPersonnel("Machine has been put on hold.");
+
+  // Extract the process order number from the processOrderData
+  const processOrderDataEntry = processOrderData && processOrderData[0];
+
+  if (!processOrderDataEntry) {
+    logInfo("No valid process order data found. Hold signal ignored.");
+    return;
+  }
+
+  const processOrderNumber = processOrderDataEntry.ProcessOrderNumber;
+
+  // Initialize or update the hold status for the process order
+  currentHoldStatus[processOrderNumber] =
+    currentHoldStatus[processOrderNumber] || [];
+  currentHoldStatus[processOrderNumber].push({ timestamp });
+
+  console.log(`Hold signal recorded in Microstops.json at ${timestamp}`);
+}
+
+/**
+ * Handles the "Unhold" command, which resumes machine operations.
+ * @function handleUnholdCommand
+ * @param {number} value - The value indicating whether to unhold the machine (1 for unhold).
+ */
+function handleUnholdCommand(value) {
+  const timestamp = moment().tz(TIMEZONE).toISOString();
+  logInfo(`handleUnholdCommand called with value: ${value}`);
+
+  if (value !== 1) {
+    logInfo("Unhold command received, but value is not 1");
+    return;
+  }
+
+  // Extract the process order number and order ID from the processOrderData
+  const processOrderDataEntry = processOrderData && processOrderData[0];
+
+  if (!processOrderDataEntry) {
+    logInfo("Unhold command received, but no valid process order data found.");
+    return;
+  }
+
+  const processOrderNumber = processOrderDataEntry.ProcessOrderNumber;
+  const order_id = processOrderDataEntry.order_id;
+
+  // Check if the hold status exists for the process order
+  if (
+    !currentHoldStatus[processOrderNumber] ||
+    !currentHoldStatus[processOrderNumber].length
+  ) {
+    logInfo(
+      "Unhold command received, but no previous Hold signal found or process order is invalid."
+    );
+    console.log("Current Hold Status:", currentHoldStatus);
+    return;
+  }
+
+  handleUnholdMachine(processOrderNumber, order_id, timestamp);
+}
+
+/**
+ * Handles the process of unholding the machine, resuming operations, and logging the event.
+ * @function handleUnholdMachine
+ * @param {string} processOrderNumber - The process order number associated with the unhold event.
+ * @param {string} order_id - The ID of the process order.
+ * @param {string} timestamp - The timestamp when the unhold event occurred.
+ */
+function handleUnholdMachine(processOrderNumber, order_id, timestamp) {
+  logInfo("Machine is now Unhold");
+  startMachineOperations();
+  logEventToDatabase("Unhold", timestamp);
+  notifyPersonnel("Machine has been unhold and resumed operations.");
+
+  const holdTimestamp = moment(
+    currentHoldStatus[processOrderNumber].pop().timestamp
+  );
+  const downtimeSeconds = moment(timestamp).diff(holdTimestamp, "seconds");
+
+  if (currentHoldStatus[processOrderNumber].length === 0) {
+    delete currentHoldStatus[processOrderNumber];
+  }
+
+  if (downtimeSeconds < THRESHOLD_SECONDS) {
+    logInfo(
+      `Downtime of ${downtimeSeconds} seconds did not meet the threshold of ${THRESHOLD_SECONDS} seconds. No entry recorded.`
+    );
+    return;
+  }
+
+  const machineStoppageEntry = {
+    ID: uuidv4(),
+    ProcessOrderID: order_id,
+    ProcessOrderNumber: processOrderNumber,
+    Start: holdTimestamp.toISOString(),
+    End: moment(timestamp).toISOString(),
+    Reason: "tbd",
+    Differenz: downtimeSeconds,
+  };
+
+  try {
+    const Microstops = saveMachineStoppagesData(machineStoppageEntry);
+    sendWebSocketMessage("Microstops", Microstops);
+  } catch (error) {
+    logError("Error saving Microstops data", error);
+  }
+}
+
+/**
+ * Placeholder function to handle the start of a process order.
+ * @function handleProcessOrderStartCommand
+ * @param {number} value - The value associated with the start command.
+ * @param {string} machineId - The ID of the machine starting the process order.
+ */
+function handleProcessOrderStartCommand(value, machineId) {
+  logInfo(
+    `handleProcessOrderStartCommand called with value: ${value}, machineId: ${machineId}`
+  );
+}
+
+/**
+ * Placeholder function to handle the end of a process order.
+ * @function handleProcessOrderEndCommand
+ * @param {number} value - The value associated with the end command.
+ * @param {string} machineId - The ID of the machine ending the process order.
+ */
+function handleProcessOrderEndCommand(value, machineId) {
+  logInfo(
+    `handleProcessOrderEndCommand called with value: ${value}, machineId: ${machineId}`
+  );
+}
+
+/**
+ * Stops machine operations.
+ * @function stopMachineOperations
+ */
+function stopMachineOperations() {
+  logInfo("Stopping machine operations...");
+}
+
+/**
+ * Starts machine operations.
+ * @function startMachineOperations
+ */
+function startMachineOperations() {
+  logInfo("Starting machine operations...");
+}
+
+// Exporting the functions for use in other modules
+module.exports = {
+  handleHoldCommand,
+  handleUnholdCommand,
+  handleProcessOrderStartCommand, // Placeholder export
+  handleProcessOrderEndCommand, // Placeholder export
+  setWebSocketServer,
+};

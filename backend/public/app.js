@@ -120,7 +120,7 @@ function updateProcessData(processData) {
     document.getElementById("materialDescription").innerText = processData.MaterialDescription;
     document.getElementById("startTime").innerText = moment.tz(processData.StartTime, "UTC").tz(timeZone).format("YYYY-MM-DD HH:mm:ss");
     document.getElementById("endTime").innerText = moment.tz(processData.EndTime, "UTC").tz(timeZone).format("YYYY-MM-DD HH:mm:ss");
-    document.getElementById("plannedQuantity").innerText = processData.plannedProduction;
+    document.getElementById("plannedQuantity").innerText = processData.plannedProductionQuantity;
     document.getElementById("plannedDowntime").innerText = processData.plannedDowntime;
     document.getElementById("unplannedDowntime").innerText = processData.unplannedDowntime;
     document.getElementById("lineCode").innerText = processData.lineCode || 'N/A';

@@ -1,5 +1,9 @@
-const express = require('express');
-const { loadMicroStops, saveMicroStops } = require('../services/microstopService');
+const express = require("express");
+const {
+  loadMicroStops,
+  saveMicroStops,
+} = require("../services/microstopService");
+const moment = require("moment"); // Import moment
 
 const router = express.Router();
 
@@ -27,13 +31,9 @@ const router = express.Router();
  *               items:
  *                 type: object
  */
-router.get('/', (req, res) => {
-    /**
-     * Retrieves all microstops.
-     * @returns {Array<Object>} A list of all microstops.
-     */
-    const data = loadMicroStops();
-    res.json(data);
+router.get("/", (req, res) => {
+  const data = loadMicroStops();
+  res.json(data);
 });
 
 /**
@@ -60,20 +60,14 @@ router.get('/', (req, res) => {
  *       404:
  *         description: Microstop not found.
  */
-router.get('/:id', (req, res) => {
-    /**
-     * Retrieves a specific microstop by ID.
-     * @param {string} req.params.id - The ID of the microstop to retrieve.
-     * @returns {Object|404} The microstop object if found, otherwise a 404 error.
-     */
-    const data = loadMicroStops();
-    const id = req.params.id;
-    const microStop = data.find(d => d.ID === id);
-    if (microStop) {
-        res.json(microStop);
-    } else {
-        res.status(404).json({ message: 'Microstop not found' });
-    }
+router.get("/:id", (req, res) => {
+  const data = loadMicroStops();
+  const microStop = data.find((d) => d.ID === req.params.id);
+  if (microStop) {
+    res.json(microStop);
+  } else {
+    res.status(404).json({ message: "Microstop not found" });
+  }
 });
 
 /**
@@ -94,6 +88,12 @@ router.get('/:id', (req, res) => {
  *                 type: string
  *               description:
  *                 type: string
+ *               Start:
+ *                 type: string
+ *                 format: date-time
+ *               End:
+ *                 type: string
+ *                 format: date-time
  *     responses:
  *       201:
  *         description: Microstop added successfully.
@@ -107,17 +107,22 @@ router.get('/:id', (req, res) => {
  *                 microstop:
  *                   type: object
  */
-router.post('/', (req, res) => {
-    /**
-     * Adds a new microstop.
-     * @param {Object} req.body - The new microstop data.
-     * @returns {Object} A success message and the added microstop.
-     */
-    const data = loadMicroStops();
-    const newData = req.body;
-    data.push(newData);
-    saveMicroStops(data);
-    res.status(201).json({ message: 'Microstop added successfully', microstop: newData });
+router.post("/", (req, res) => {
+  const data = loadMicroStops();
+  const newData = {
+    ...req.body,
+    Start: req.body.Start
+      ? moment(req.body.Start).format("YYYY-MM-DDTHH:mm:ss")
+      : null,
+    End: req.body.End
+      ? moment(req.body.End).format("YYYY-MM-DDTHH:mm:ss")
+      : null,
+  };
+  data.push(newData);
+  saveMicroStops(data);
+  res
+    .status(201)
+    .json({ message: "Microstop added successfully", microstop: newData });
 });
 
 /**
@@ -158,24 +163,31 @@ router.post('/', (req, res) => {
  *       404:
  *         description: Microstop not found.
  */
-router.put('/:id', (req, res) => {
-    /**
-     * Updates an existing microstop by ID.
-     * @param {string} req.params.id - The ID of the microstop to update.
-     * @param {Object} req.body - The updated microstop data.
-     * @returns {Object|404} A success message and the updated microstop, or a 404 error if not found.
-     */
-    const data = loadMicroStops();
-    const id = req.params.id;
-    const updatedData = req.body;
-    const index = data.findIndex(item => item.ID === id);
-    if (index !== -1) {
-        data[index] = updatedData;
-        saveMicroStops(data);
-        res.status(200).json({ message: 'Microstop updated successfully', microstop: updatedData });
-    } else {
-        res.status(404).json({ message: 'Microstop not found' });
-    }
+router.put("/:id", (req, res) => {
+  const data = loadMicroStops();
+  const index = data.findIndex((item) => item.ID === req.params.id);
+  if (index !== -1) {
+    const updatedData = {
+      ...data[index],
+      ...req.body,
+      Start: req.body.Start
+        ? moment(req.body.Start).format("YYYY-MM-DDTHH:mm:ss")
+        : data[index].Start,
+      End: req.body.End
+        ? moment(req.body.End).format("YYYY-MM-DDTHH:mm:ss")
+        : data[index].End,
+    };
+    data[index] = updatedData;
+    saveMicroStops(data);
+    res
+      .status(200)
+      .json({
+        message: "Microstop updated successfully",
+        microstop: updatedData,
+      });
+  } else {
+    res.status(404).json({ message: "Microstop not found" });
+  }
 });
 
 /**
@@ -205,21 +217,16 @@ router.put('/:id', (req, res) => {
  *       404:
  *         description: Microstop not found.
  */
-router.delete('/:id', (req, res) => {
-    /**
-     * Deletes a microstop by ID.
-     * @param {string} req.params.id - The ID of the microstop to delete.
-     * @returns {Object|404} A success message or a 404 error if the microstop is not found.
-     */
-    let data = loadMicroStops();
-    const initialLength = data.length;
-    data = data.filter(item => item.ID !== req.params.id);
-    if (data.length !== initialLength) {
-        saveMicroStops(data);
-        res.status(200).json({ message: 'Microstop deleted successfully' });
-    } else {
-        res.status(404).json({ message: 'Microstop not found' });
-    }
+router.delete("/:id", (req, res) => {
+  let data = loadMicroStops();
+  const initialLength = data.length;
+  data = data.filter((item) => item.ID !== req.params.id);
+  if (data.length !== initialLength) {
+    saveMicroStops(data);
+    res.status(200).json({ message: "Microstop deleted successfully" });
+  } else {
+    res.status(404).json({ message: "Microstop not found" });
+  }
 });
 
 module.exports = router;

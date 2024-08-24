@@ -1,18 +1,18 @@
 /**
  * Module dependencies.
  */
-const express = require('express');
-const path = require('path');
-const dotenv = require('dotenv');
-const helmet = require('helmet');
-const rateLimit = require('express-rate-limit');
-const { Server } = require('ws');
-const bcrypt = require('bcrypt');
-const jwt = require('jsonwebtoken');
-const swaggerUi = require('swagger-ui-express');
-const swaggerJsdoc = require('swagger-jsdoc');
-const { loadUsers, saveUsers } = require('./services/userService');
-const { authenticateToken, authorizeRole } = require('./middlewares/auth');
+const express = require("express");
+const path = require("path");
+const dotenv = require("dotenv");
+const helmet = require("helmet");
+const rateLimit = require("express-rate-limit");
+const { Server } = require("ws");
+const bcrypt = require("bcrypt");
+const jwt = require("jsonwebtoken");
+const swaggerUi = require("swagger-ui-express");
+const swaggerJsdoc = require("swagger-jsdoc");
+const { loadUsers, saveUsers } = require("./services/userService");
+const { authenticateToken, authorizeRole } = require("./middlewares/auth");
 
 /**
  * Load environment variables from .env file.
@@ -20,15 +20,15 @@ const { authenticateToken, authorizeRole } = require('./middlewares/auth');
  */
 dotenv.config();
 
-const { defaultLogger } = require('./utils/logger');
-const { logRetentionDays } = require('./config/config');
-const { setWebSocketServer } = require('./src/oeeProcessor');
-const startLogCleanupJob = require('./cronJobs/logCleanupJob');
-const initializeMqttClient = require('./src/mqttClientSetup');
-const handleWebSocketConnections = require('./websocket/webSocketHandler');
-const gracefulShutdown = require('./src/shutdown');
-const { initializeInfluxDB } = require('./services/influxDBService');
-const registerApiRoutes = require('./routes/apiRoutes'); // Centralized API route registration
+const { defaultLogger } = require("./utils/logger");
+const { logRetentionDays } = require("./config/config");
+const { setWebSocketServer } = require("./src/oeeProcessor");
+const startLogCleanupJob = require("./cronJobs/logCleanupJob");
+const initializeMqttClient = require("./src/mqttClientSetup");
+const handleWebSocketConnections = require("./websocket/webSocketHandler");
+const gracefulShutdown = require("./src/shutdown");
+const { initializeInfluxDB } = require("./services/influxDBService");
+const registerApiRoutes = require("./routes/apiRoutes"); // Centralized API route registration
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -42,22 +42,21 @@ const port = process.env.PORT || 3000;
  * - `rateLimit`: Limits the number of requests from a single IP to prevent DoS attacks.
  */
 app.use(helmet()); // Set security-related HTTP headers
-app.use(express.json({ limit: '10kb' })); // Limit payload size to prevent DoS attacks
-app.use(express.urlencoded({ extended: true, limit: '10kb' })); // Limit URL-encoded data size
-app.use(express.static(path.join(__dirname, 'public'))); // Serve static files
+app.use(express.json({ limit: "10kb" })); // Limit payload size to prevent DoS attacks
+app.use(express.urlencoded({ extended: true, limit: "10kb" })); // Limit URL-encoded data size
+app.use(express.static(path.join(__dirname, "public"))); // Serve static files
 
 initializeInfluxDB(); // Initialize InfluxDB
 
 app.use((err, req, res, next) => {
-    console.error(err.stack);
-    res.status(500).send('Something broke!');
+  console.error(err.stack);
+  res.status(500).send("Something broke!");
 });
-
 
 // Rate limiting to prevent DoS attacks
 const limiter = rateLimit({
-    windowMs: 15 * 60 * 1000, // 15 minutes
-    max: 100, // Limit each IP to 100 requests per windowMs
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100, // Limit each IP to 100 requests per windowMs
 });
 app.use(limiter);
 
@@ -65,12 +64,12 @@ app.use(limiter);
  * Swagger Setup for API Documentation
  */
 const swaggerOptions = {
-    definition: {
-        openapi: '3.0.0',
-        info: {
-            title: 'OEE System API Documentation',
-            version: '1.0.0',
-            description: `
+  definition: {
+    openapi: "3.0.0",
+    info: {
+      title: "OEE System API Documentation",
+      version: "1.0.0",
+      description: `
                 Welcome to the OEE (Overall Equipment Effectiveness) System API documentation.
                 
                 This API provides a comprehensive interface for interacting with the OEE system, designed to monitor, track, 
@@ -87,18 +86,19 @@ const swaggerOptions = {
         
                 This documentation provides all the necessary details for developers and system integrators to effectively use the 
                 API, including endpoint descriptions, request parameters, response formats, and example use cases.`,
-        },
-
-        servers: [{
-            url: `http://localhost:${port}/api/v1`, // Adjust your base URL
-        }, ],
     },
-    apis: ['./routes/*.js'], // Path to your API routes
+
+    servers: [
+      {
+        url: `http://localhost:${port}/api/v1`, // Adjust your base URL
+      },
+    ],
+  },
+  apis: ["./routes/*.js"], // Path to your API routes
 };
 
 const swaggerSpecs = swaggerJsdoc(swaggerOptions);
-app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpecs));
-
+app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpecs));
 
 /**
  * Register API Endpoints
@@ -107,7 +107,7 @@ app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpecs));
  */
 registerApiRoutes(app);
 
-defaultLogger.info('Logger initialized successfully.');
+defaultLogger.info("Logger initialized successfully.");
 
 /**
  * User Registration Endpoint
@@ -121,29 +121,29 @@ defaultLogger.info('Logger initialized successfully.');
  * @param {string} role - The role of the new user (e.g., 'admin', 'user').
  * @returns {JSON} Success or error message.
  */
-app.post('/register', async(req, res) => {
-    const { username, password, role } = req.body;
-    const users = loadUsers();
+app.post("/register", async (req, res) => {
+  const { username, password, role } = req.body;
+  const users = loadUsers();
 
-    // Check if the username already exists
-    if (users.some(user => user.username === username)) {
-        return res.status(400).json({ message: 'Username already exists' });
-    }
+  // Check if the username already exists
+  if (users.some((user) => user.username === username)) {
+    return res.status(400).json({ message: "Username already exists" });
+  }
 
-    // Hash the password
-    const hashedPassword = await bcrypt.hash(password, 10);
+  // Hash the password
+  const hashedPassword = await bcrypt.hash(password, 10);
 
-    // Add the new user
-    const newUser = {
-        id: users.length ? Math.max(...users.map(user => user.id)) + 1 : 1,
-        username,
-        password: hashedPassword,
-        role
-    };
-    users.push(newUser);
-    saveUsers(users);
+  // Add the new user
+  const newUser = {
+    id: users.length ? Math.max(...users.map((user) => user.id)) + 1 : 1,
+    username,
+    password: hashedPassword,
+    role,
+  };
+  users.push(newUser);
+  saveUsers(users);
 
-    res.status(201).json({ message: 'User registered successfully' });
+  res.status(201).json({ message: "User registered successfully" });
 });
 
 /**
@@ -156,25 +156,29 @@ app.post('/register', async(req, res) => {
  * @param {string} password - The password for the user.
  * @returns {JSON} JWT token or error message.
  */
-app.post('/login', async(req, res) => {
-    const { username, password } = req.body;
-    const users = loadUsers();
+app.post("/login", async (req, res) => {
+  const { username, password } = req.body;
+  const users = loadUsers();
 
-    // Find the user
-    const user = users.find(user => user.username === username);
-    if (!user) {
-        return res.status(400).json({ message: 'User not found' });
-    }
+  // Find the user
+  const user = users.find((user) => user.username === username);
+  if (!user) {
+    return res.status(400).json({ message: "User not found" });
+  }
 
-    // Verify the password
-    const validPassword = await bcrypt.compare(password, user.password);
-    if (!validPassword) {
-        return res.status(400).json({ message: 'Invalid password' });
-    }
+  // Verify the password
+  const validPassword = await bcrypt.compare(password, user.password);
+  if (!validPassword) {
+    return res.status(400).json({ message: "Invalid password" });
+  }
 
-    // Generate a JWT token
-    const accessToken = jwt.sign({ id: user.id, role: user.role }, process.env.ACCESS_TOKEN_SECRET, { expiresIn: '1h' });
-    res.json({ accessToken });
+  // Generate a JWT token
+  const accessToken = jwt.sign(
+    { id: user.id, role: user.role },
+    process.env.ACCESS_TOKEN_SECRET,
+    { expiresIn: "1h" }
+  );
+  res.json({ accessToken });
 });
 
 /**
@@ -185,8 +189,8 @@ app.post('/login', async(req, res) => {
  * @memberof module:routes
  * @returns {JSON} Success message if authorized.
  */
-app.get('/admin', authenticateToken, authorizeRole('admin'), (req, res) => {
-    res.json({ message: 'Welcome, Admin!' });
+app.get("/admin", authenticateToken, authorizeRole("admin"), (req, res) => {
+  res.json({ message: "Welcome, Admin!" });
 });
 
 /**
@@ -214,12 +218,12 @@ const mqttClient = initializeMqttClient();
  * @memberof module:server
  */
 const server = app.listen(port, () => {
-    defaultLogger.info(`Server is running on port ${port}`);
+  defaultLogger.info(`Server is running on port ${port}`);
 });
 
 /**
  * WebSocket Server Setup
- * Initializes the WebSocket server, attaches it to the HTTP server, 
+ * Initializes the WebSocket server, attaches it to the HTTP server,
  * and delegates connection handling to a dedicated function.
  * @function
  * @memberof module:webSocketHandler
@@ -228,7 +232,7 @@ const wss = new Server({ server });
 
 /**
  * Handle WebSocket Connections
- * Delegates the handling of WebSocket connections, messages, and disconnections 
+ * Delegates the handling of WebSocket connections, messages, and disconnections
  * to an external handler function for modularity and clarity.
  * @function
  * @memberof module:webSocketHandler
@@ -237,7 +241,7 @@ handleWebSocketConnections(wss);
 
 /**
  * Associate WebSocket Server with OEE Processor
- * Sets the WebSocket server instance within the OEE processor for 
+ * Sets the WebSocket server instance within the OEE processor for
  * further communication handling.
  * @function
  * @memberof module:oeeProcessor
@@ -246,11 +250,11 @@ setWebSocketServer(wss);
 
 /**
  * Graceful Shutdown Handling
- * Listens for termination signals (SIGTERM, SIGINT) to gracefully 
+ * Listens for termination signals (SIGTERM, SIGINT) to gracefully
  * shut down the server and disconnect the MQTT client.
  * Ensures that the server closes properly without data loss.
  * @function
  * @memberof module:shutdown
  */
-process.on('SIGTERM', () => gracefulShutdown(server, mqttClient, 'SIGTERM'));
-process.on('SIGINT', () => gracefulShutdown(server, mqttClient, 'SIGINT'));
+process.on("SIGTERM", () => gracefulShutdown(server, mqttClient, "SIGTERM"));
+process.on("SIGINT", () => gracefulShutdown(server, mqttClient, "SIGINT"));

@@ -1,11 +1,12 @@
 {
-    "plannedProduction": {
+    "plannedProductionQuantity": {
         "alias": "Planned Production Time",
         "type": "number",
         "metadata": {
             "unit": "hours",
             "description": "Total time planned for production"
-        }
+        },
+        "machineConnect": false
     },
     "runtime": {
         "alias": "Runtime",
@@ -13,7 +14,8 @@
         "metadata": {
             "unit": "hours",
             "description": "Planned runtime"
-        }
+        },
+        "machineConnect": false
     },
     "actualPerformance": {
         "alias": "Actual Performance",
@@ -21,7 +23,8 @@
         "metadata": {
             "unit": "units",
             "description": "Total units produced"
-        }
+        },
+        "machineConnect": true
     },
     "targetPerformance": {
         "alias": "Target Performance",
@@ -29,23 +32,26 @@
         "metadata": {
             "unit": "units",
             "description": "Target units to be produced"
-        }
+        },
+        "machineConnect": false
     },
-    "goodProducts": {
+    "totalProductionYield": {
         "alias": "Good Products",
         "type": "number",
         "metadata": {
             "unit": "units",
             "description": "Total units without defects"
-        }
+        },
+        "machineConnect": true
     },
-    "totalProduction": {
+    "totalProductionQuantity": {
         "alias": "Total Production",
         "type": "number",
         "metadata": {
             "unit": "units",
             "description": "Total units produced including defects"
-        }
+        },
+        "machineConnect": true
     },
     "availability": {
         "alias": "Availability",
@@ -53,7 +59,8 @@
         "metadata": {
             "unit": "percent",
             "description": "Availability percentage"
-        }
+        },
+        "machineConnect": true
     },
     "performance": {
         "alias": "Performance",
@@ -61,7 +68,8 @@
         "metadata": {
             "unit": "percent",
             "description": "Performance percentage"
-        }
+        },
+        "machineConnect": true
     },
     "quality": {
         "alias": "Quality",
@@ -69,7 +77,8 @@
         "metadata": {
             "unit": "percent",
             "description": "Quality percentage"
-        }
+        },
+        "machineConnect": true
     },
     "oee": {
         "alias": "Overall Equipment Effectiveness",
@@ -77,20 +86,23 @@
         "metadata": {
             "unit": "percent",
             "description": "Overall Equipment Effectiveness"
-        }
+        },
+        "machineConnect": true
     },
     "Hold": {
         "alias": "Hold Command",
         "type": "Int32",
         "metadata": {
             "description": "Machine hold command"
-        }
+        },
+        "machineConnect": true
     },
     "Unhold": {
         "alias": "Unhold Command",
         "type": "Int32",
         "metadata": {
             "description": "Machine unhold command"
-        }
+        },
+        "machineConnect": true
     }
 }
