@@ -165,7 +165,7 @@ async function handleOeeMessage(decodedMessage, machineId) {
  * @param {string} machineId - The machine ID.
  */
 async function handleCommandMessage(decodedMessage, machineId) {
-  oeeLogger.debug(
+  oeeLogger.warn(
     `handleCommandMessage called with decodedMessage: ${JSON.stringify(
       decodedMessage
     )}, machineId: ${machineId}`
@@ -193,16 +193,20 @@ async function handleCommandMessage(decodedMessage, machineId) {
       switch (name) {
         case "Command/Hold":
           await handleHoldCommand(value, machineId);
+          oeeLogger.warn(`Command/Hold: ${name}`);
           break;
         case "Command/Unhold":
           await handleUnholdCommand(value, machineId);
+          oeeLogger.warn(`Command/Unhold: ${name}`);
           break;
         case "Command/Start":
           await handleProcessOrderStartCommand(value, machineId);
+          oeeLogger.warn(`Command/Start: ${name}`);
           // Hier könnte in Zukunft eine Funktion hinzugefügt werden, um den Prozessstart zu protokollieren.
           break;
         case "Command/End":
           await handleProcessOrderEndCommand(value, machineId);
+          oeeLogger.warn(`Command/End: ${name}`);
           // Hier könnte in Zukunft eine Funktion hinzugefügt werden, um das Prozessende zu protokollieren.
           break;
         default:

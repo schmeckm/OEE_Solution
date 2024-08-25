@@ -126,9 +126,9 @@ async function getPlantAndArea(machineId) {
  * @param {string} machineId - The MachineID or Workcenter.
  */
 async function updateMetric(name, value, machineId) {
-  console.log(
-    `Updating metric: ${name} with value: ${value} for machine: ${machineId}`
-  );
+  //   console.log(
+  //     `Updating metric: ${name} with value: ${value} for machine: ${machineId}`
+  //   );
 
   if (!metricBuffers.has(machineId)) {
     metricBuffers.set(machineId, {}); // Initialize buffer if it doesn't exist
@@ -223,7 +223,7 @@ async function processMetrics(machineId) {
     sendWebSocketMessage("OEEData", OEEData);
     oeeLogger.info(`OEE Data: ${JSON.stringify(OEEData)}`);
   } catch (error) {
-    errorLogger.error(
+    errorLogger.warn(
       `Error calculating metrics for machine ${machineId}: ${error.message}`
     );
   }

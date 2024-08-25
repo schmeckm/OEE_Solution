@@ -265,7 +265,7 @@ class OEECalculator {
         )}`
       );
     } catch (error) {
-      errorLogger.error(
+      errorLogger.warn(
         `Error calculating metrics for machineId ${machineId}: ${error.message}`
       );
       throw error;

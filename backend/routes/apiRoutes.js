@@ -13,6 +13,7 @@ const topicsRouter = require("./topics");
 const ratingsRouter = require("./ratings");
 const microstopMachineAggregationRouter = require("./microstopByMachine"); // Aggregation by Machine
 const microstopProcessOrderAggregationRouter = require("./microstopByProcessOrder");
+const settingRouter = require("./settings");
 
 // Additional Routes
 const structureRouter = require("./structure");
@@ -57,6 +58,7 @@ function registerApiRoutes(app) {
   app.use("/api/v1/users", userRouter);
   app.use("/api/v1/ratings", ratingsRouter);
   app.use("/api/v1", oeeMetricsRouter);
+  app.use("/api/v1/settings", settingRouter); // CRUD operations for Microstops
 }
 
 module.exports = registerApiRoutes;
