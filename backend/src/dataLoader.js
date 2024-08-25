@@ -1,3 +1,4 @@
+const axios = require("axios");
 const fs = require("fs");
 const path = require("path");
 const moment = require("moment-timezone");
@@ -5,27 +6,28 @@ const dotenv = require("dotenv");
 const { oeeLogger, errorLogger } = require("../utils/logger");
 const { oeeApiUrl } = require("../config/config");
 const { loadJsonData } = require("./dataService"); // Pfad anpassen
-
 // Load environment variables from .env file
 dotenv.config();
 
+const OEE_API_URL = process.env.OEE_API_URL || "http://localhost:3000/api/v1";
+
 // Paths to data files
 const unplannedDowntimeFilePath = path.resolve(
-  __dirname,
-  "../data/unplannedDowntime.json"
+    __dirname,
+    "../data/unplannedDowntime.json"
 );
 const plannedDowntimeFilePath = path.resolve(
-  __dirname,
-  "../data/plannedDowntime.json"
+    __dirname,
+    "../data/plannedDowntime.json"
 );
 const processOrderFilePath = path.resolve(
-  __dirname,
-  "../data/processOrder.json"
+    __dirname,
+    "../data/processOrder.json"
 );
 const shiftModelFilePath = path.resolve(__dirname, "../data/shiftModel.json");
 const machineStoppagesFilePath = path.resolve(
-  __dirname,
-  "../data/microstops.json"
+    __dirname,
+    "../data/microstops.json"
 );
 const machineFilePath = path.resolve(__dirname, "../data/machine.json"); // Path to machine.json
 
@@ -43,26 +45,26 @@ let machineDataCache = null; // Cache for machine.json
  * @returns {Array} The machine stoppages data with converted timestamps.
  * @throws {Error} Will throw an error if the machine stoppages data cannot be loaded.
  */
-function loadAndConvertMachineStoppagesData() {
-  try {
-    const data = fs.readFileSync(machineStoppagesFilePath, "utf8");
-    const machineStoppages = JSON.parse(data);
+async function loadAndConvertMachineStoppagesData() {
+    try {
+        // Daten von der API abrufen
+        const response = await axios.get(`${OEE_API_URL}/microstops`);
+        const data = response.data; // Beibehaltung der data-Variable für die API-Daten
 
-    return machineStoppages.map((stoppage) => ({
-      ...stoppage,
-      Start: moment
-        .tz(stoppage.Start, "UTC")
-        .format("YYYY-MM-DDTHH:mm:ss.SSSZ"),
-      End: moment.tz(stoppage.End, "UTC").format("YYYY-MM-DDTHH:mm:ss.SSSZ"),
-    }));
-  } catch (error) {
-    errorLogger.error(
-      `Failed to load and convert machine stoppages data: ${error.message}`
-    );
-    throw error;
-  }
+        // Da die Zeitstempel bereits im korrekten Format vorliegen, ist keine weitere Konvertierung notwendig
+        const machineStoppages = data; // Beibehaltung der machineStoppages-Variable
+        console.log(machineStoppages);
+
+        return machineStoppages;
+    } catch (error) {
+        errorLogger.error(
+            `Failed to load machine stoppages from API: ${error.message}`
+        );
+        throw error;
+    }
 }
 
+//MUSS AUCH AUF API UMGEBAUT WERDEN !!!!!
 /**
  * Saves the provided machine stoppages entry to the Microstops JSON file.
  * If the file doesn't exist, it creates a new one.
@@ -70,22 +72,21 @@ function loadAndConvertMachineStoppagesData() {
  * @returns {Array} The updated array of machine stoppages.
  * @throws {Error} Will throw an error if the data cannot be saved.
  */
-function saveMachineStoppagesData(machineStoppageEntry) {
-  try {
-    let Microstops = loadAndConvertMachineStoppagesData();
-    Microstops.push(machineStoppageEntry);
 
-    fs.writeFileSync(
-      machineStoppagesFilePath,
-      JSON.stringify(Microstops, null, 2),
-      "utf8"
-    );
+async function saveMachineStoppagesData(machineStoppageEntry) {
+    try {
+        // Speichern des neuen Maschinenausfall-Eintrags über die API
+        const response = await axios.post(
+            `${OEE_API_URL}/microstops`,
+            machineStoppageEntry
+        );
 
-    return Microstops;
-  } catch (error) {
-    errorLogger.error(`Error writing Microstops.json: ${error.message}`);
-    throw error;
-  }
+        // Rückgabe der API-Antwort, die normalerweise den gespeicherten Eintrag enthält
+        return response.data;
+    } catch (error) {
+        errorLogger.error(`Error saving Microstops data via API: ${error.message}`);
+        throw error;
+    }
 }
 
 /**
@@ -94,12 +95,20 @@ function saveMachineStoppagesData(machineStoppageEntry) {
  * @returns {Array} The machine data.
  * @throws {Error} Will throw an error if the machine data cannot be loaded.
  */
-function loadMachineData() {
-  if (!machineDataCache) {
-    machineDataCache = loadJsonData(machineFilePath);
-    oeeLogger.debug(`Machine data loaded from ${machineFilePath}`);
-  }
-  return machineDataCache;
+async function loadMachineData() {
+    if (!machineDataCache) {
+        try {
+            // Maschinendaten von der API abrufen
+            const response = await axios.get(`${OEE_API_URL}/machines`);
+            machineDataCache = response.data; // Die Daten im Cache speichern
+
+            oeeLogger.debug(`Machine data loaded from API: ${OEE_API_URL}/machines`);
+        } catch (error) {
+            oeeLogger.error(`Failed to load machine data from API: ${error.message}`);
+            throw error;
+        }
+    }
+    return machineDataCache;
 }
 
 /**
@@ -109,16 +118,16 @@ function loadMachineData() {
  * @throws {Error} Will throw an error if the unplanned downtime data cannot be loaded.
  */
 function loadUnplannedDowntimeData() {
-  if (!unplannedDowntimeCache) {
-    unplannedDowntimeCache = loadJsonData(unplannedDowntimeFilePath, [
-      "Start",
-      "End",
-    ]);
-    oeeLogger.debug(
-      `Unplanned downtime data loaded from ${unplannedDowntimeFilePath}`
-    );
-  }
-  return unplannedDowntimeCache;
+    if (!unplannedDowntimeCache) {
+        unplannedDowntimeCache = loadJsonData(unplannedDowntimeFilePath, [
+            "Start",
+            "End",
+        ]);
+        oeeLogger.debug(
+            `Unplanned downtime data loaded from ${unplannedDowntimeFilePath}`
+        );
+    }
+    return unplannedDowntimeCache;
 }
 
 /**
@@ -128,16 +137,16 @@ function loadUnplannedDowntimeData() {
  * @throws {Error} Will throw an error if the planned downtime data cannot be loaded.
  */
 function loadPlannedDowntimeData() {
-  if (!plannedDowntimeCache) {
-    plannedDowntimeCache = loadJsonData(plannedDowntimeFilePath, [
-      "Start",
-      "End",
-    ]);
-    oeeLogger.debug(
-      `Planned downtime data loaded from ${plannedDowntimeFilePath}`
-    );
-  }
-  return plannedDowntimeCache;
+    if (!plannedDowntimeCache) {
+        plannedDowntimeCache = loadJsonData(plannedDowntimeFilePath, [
+            "Start",
+            "End",
+        ]);
+        oeeLogger.debug(
+            `Planned downtime data loaded from ${plannedDowntimeFilePath}`
+        );
+    }
+    return plannedDowntimeCache;
 }
 
 /**
@@ -147,20 +156,20 @@ function loadPlannedDowntimeData() {
  * @throws {Error} Will throw an error if the process order data is invalid or cannot be loaded.
  */
 function loadProcessOrderData() {
-  if (!processOrderDataCache) {
-    let processOrderData = loadJsonData(processOrderFilePath, ["Start", "End"]);
+    if (!processOrderDataCache) {
+        let processOrderData = loadJsonData(processOrderFilePath, ["Start", "End"]);
 
-    // Log the loaded data
-    oeeLogger.debug(
-      `Loaded process order data: ${JSON.stringify(processOrderData, null, 2)}`
-    );
+        // Log the loaded data
+        oeeLogger.debug(
+            `Loaded process order data: ${JSON.stringify(processOrderData, null, 2)}`
+        );
 
-    processOrderData = validateProcessOrderData(processOrderData);
-    processOrderDataCache = processOrderData;
+        processOrderData = validateProcessOrderData(processOrderData);
+        processOrderDataCache = processOrderData;
 
-    oeeLogger.debug(`Process order data loaded from ${processOrderFilePath}`);
-  }
-  return processOrderDataCache;
+        oeeLogger.debug(`Process order data loaded from ${processOrderFilePath}`);
+    }
+    return processOrderDataCache;
 }
 
 /**
@@ -170,11 +179,11 @@ function loadProcessOrderData() {
  * @throws {Error} Will throw an error if the shift model data cannot be loaded.
  */
 function loadShiftModelData() {
-  if (!shiftModelDataCache) {
-    shiftModelDataCache = loadJsonData(shiftModelFilePath, ["Start", "End"]);
-    oeeLogger.debug(`Shift model data loaded from ${shiftModelFilePath}`);
-  }
-  return shiftModelDataCache;
+    if (!shiftModelDataCache) {
+        shiftModelDataCache = loadJsonData(shiftModelFilePath, ["Start", "End"]);
+        oeeLogger.debug(`Shift model data loaded from ${shiftModelFilePath}`);
+    }
+    return shiftModelDataCache;
 }
 
 /**
@@ -185,28 +194,27 @@ function loadShiftModelData() {
  * @throws {Error} Will throw an error if the data is invalid.
  */
 function validateProcessOrderData(data) {
-  data.forEach((order) => {
-    oeeLogger.debug(
-      `Validating process order: ProcessOrderNumber=${order.ProcessOrderNumber}, MaterialNumber=${order.MaterialNumber}`
-    );
-    if (
-      !order.ProcessOrderNumber ||
-      !order.MaterialNumber ||
-      !order.MaterialDescription
-    ) {
-      const errorMsg = `Invalid process order data: Missing essential fields in order ${JSON.stringify(
+    data.forEach((order) => {
+        oeeLogger.debug(
+            `Validating process order: ProcessOrderNumber=${order.ProcessOrderNumber}, MaterialNumber=${order.MaterialNumber}`
+        );
+        if (!order.ProcessOrderNumber ||
+            !order.MaterialNumber ||
+            !order.MaterialDescription
+        ) {
+            const errorMsg = `Invalid process order data: Missing essential fields in order ${JSON.stringify(
         order
       )}`;
-      errorLogger.error(errorMsg);
-      throw new Error(errorMsg);
-    }
-    if (order.totalProductionYield > order.totalProductionQuantity) {
-      const errorMsg = `Invalid input data: totalProductionYield (${order.totalProductionYield}) cannot be greater than totalProductionQuantity (${order.totalProductionQuantity})`;
-      errorLogger.error(errorMsg);
-      throw new Error(errorMsg);
-    }
-  });
-  return data;
+            errorLogger.error(errorMsg);
+            throw new Error(errorMsg);
+        }
+        if (order.totalProductionYield > order.totalProductionQuantity) {
+            const errorMsg = `Invalid input data: totalProductionYield (${order.totalProductionYield}) cannot be greater than totalProductionQuantity (${order.totalProductionQuantity})`;
+            errorLogger.error(errorMsg);
+            throw new Error(errorMsg);
+        }
+    });
+    return data;
 }
 
 /**
@@ -219,23 +227,23 @@ function validateProcessOrderData(data) {
  * @throws {Error} Will throw an error if there is an issue with calculating unplanned downtime.
  */
 function getUnplannedDowntimeByMachine(machineId, startTime, endTime) {
-  const unplannedDowntimes = loadUnplannedDowntimeData();
-  const start = moment(startTime);
-  const end = moment(endTime);
+    const unplannedDowntimes = loadUnplannedDowntimeData();
+    const start = moment(startTime);
+    const end = moment(endTime);
 
-  return unplannedDowntimes
-    .filter((entry) => entry.machine_id === machineId)
-    .reduce((total, entry) => {
-      const entryStart = moment(entry.Start);
-      const entryEnd = moment(entry.End);
+    return unplannedDowntimes
+        .filter((entry) => entry.machine_id === machineId)
+        .reduce((total, entry) => {
+            const entryStart = moment(entry.Start);
+            const entryEnd = moment(entry.End);
 
-      if (entryEnd.isAfter(start) && entryStart.isBefore(end)) {
-        const overlapStart = moment.max(start, entryStart);
-        const overlapEnd = moment.min(end, entryEnd);
-        total += overlapEnd.diff(overlapStart, "minutes");
-      }
-      return total;
-    }, 0);
+            if (entryEnd.isAfter(start) && entryStart.isBefore(end)) {
+                const overlapStart = moment.max(start, entryStart);
+                const overlapEnd = moment.min(end, entryEnd);
+                total += overlapEnd.diff(overlapStart, "minutes");
+            }
+            return total;
+        }, 0);
 }
 
 /**
@@ -248,23 +256,23 @@ function getUnplannedDowntimeByMachine(machineId, startTime, endTime) {
  * @throws {Error} Will throw an error if there is an issue with calculating planned downtime.
  */
 function getPlannedDowntimeByMachine(machineId, startTime, endTime) {
-  const plannedDowntimes = loadPlannedDowntimeData();
-  const start = moment(startTime);
-  const end = moment(endTime);
+    const plannedDowntimes = loadPlannedDowntimeData();
+    const start = moment(startTime);
+    const end = moment(endTime);
 
-  return plannedDowntimes
-    .filter((entry) => entry.machine_id === machineId)
-    .reduce((total, entry) => {
-      const entryStart = moment(entry.Start);
-      const entryEnd = moment(entry.End);
+    return plannedDowntimes
+        .filter((entry) => entry.machine_id === machineId)
+        .reduce((total, entry) => {
+            const entryStart = moment(entry.Start);
+            const entryEnd = moment(entry.End);
 
-      if (entryEnd.isAfter(start) && entryStart.isBefore(end)) {
-        const overlapStart = moment.max(start, entryStart);
-        const overlapEnd = moment.min(end, entryEnd);
-        total += overlapEnd.diff(overlapStart, "minutes");
-      }
-      return total;
-    }, 0);
+            if (entryEnd.isAfter(start) && entryStart.isBefore(end)) {
+                const overlapStart = moment.max(start, entryStart);
+                const overlapEnd = moment.min(end, entryEnd);
+                total += overlapEnd.diff(overlapStart, "minutes");
+            }
+            return total;
+        }, 0);
 }
 
 /**
@@ -275,63 +283,63 @@ function getPlannedDowntimeByMachine(machineId, startTime, endTime) {
  * @throws {Error} Will throw an error if there is an issue with calculating machine stoppage time.
  */
 function getTotalMachineStoppageTimeByProcessOrder(processOrderNumber) {
-  const stoppages = loadAndConvertMachineStoppagesData();
-  return (
-    stoppages
-      .filter((stoppage) => stoppage.ProcessOrderNumber === processOrderNumber)
-      .reduce((total, stoppage) => {
-        total += stoppage.Differenz; // Sum the difference (in seconds)
-        return total;
-      }, 0) / 60
-  ); // Return in minutes
+    const stoppages = loadAndConvertMachineStoppagesData();
+    return (
+        stoppages
+        .filter((stoppage) => stoppage.ProcessOrderNumber === processOrderNumber)
+        .reduce((total, stoppage) => {
+            total += stoppage.Differenz; // Sum the difference (in seconds)
+            return total;
+        }, 0) / 60
+    ); // Return in minutes
 }
 
 async function checkForRunningOrder(machineId) {
-  const processOrders = loadProcessOrderData();
+    const processOrders = loadProcessOrderData();
 
-  const runningOrder = processOrders.find(
-    (order) =>
-      order.machine_id === machineId && order.ProcessOrderStatus === "REL"
-  );
-
-  if (runningOrder) {
-    oeeLogger.debug(
-      `Running order found: ProcessOrderNumber=${runningOrder.ProcessOrderNumber} for machine ID: ${machineId}`
+    const runningOrder = processOrders.find(
+        (order) =>
+        order.machine_id === machineId && order.ProcessOrderStatus === "REL"
     );
-  } else {
-    oeeLogger.error(`No running order found for machine ID: ${machineId}`);
-  }
 
-  return !!runningOrder;
+    if (runningOrder) {
+        oeeLogger.debug(
+            `Running order found: ProcessOrderNumber=${runningOrder.ProcessOrderNumber} for machine ID: ${machineId}`
+        );
+    } else {
+        oeeLogger.error(`No running order found for machine ID: ${machineId}`);
+    }
+
+    return !!runningOrder;
 }
 
 async function getMachineIdFromLineCode(lineCode) {
-  oeeLogger.debug(`Searching for machine ID with line code: ${lineCode}`);
-  const machines = loadMachineData();
-  const machine = machines.find((m) => m.name === lineCode);
+    oeeLogger.debug(`Searching for machine ID with line code: ${lineCode}`);
+    const machines = loadMachineData();
+    const machine = machines.find((m) => m.name === lineCode);
 
-  if (machine) {
-    oeeLogger.info(
-      `Machine ID ${machine.machine_id} found for line code: ${lineCode}`
-    );
-  } else {
-    oeeLogger.warn(`No machine ID found for line code: ${lineCode}`);
-  }
+    if (machine) {
+        oeeLogger.info(
+            `Machine ID ${machine.machine_id} found for line code: ${lineCode}`
+        );
+    } else {
+        oeeLogger.warn(`No machine ID found for line code: ${lineCode}`);
+    }
 
-  return machine ? machine.machine_id : null;
+    return machine ? machine.machine_id : null;
 }
 
 module.exports = {
-  loadAndConvertMachineStoppagesData,
-  saveMachineStoppagesData,
-  loadMachineData,
-  loadUnplannedDowntimeData,
-  loadPlannedDowntimeData,
-  loadProcessOrderData,
-  loadShiftModelData,
-  getUnplannedDowntimeByMachine,
-  getPlannedDowntimeByMachine,
-  getTotalMachineStoppageTimeByProcessOrder,
-  checkForRunningOrder,
-  getMachineIdFromLineCode,
+    loadAndConvertMachineStoppagesData,
+    saveMachineStoppagesData,
+    loadMachineData,
+    loadUnplannedDowntimeData,
+    loadPlannedDowntimeData,
+    loadProcessOrderData,
+    loadShiftModelData,
+    getUnplannedDowntimeByMachine,
+    getPlannedDowntimeByMachine,
+    getTotalMachineStoppageTimeByProcessOrder,
+    checkForRunningOrder,
+    getMachineIdFromLineCode,
 };
