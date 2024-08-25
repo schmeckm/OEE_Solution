@@ -1,7 +1,12 @@
 // Import required modules and functions from utility files
 const { oeeLogger, errorLogger } = require("../utils/logger");
 const { processMetrics, updateMetric } = require("./oeeProcessor");
-const { handleHoldCommand, handleUnholdCommand } = require("./commandHandler");
+const {
+  handleHoldCommand,
+  handleUnholdCommand,
+  handleProcessOrderStartCommand,
+  handleProcessOrderEndCommand,
+} = require("./commandHandler");
 const oeeConfig = require("../config/oeeConfig.json");
 const { loadProcessOrderData } = require("./dataLoader");
 
@@ -165,11 +170,11 @@ async function handleOeeMessage(decodedMessage, machineId) {
  * @param {string} machineId - The machine ID.
  */
 async function handleCommandMessage(decodedMessage, machineId) {
-  oeeLogger.warn(
-    `handleCommandMessage called with decodedMessage: ${JSON.stringify(
-      decodedMessage
-    )}, machineId: ${machineId}`
-  );
+  //   console.log(
+  //     `handleCommandMessage called with decodedMessage: ${JSON.stringify(
+  //       decodedMessage
+  //     )}, machineId: ${machineId}`
+  //   );
 
   try {
     if (
@@ -182,31 +187,32 @@ async function handleCommandMessage(decodedMessage, machineId) {
 
     for (const metricData of decodedMessage.metrics) {
       const { name, value, type, alias } = metricData;
-      oeeLogger.warn(
-        `Received command: ${name}, Value: ${value}, Type: ${type}, Alias: ${JSON.stringify(
-          alias
-        )}, Machine ID: ${machineId}`
-      );
+      //   console.log(
+      //     `Received command: ${name}, Value: ${value}, Type: ${type}, Alias: ${JSON.stringify(
+      //       alias
+      //     )}, Machine ID: ${machineId}`
+      //   );
 
       const startTime = Date.now();
 
       switch (name) {
-        case "Command/Hold":
+        case "Hold":
+          console.log(`Command/Hold: ${name}`);
           await handleHoldCommand(value, machineId);
-          oeeLogger.warn(`Command/Hold: ${name}`);
           break;
-        case "Command/Unhold":
+        case "Unhold":
+          console.log(`Command/Unhold: ${name}`);
           await handleUnholdCommand(value, machineId);
-          oeeLogger.warn(`Command/Unhold: ${name}`);
           break;
-        case "Command/Start":
+        case "Start":
           await handleProcessOrderStartCommand(value, machineId);
-          oeeLogger.warn(`Command/Start: ${name}`);
+          console.log(`Command/Start: ${name}`);
           // Hier könnte in Zukunft eine Funktion hinzugefügt werden, um den Prozessstart zu protokollieren.
           break;
-        case "Command/End":
+
+        case "End":
           await handleProcessOrderEndCommand(value, machineId);
-          oeeLogger.warn(`Command/End: ${name}`);
+          console.log(`Command/End: ${name}`);
           // Hier könnte in Zukunft eine Funktion hinzugefügt werden, um das Prozessende zu protokollieren.
           break;
         default:

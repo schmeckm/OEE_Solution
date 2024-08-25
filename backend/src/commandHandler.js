@@ -1,108 +1,27 @@
-const { v4: uuidv4 } = require("uuid");
-const moment = require("moment-timezone");
 const axios = require("axios");
+const moment = require("moment-timezone");
+const { v4: uuidv4 } = require("uuid");
 const { oeeLogger, errorLogger } = require("../utils/logger");
-const { oeeApiUrl } = require("../config/config");
 const {
   loadAndConvertMachineStoppagesData,
   saveMachineStoppagesData,
 } = require("./dataLoader");
-const {
-  sendWebSocketMessage,
-  setWebSocketServer,
-} = require("../websocket/webSocketUtils");
+const { sendWebSocketMessage } = require("../websocket/webSocketUtils");
 
+const TIMEZONE = process.env.TIMEZONE || "UTC";
+const OEE_API_URL = process.env.OEE_API_URL || "http://localhost:3000/api/v1";
 let currentHoldStatus = {};
 
 /**
- * Initializes machine stoppages data and sends it via WebSocket.
- * @async
- * @function initializeMachineStoppages
- * @returns {Promise<void>}
- */
-async function initializeMachineStoppages() {
-  try {
-    const initialMicrostops = loadAndConvertMachineStoppagesData();
-    sendWebSocketMessage("Microstops", initialMicrostops);
-  } catch (error) {
-    logError("Failed to load initial machine stoppages data", error);
-  }
-}
-initializeMachineStoppages();
-
-/**
- * Fetches the current process order for a specific machine.
- *
- * This function sends an HTTP GET request to fetch the process order associated with the given machine ID.
- * It assumes that the API returns an array of process orders and returns the first entry in the array.
- *
- * @async
- * @function fetchProcessOrder
- * @param {string} machineId - The ID of the machine to fetch the process order for.
- * @returns {Promise<Object|null>} The first process order object if found, or null if an error occurs or no process order is found.
- */
-async function fetchProcessOrder(machineId) {
-  try {
-    const response = await axios.get(`${oeeApiUrl}/api/v1/processorders/rel`, {
-      params: { machineId, mark: true },
-    });
-    return response.data[0]; // Assuming the first entry is the relevant one
-  } catch (error) {
-    logError(`Failed to fetch process order for machineId ${machineId}`, error);
-    return null;
-  }
-}
-
-/**
- * Logs an error message.
- * @function logError
- * @param {string} message - The error message to log.
- * @param {Error} error - The error object containing details about the error.
- */
-function logError(message, error) {
-  errorLogger.error(`${message}: ${error.message}`);
-}
-
-/**
- * Logs an informational message.
- * @function logInfo
- * @param {string} message - The informational message to log.
- */
-function logInfo(message) {
-  oeeLogger.info(message);
-}
-
-/**
- * Logs an event to the database with a timestamp.
- * @function logEventToDatabase
- * @param {string} event - The event type to log.
- * @param {string} timestamp - The ISO timestamp of the event.
- */
-function logEventToDatabase(event, timestamp) {
-  if (!event || !timestamp) {
-    logError("Event or timestamp missing or invalid", new Error());
-    return;
-  }
-  logInfo(`Logging event to database: ${event} at ${timestamp}`);
-}
-
-/**
- * Notifies personnel about a specific event.
- * @function notifyPersonnel
- * @param {string} message - The message to send to personnel.
- */
-function notifyPersonnel(message) {
-  logInfo(`Notifying personnel: ${message}`);
-}
-
-/**
  * Handles the "Hold" command, which places the machine on hold.
- * @function handleHoldCommand
  * @param {number} value - The value indicating whether to hold the machine (1 for hold).
+ * @param {string} machineId - The ID of the machine being put on hold.
  */
-function handleHoldCommand(value) {
+async function handleHoldCommand(value, machineId) {
   const timestamp = moment().tz(TIMEZONE).toISOString();
-  logInfo(`handleHoldCommand called with value: ${value}`);
+  console.log(
+    `handleHoldCommand called with value: ${value}, machineId: ${machineId}, timestamp: ${timestamp}`
+  );
 
   if (value !== 1) {
     logInfo("Hold command received, but value is not 1");
@@ -114,138 +33,188 @@ function handleHoldCommand(value) {
   logEventToDatabase("Hold", timestamp);
   notifyPersonnel("Machine has been put on hold.");
 
-  // Extract the process order number from the processOrderData
-  const processOrderDataEntry = processOrderData && processOrderData[0];
+  // Store the hold start time and related information
+  currentHoldStatus[machineId] = { startTimestamp: timestamp };
 
-  if (!processOrderDataEntry) {
-    logInfo("No valid process order data found. Hold signal ignored.");
-    return;
-  }
-
-  const processOrderNumber = processOrderDataEntry.ProcessOrderNumber;
-
-  // Initialize or update the hold status for the process order
-  currentHoldStatus[processOrderNumber] =
-    currentHoldStatus[processOrderNumber] || [];
-  currentHoldStatus[processOrderNumber].push({ timestamp });
-
-  console.log(`Hold signal recorded in Microstops.json at ${timestamp}`);
+  logInfo(`Hold signal recorded at ${timestamp} for machine ${machineId}`);
 }
 
 /**
  * Handles the "Unhold" command, which resumes machine operations.
- * @function handleUnholdCommand
  * @param {number} value - The value indicating whether to unhold the machine (1 for unhold).
+ * @param {string} machineId - The ID of the machine being unhold.
  */
-function handleUnholdCommand(value) {
+async function handleUnholdCommand(value, machineId) {
   const timestamp = moment().tz(TIMEZONE).toISOString();
-  logInfo(`handleUnholdCommand called with value: ${value}`);
+  console.log(
+    `handleUnholdCommand called with value: ${value}, machineId: ${machineId}`
+  );
 
   if (value !== 1) {
     logInfo("Unhold command received, but value is not 1");
     return;
   }
 
-  // Extract the process order number and order ID from the processOrderData
-  const processOrderDataEntry = processOrderData && processOrderData[0];
-
-  if (!processOrderDataEntry) {
-    logInfo("Unhold command received, but no valid process order data found.");
-    return;
-  }
-
-  const processOrderNumber = processOrderDataEntry.ProcessOrderNumber;
-  const order_id = processOrderDataEntry.order_id;
-
-  // Check if the hold status exists for the process order
-  if (
-    !currentHoldStatus[processOrderNumber] ||
-    !currentHoldStatus[processOrderNumber].length
-  ) {
+  const holdStatus = currentHoldStatus[machineId];
+  if (!holdStatus || !holdStatus.startTimestamp) {
     logInfo(
-      "Unhold command received, but no previous Hold signal found or process order is invalid."
+      `Unhold command received, but no previous Hold signal found for machine ${machineId}.`
     );
-    console.log("Current Hold Status:", currentHoldStatus);
     return;
   }
 
-  handleUnholdMachine(processOrderNumber, order_id, timestamp);
-}
-
-/**
- * Handles the process of unholding the machine, resuming operations, and logging the event.
- * @function handleUnholdMachine
- * @param {string} processOrderNumber - The process order number associated with the unhold event.
- * @param {string} order_id - The ID of the process order.
- * @param {string} timestamp - The timestamp when the unhold event occurred.
- */
-function handleUnholdMachine(processOrderNumber, order_id, timestamp) {
   logInfo("Machine is now Unhold");
   startMachineOperations();
   logEventToDatabase("Unhold", timestamp);
   notifyPersonnel("Machine has been unhold and resumed operations.");
 
-  const holdTimestamp = moment(
-    currentHoldStatus[processOrderNumber].pop().timestamp
-  );
+  const holdTimestamp = moment(holdStatus.startTimestamp);
   const downtimeSeconds = moment(timestamp).diff(holdTimestamp, "seconds");
-
-  if (currentHoldStatus[processOrderNumber].length === 0) {
-    delete currentHoldStatus[processOrderNumber];
-  }
-
-  if (downtimeSeconds < THRESHOLD_SECONDS) {
-    logInfo(
-      `Downtime of ${downtimeSeconds} seconds did not meet the threshold of ${THRESHOLD_SECONDS} seconds. No entry recorded.`
-    );
-    return;
-  }
 
   const machineStoppageEntry = {
     ID: uuidv4(),
-    ProcessOrderID: order_id,
-    ProcessOrderNumber: processOrderNumber,
+    ProcessOrderID: holdStatus.processOrderID || "N/A",
     Start: holdTimestamp.toISOString(),
-    End: moment(timestamp).toISOString(),
-    Reason: "tbd",
+    End: timestamp,
+    Reason: "TBD", // Placeholder for the reason, to be updated later
     Differenz: downtimeSeconds,
+    machine_id: machineId,
   };
+
+  logInfo(
+    `Saving machine stoppage entry: ${JSON.stringify(machineStoppageEntry)}`
+  );
 
   try {
     const Microstops = saveMachineStoppagesData(machineStoppageEntry);
+    logInfo(`Microstops updated successfully: ${JSON.stringify(Microstops)}`);
     sendWebSocketMessage("Microstops", Microstops);
   } catch (error) {
     logError("Error saving Microstops data", error);
   }
+
+  // Clear hold status after unhold
+  delete currentHoldStatus[machineId];
 }
 
 /**
- * Placeholder function to handle the start of a process order.
- * @function handleProcessOrderStartCommand
- * @param {number} value - The value associated with the start command.
+ * Updates the actual start time of a process order using the provided API.
  * @param {string} machineId - The ID of the machine starting the process order.
  */
-function handleProcessOrderStartCommand(value, machineId) {
-  logInfo(
-    `handleProcessOrderStartCommand called with value: ${value}, machineId: ${machineId}`
+async function handleProcessOrderStartCommand(machineId) {
+  const timestamp = moment().tz(TIMEZONE).toISOString();
+  console.log(
+    `handleProcessOrderStart called for machineId: ${machineId} at ${timestamp}`
   );
+
+  try {
+    // Get the current process order associated with the machine
+    const response = await axios.get(`${OEE_API_URL}/processorders/rel`, {
+      params: { machineId, mark: true },
+    });
+
+    const processOrder = response.data[0];
+    // Remove the "marked" field from the processOrder object
+    delete processOrder.marked;
+    console.log(processOrder);
+
+    if (processOrder) {
+      const processOrderId = processOrder.order_id;
+      console.log(`Process Order Start for ProcessOrderID: ${processOrderId}`);
+
+      // Update the ActualProcessOrderStart field
+      processOrder.ActualProcessOrderStart = timestamp;
+
+      // Send the updated process order back to the server with a PUT request
+      await axios.put(
+        `${OEE_API_URL}/processorders/${processOrderId}`,
+        processOrder
+      );
+
+      oeeLogger.info(
+        `Updated ActualProcessOrderStart for ProcessOrderID: ${processOrderId} to ${timestamp}`
+      );
+    } else {
+      oeeLogger.warn(
+        `No active process order found for machineId: ${machineId}`
+      );
+    }
+  } catch (error) {
+    errorLogger.error(
+      `Failed to update ActualProcessOrderStart for machineId ${machineId}: ${error.message}`
+    );
+  }
 }
 
 /**
- * Placeholder function to handle the end of a process order.
- * @function handleProcessOrderEndCommand
- * @param {number} value - The value associated with the end command.
+ * Updates the actual end time of a process order using the provided API.
  * @param {string} machineId - The ID of the machine ending the process order.
  */
-function handleProcessOrderEndCommand(value, machineId) {
-  logInfo(
-    `handleProcessOrderEndCommand called with value: ${value}, machineId: ${machineId}`
+async function handleProcessOrderEndCommand(machineId) {
+  const timestamp = moment().tz(TIMEZONE).toISOString();
+  console.log(
+    `handleProcessOrderEnd called for machineId: ${machineId} at ${timestamp}`
   );
+
+  try {
+    // Get the current process order associated with the machine
+    const response = await axios.get(`${OEE_API_URL}/processorders/rel`, {
+      params: { machineId, mark: true },
+    });
+
+    const processOrder = response.data[0];
+    delete processOrder.marked;
+
+    if (processOrder) {
+      const processOrderId = processOrder.order_id;
+      console.log(`Process Order End for ProcessOrderID: ${processOrderId}`);
+
+      // Update the ActualProcessOrderEnd field
+      processOrder.ActualProcessOrderEnd = timestamp;
+
+      // Send the updated process order back to the server with a PUT request
+      await axios.put(
+        `${OEE_API_URL}/processorders/${processOrderId}`,
+        processOrder
+      );
+
+      oeeLogger.info(
+        `Updated ActualProcessOrderEnd for ProcessOrderID: ${processOrderId} to ${timestamp}`
+      );
+    } else {
+      oeeLogger.warn(
+        `No active process order found for machineId: ${machineId}`
+      );
+    }
+  } catch (error) {
+    errorLogger.error(
+      `Failed to update ActualProcessOrderEnd for machineId ${machineId}: ${error.message}`
+    );
+  }
+}
+
+/**
+ * Logs an error message.
+ * @param {string} message - The error message to log.
+ * @param {Error} [error] - The error object containing details about the error.
+ */
+function logError(message, error) {
+  const fullMessage = `${message}${error ? `: ${error.message}` : ""}`;
+  errorLogger.error(fullMessage);
+  console.log(`ERROR: ${fullMessage}`); // Ausgabe in der Konsole
+}
+
+/**
+ * Logs an informational message.
+ * @param {string} message - The informational message to log.
+ */
+function logInfo(message) {
+  oeeLogger.info(message);
+  console.log(`INFO: ${message}`); // Ausgabe in der Konsole
 }
 
 /**
  * Stops machine operations.
- * @function stopMachineOperations
  */
 function stopMachineOperations() {
   logInfo("Stopping machine operations...");
@@ -253,17 +222,31 @@ function stopMachineOperations() {
 
 /**
  * Starts machine operations.
- * @function startMachineOperations
  */
 function startMachineOperations() {
   logInfo("Starting machine operations...");
 }
 
-// Exporting the functions for use in other modules
+/**
+ * Logs an event to the database with a timestamp.
+ * @param {string} event - The event type to log.
+ * @param {string} timestamp - The ISO timestamp of the event.
+ */
+function logEventToDatabase(event, timestamp) {
+  logInfo(`Logging event to database: ${event} at ${timestamp}`);
+}
+
+/**
+ * Notifies personnel about a specific event.
+ * @param {string} message - The message to send to personnel.
+ */
+function notifyPersonnel(message) {
+  logInfo(`Notifying personnel: ${message}`);
+}
+
 module.exports = {
   handleHoldCommand,
   handleUnholdCommand,
-  handleProcessOrderStartCommand, // Placeholder export
-  handleProcessOrderEndCommand, // Placeholder export
-  setWebSocketServer,
+  handleProcessOrderStartCommand,
+  handleProcessOrderEndCommand,
 };

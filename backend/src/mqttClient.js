@@ -67,7 +67,6 @@ function setupMqttClient() {
 
       const sparkplug = getSparkplugPayload("spBv1.0");
       const decodedMessage = sparkplug.decodePayload(message);
-      console.log(dataType);
 
       if (dataType === "DCMD") {
         // console.log(
@@ -181,7 +180,9 @@ function generateMqttTopics(machine) {
   }
 
   Object.keys(oeeConfig).forEach((key) => {
-    const topicType = ["Hold", "Unhold"].includes(key) ? "DCMD" : "DDATA";
+    const topicType = ["Hold", "Unhold", "Start", "End"].includes(key)
+      ? "DCMD"
+      : "DDATA";
     topics.push(
       `spBv1.0/${machine.Plant}/${machine.area}/${topicType}/${machine.name}/${key}`
     );

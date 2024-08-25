@@ -104,5 +104,21 @@
             "description": "Machine unhold command"
         },
         "machineConnect": true
+    },
+    "Start": {
+        "alias": "Process Order Start",
+        "type": "Int32",
+        "metadata": {
+            "description": "Start timestamp of the process order"
+        },
+        "machineConnect": true
+    },
+    "End": {
+        "alias": "Process Order End",
+        "type": "Int32",
+        "metadata": {
+            "description": "End timestamp of the process order"
+        },
+        "machineConnect": true
     }
 }
