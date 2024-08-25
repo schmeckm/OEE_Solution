@@ -20,6 +20,10 @@ const metrics = {
 let lastMessageTimestamp = Date.now();
 const watchdogInterval = 60000; // 60 seconds
 
+/**
+ * Sets up the MQTT client, connects to the broker, and subscribes to relevant topics.
+ * @returns {mqtt.Client} The initialized MQTT client.
+ */
 function setupMqttClient() {
   oeeLogger.info("Setting up MQTT client...");
   const client = mqtt.connect(mqttConfig.brokers.area.url, {
@@ -43,7 +47,7 @@ function setupMqttClient() {
       const topicParts = topic.split("/");
       const [version, location, area, dataType, machineName, metric] =
         topicParts;
-      oeeLogger.error(
+      oeeLogger.info(
         `Received message on topic ${topic}: machine=${machineName}, metric=${metric}`
       );
 
@@ -66,18 +70,18 @@ function setupMqttClient() {
       console.log(dataType);
 
       if (dataType === "DCMD") {
-        console.log(
-          `Sending to handleCommandMessage: decodedMessage=${JSON.stringify(
-            decodedMessage
-          )}, machineId=${machineId}, metric=${metric}`
-        );
+        // console.log(
+        //   `Sending to handleCommandMessage: decodedMessage=${JSON.stringify(
+        //     decodedMessage
+        //   )}, machineId=${machineId}, metric=${metric}`
+        // );
         handleCommandMessage(decodedMessage, machineId, metric);
       } else if (dataType === "DDATA") {
-        console.log(
-          `Sending to handleOeeMessage: decodedMessage=${JSON.stringify(
-            decodedMessage
-          )}, machineId=${machineId}, metric=${metric}`
-        );
+        // console.log(
+        //   `Sending to handleOeeMessage: decodedMessage=${JSON.stringify(
+        //     decodedMessage
+        //   )}, machineId=${machineId}, metric=${metric}`
+        // );
         handleOeeMessage(decodedMessage, machineId, metric);
       } else {
         oeeLogger.warn(`Unknown data type in topic: ${dataType}`);
@@ -119,6 +123,10 @@ function setupMqttClient() {
   return client;
 }
 
+/**
+ * Subscribes the MQTT client to relevant topics for OEE-enabled machines.
+ * @param {mqtt.Client} client - The MQTT client instance.
+ */
 function tryToSubscribeToMachineTopics(client) {
   const allMachines = loadMachineData();
   const oeeEnabledMachines = allMachines.filter(
@@ -133,7 +141,7 @@ function tryToSubscribeToMachineTopics(client) {
 
     const machine = oeeEnabledMachines[index];
     const topics = generateMqttTopics(machine);
-    oeeLogger.info(
+    console.log(
       `Attempting to subscribe to topics for machine ${
         machine.name
       }: ${topics.join(", ")}`
@@ -158,6 +166,11 @@ function tryToSubscribeToMachineTopics(client) {
   tryNextMachine(0);
 }
 
+/**
+ * Generates the MQTT topics for a given machine based on OEE configuration.
+ * @param {Object} machine - The machine object containing plant and area information.
+ * @returns {string[]} An array of MQTT topics.
+ */
 function generateMqttTopics(machine) {
   const topics = [];
   if (!oeeConfig) {
@@ -177,6 +190,14 @@ function generateMqttTopics(machine) {
   return topics;
 }
 
+/**
+ * Subscribes to an MQTT topic with retry logic in case of failure.
+ * @param {mqtt.Client} client - The MQTT client instance.
+ * @param {string} topic - The MQTT topic to subscribe to.
+ * @param {number} [retries=5] - The number of retries before giving up.
+ * @param {number} [delay=1000] - The initial delay between retries in milliseconds.
+ * @returns {Promise<boolean>} A promise that resolves to true if subscription succeeds, otherwise false.
+ */
 async function subscribeWithRetry(client, topic, retries = 5, delay = 1000) {
   for (let i = 0; i < retries; i++) {
     try {
