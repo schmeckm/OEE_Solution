@@ -23,7 +23,7 @@ function loadJsonData(filePath, dateFields = []) {
       });
     }
 
-    oeeLogger.info(`Content of ${filePath} loaded and converted successfully`);
+    oeeLogger.debug(`Content of ${filePath} loaded and converted successfully`);
     return jsonData;
   } catch (error) {
     errorLogger.error(

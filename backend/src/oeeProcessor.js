@@ -50,7 +50,7 @@ function logTabularData(metrics) {
 +------------------------------------+------------------+
     `;
 
-  oeeLogger.warn(logTable);
+  oeeLogger.info(logTable);
 }
 
 /**
@@ -76,7 +76,7 @@ async function loadMachineData() {
     const data = await fs.readFile(machineDataPath, "utf8");
     return JSON.parse(data);
   } catch (error) {
-    errorLogger.error(`Failed to load machine data: ${error.message}`);
+    errorLogger.error(`Failed to load machine data : ${error.message}`);
     return [];
   }
 }

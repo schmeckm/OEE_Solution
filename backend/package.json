@@ -42,6 +42,7 @@
         "mqtt": "^5.8.0",
         "node-cron": "^3.0.3",
         "opossum": "^8.1.4",
+        "redis": "^4.7.0",
         "sparkplug-client": "^3.2.4",
         "sparkplug-payload": "^1.0.3",
         "swagger-jsdoc": "^6.2.8",
