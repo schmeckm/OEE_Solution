@@ -1,9 +1,14 @@
-// oeeCalculator.js
-const axios = require("axios");
-const { oeeLogger, errorLogger } = require("../utils/logger");
-const { oeeApiUrl } = require("../config/config");
-const { loadDataAndPrepareOEE } = require("../src/downtimeManager");
+// Import required modules
+const axios = require("axios"); // For making HTTP requests
+const { oeeLogger, errorLogger } = require("../utils/logger"); // Custom loggers for OEE and error logging
+const { oeeApiUrl } = require("../config/config"); // OEE API URL from configuration
+const { loadDataAndPrepareOEE } = require("../src/downtimeManager"); // Function to load and prepare OEE data
+const {
+  checkForRunningOrder, // Function to check for a running order
+  loadProcessOrderDataByMachine, // Function to load process order data by machine
+} = require("../src/dataloader"); // Import functions from dataloader
 
+// Define OEE classification levels
 const CLASSIFICATION_LEVELS = {
   WORLD_CLASS: 0.85,
   EXCELLENT: 0.7,
@@ -11,11 +16,13 @@ const CLASSIFICATION_LEVELS = {
   AVERAGE: 0.4,
 };
 
+// Define the OEECalculator class
 class OEECalculator {
   constructor() {
-    this.oeeData = {};
+    this.oeeData = {}; // Object to store OEE data for each machine
   }
 
+  // Reset OEE data to default values
   resetOEEData() {
     return {
       ProcessOrderNumber: null,
@@ -40,17 +47,21 @@ class OEECalculator {
     };
   }
 
+  // Initialize OEE data for a machine
   async init(machineId) {
     try {
       oeeLogger.info(`Initializing OEECalculator for machineId ${machineId}`);
 
-      const apiEndpoint = `${oeeApiUrl}/processorders/rel?machineId=${machineId}&mark=true`;
-      const processOrderData = await this.fetchData(apiEndpoint);
-
-      if (processOrderData.length > 0) {
+      // Load process order data by machine ID
+      const processOrderData = await loadProcessOrderDataByMachine(machineId);
+      if (processOrderData && processOrderData.length > 0) {
+        // Set OEE data using the first running order
         this.setOEEData(processOrderData[0], machineId);
+      } else {
+        oeeLogger.warn(`No running order found for machineId ${machineId}`);
       }
     } catch (error) {
+      // Log and throw an error if initialization fails
       errorLogger.error(
         `Error initializing OEECalculator for machineId ${machineId}: ${error.message}`
       );
@@ -58,34 +69,27 @@ class OEECalculator {
     }
   }
 
-  async fetchData(url) {
-    try {
-      const response = await axios.get(url);
-      return response.data;
-    } catch (error) {
-      errorLogger.error(`Failed to fetch data from ${url}: ${error.message}`);
-      throw new Error(`Failed to fetch data from ${url}`);
-    }
-  }
-
+  // Set OEE data for a machine using provided data
   setOEEData(data, machineId) {
     this.oeeData[machineId] = {
-      ...this.resetOEEData(),
-      ...data,
-      runtime: data.setupTime + data.processingTime + data.teardownTime,
+      ...this.resetOEEData(), // Start with default values
+      ...data, // Override with provided data
+      runtime: data.setupTime + data.processingTime + data.teardownTime, // Calculate total runtime
     };
   }
 
+  // Update specific metric data for a machine
   updateData(metric, value, machineId) {
-    oeeLogger.debug(
+    oeeLogger.info(
       `Updating ${metric} with value: ${value} for machineId: ${machineId}`
     );
     if (!this.oeeData[machineId]) {
-      this.oeeData[machineId] = this.resetOEEData();
+      this.oeeData[machineId] = this.resetOEEData(); // Initialize if not already present
     }
-    this.oeeData[machineId][metric] = value;
+    this.oeeData[machineId][metric] = value; // Update the specific metric
   }
 
+  // Validate input data for a machine's OEE calculation
   validateInput(machineId) {
     const {
       plannedProductionQuantity,
@@ -96,6 +100,7 @@ class OEECalculator {
     } = this.oeeData[machineId];
 
     const errors = [];
+    // Validate various OEE metrics
     if (runtime <= 0) errors.push("runtime must be greater than 0");
     if (plannedProductionQuantity <= 0)
       errors.push("plannedProductionQuantity must be greater than 0");
@@ -103,15 +108,12 @@ class OEECalculator {
       errors.push("totalProductionQuantity must be non-negative");
     if (totalProductionYield < 0)
       errors.push("totalProductionYield must be non-negative");
-    if (totalProductionQuantity > targetPerformance)
-      errors.push(
-        "totalProductionQuantity cannot be greater than targetPerformance"
-      );
     if (totalProductionYield > totalProductionQuantity)
       errors.push(
         "totalProductionYield cannot be greater than totalProductionQuantity"
       );
 
+    // Log and throw an error if any validation fails
     if (errors.length > 0) {
       const errorMsg = `Invalid input data: ${errors.join(", ")}`;
       errorLogger.warn(errorMsg);
@@ -119,6 +121,7 @@ class OEECalculator {
     }
   }
 
+  // Calculate OEE metrics for a machine
   async calculateMetrics(
     machineId,
     totalUnplannedDowntime,
@@ -129,7 +132,7 @@ class OEECalculator {
       throw new Error(`No data found for machineId: ${machineId}`);
     }
 
-    this.validateInput(machineId);
+    this.validateInput(machineId); // Validate input data
 
     const {
       runtime,
@@ -139,14 +142,16 @@ class OEECalculator {
     } = this.oeeData[machineId];
 
     try {
-      const OEEData = await loadDataAndPrepareOEE(machineId);
+      const OEEData = await loadDataAndPrepareOEE(machineId); // Load OEE-related data
 
+      // Validate the structure of the OEEData
       if (!OEEData || !Array.isArray(OEEData.datasets)) {
         throw new Error(
           "Invalid OEEData returned from loadDataAndPrepareOEE. Expected an object with a datasets array."
         );
       }
 
+      // Calculate various OEE components
       const totalProductionQuantityTime = OEEData.datasets[0].data.reduce(
         (a, b) => a + b,
         0
@@ -160,12 +165,14 @@ class OEECalculator {
       const actualMicroStops =
         totalMicroStops || OEEData.datasets[4].data.reduce((a, b) => a + b, 0);
 
+      // Calculate availability, performance, and quality metrics
       const availability =
         (runtime - actualUnplannedDowntime - actualPlannedDowntime) / runtime;
       const performance = totalProductionQuantityTime / targetPerformance;
       const quality = totalProductionYield / totalProductionQuantity;
-      const oee = availability * performance * quality;
+      const oee = availability * performance * quality; // Calculate OEE
 
+      // Store the calculated metrics
       this.oeeData[machineId] = {
         ...this.oeeData[machineId],
         availability,
@@ -187,6 +194,7 @@ class OEECalculator {
     }
   }
 
+  // Classify the OEE value for a machine based on predefined levels
   classifyOEE(machineId) {
     let oee;
     if (this.oeeData[machineId]) {
@@ -199,6 +207,7 @@ class OEECalculator {
       throw new Error(`OEE not calculated for machineId: ${machineId}`);
     }
 
+    // Return the OEE classification based on the calculated value
     if (oee >= CLASSIFICATION_LEVELS.WORLD_CLASS) return "World-Class";
     if (oee >= CLASSIFICATION_LEVELS.EXCELLENT) return "Excellent";
     if (oee >= CLASSIFICATION_LEVELS.GOOD) return "Good";
@@ -206,6 +215,7 @@ class OEECalculator {
     return "Below Average";
   }
 
+  // Retrieve the calculated metrics for a machine
   getMetrics(machineId) {
     if (!this.oeeData[machineId]) {
       throw new Error(`No metrics available for machineId: ${machineId}`);
@@ -214,4 +224,5 @@ class OEECalculator {
   }
 }
 
+// Export the OEECalculator class for use in other modules
 module.exports = OEECalculator;

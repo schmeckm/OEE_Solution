@@ -16,6 +16,7 @@ let processOrderDataCache = null;
 let shiftModelDataCache = null;
 let machineDataCache = null; // Cache for machine.json
 let runningOrderCache = {};
+let processOrderByMachineCache = {}; // Cache for process orders by machine
 
 async function loadMachineData() {
   if (!machineDataCache) {
@@ -98,6 +99,41 @@ async function loadProcessOrderData() {
   return processOrderDataCache;
 }
 
+async function loadProcessOrderDataByMachine(machineId) {
+  if (processOrderByMachineCache[machineId]) {
+    oeeLogger.debug(
+      `Returning cached process orders for machine ID: ${machineId}`
+    );
+    return processOrderByMachineCache[machineId];
+  }
+
+  try {
+    const response = await axios.get(
+      `${OEE_API_URL}/processorders/rel?machineId=${machineId}&mark=true`
+    );
+    let processOrderData = response.data;
+
+    // Format the Start and End dates
+    processOrderData = processOrderData.map((order) => ({
+      ...order,
+      Start: moment(order.Start).format("YYYY-MM-DDTHH:mm:ss.SSSZ"),
+      End: moment(order.End).format("YYYY-MM-DDTHH:mm:ss.SSSZ"),
+    }));
+
+    // Cache the data for future use
+    processOrderByMachineCache[machineId] = processOrderData;
+    oeeLogger.debug(
+      `Process order data for machine ID ${machineId} loaded from API.`
+    );
+    return processOrderData;
+  } catch (error) {
+    oeeLogger.error(
+      `Failed to load process order data for machine ID ${machineId}: ${error.message}`
+    );
+    throw new Error("Could not load process order data by machine");
+  }
+}
+
 async function getMachineIdFromLineCode(lineCode) {
   oeeLogger.info(`Searching for machine ID with line code: ${lineCode}`);
 
@@ -158,6 +194,7 @@ module.exports = {
   loadUnplannedDowntimeData,
   loadPlannedDowntimeData,
   loadProcessOrderData,
+  loadProcessOrderDataByMachine,
   getMachineIdFromLineCode,
   checkForRunningOrder,
 };

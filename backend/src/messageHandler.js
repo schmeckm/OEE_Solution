@@ -145,7 +145,7 @@ async function handleOeeMessage(decodedMessage, machineId) {
       );
     }
 
-    oeeLogger.warn(
+    oeeLogger.debug(
       "Complete Metrics Matrix: " + JSON.stringify(metricsMatrix, null, 2)
     );
   } catch (error) {
