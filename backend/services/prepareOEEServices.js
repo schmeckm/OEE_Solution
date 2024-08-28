@@ -9,30 +9,30 @@ const {
 const { oeeLogger, errorLogger } = require("../utils/logger");
 const moment = require("moment");
 
-function parseDate(dateString) {
-  return moment(dateString);
-}
+const cache = {}; // Cache-Objekt zur Speicherung der Daten
 
-function calculateOverlap(startTime, endTime, eventStart, eventEnd) {
-  const overlapStart = moment.max(startTime, eventStart);
-  const overlapEnd = moment.min(endTime, eventEnd);
-  return Math.max(0, overlapEnd.diff(overlapStart, "minutes"));
-}
-
+// 2. Datenabruf und -verarbeitung
 async function loadDataAndPrepareOEE(machineId) {
   if (!machineId) {
     throw new Error("MachineId is required to load and prepare OEE data.");
   }
 
-  try {
-    const currentProcessOrder = await checkForRunningOrder(machineId);
+  // Überprüfe, ob die Daten bereits im Cache sind
+  if (cache[machineId]) {
+    oeeLogger.info(`Returning cached OEE data for machineId ${machineId}`);
+    return cache[machineId];
+  }
 
+  try {
+    // Überprüfe, ob es einen laufenden Prozessauftrag gibt
+    const currentProcessOrder = await checkForRunningOrder(machineId);
     if (!currentProcessOrder) {
       throw new Error(
         `No running process orders found for machineId: ${machineId}`
       );
     }
 
+    // Bestimme die Start- und Endzeiten des Prozessauftrags
     const processOrderStartTime = moment(currentProcessOrder.Start);
     const processOrderEndTime = moment(currentProcessOrder.End);
 
@@ -44,6 +44,7 @@ async function loadDataAndPrepareOEE(machineId) {
       )}`
     );
 
+    // 3. Abruf der notwendigen Daten für die Berechnungen
     const [
       plannedDowntimeData,
       unplannedDowntimeData,
@@ -56,6 +57,7 @@ async function loadDataAndPrepareOEE(machineId) {
       loadShiftModelData(machineId),
     ]);
 
+    // Filtere und bereite die Ausfallzeiten-Daten vor
     const filterDowntimeData = (downtimeData) => {
       return downtimeData.filter(
         (downtime) =>
@@ -83,6 +85,7 @@ async function loadDataAndPrepareOEE(machineId) {
       `Filtered microstops data: ${JSON.stringify(filteredMicrostops)}`
     );
 
+    // Berechne die Dauer für die OEE-Berechnungen
     const durations = filterAndCalculateDurations(
       currentProcessOrder,
       filteredPlannedDowntime,
@@ -91,6 +94,7 @@ async function loadDataAndPrepareOEE(machineId) {
       shiftModels
     );
 
+    // 4. Aufbau des OEEData-Objekts
     const OEEData = {
       labels: [],
       datasets: [
@@ -100,8 +104,10 @@ async function loadDataAndPrepareOEE(machineId) {
         { label: "Planned Downtime", data: [], backgroundColor: "orange" },
         { label: "Microstops", data: [], backgroundColor: "purple" },
       ],
+      processOrder: currentProcessOrder, // Füge die Prozessauftragsdaten hinzu
     };
 
+    // 5. Verarbeitung der Zeitintervalle und Zuordnung der Daten
     let currentTime = processOrderStartTime.clone().startOf("hour");
     const orderEnd = processOrderEndTime.clone().endOf("hour");
 
@@ -124,86 +130,21 @@ async function loadDataAndPrepareOEE(machineId) {
       let plannedDowntime = 0;
       let microstopTime = 0;
 
-      // Calculate overlap for planned downtime
-      filteredPlannedDowntime.forEach((downtime) => {
-        const downtimeStart = moment(downtime.Start);
-        const downtimeEnd = moment(downtime.End);
-
-        if (
-          currentTime.isBefore(downtimeEnd) &&
-          nextTime.isAfter(downtimeStart)
-        ) {
-          plannedDowntime += calculateOverlap(
-            currentTime,
-            nextTime,
-            downtimeStart,
-            downtimeEnd
-          );
+      // Berechne die verschiedenen Ausfallzeiten und Pausen
+      calculateDowntimes(
+        filteredPlannedDowntime,
+        filteredUnplannedDowntime,
+        filteredMicrostops,
+        shiftModels,
+        currentTime,
+        nextTime,
+        (planned, unplanned, microstops, breaks) => {
+          plannedDowntime += planned;
+          unplannedDowntime += unplanned;
+          microstopTime += microstops;
+          breakTime += breaks;
         }
-      });
-
-      // Calculate overlap for unplanned downtime
-      filteredUnplannedDowntime.forEach((downtime) => {
-        const downtimeStart = moment(downtime.Start);
-        const downtimeEnd = moment(downtime.End);
-
-        if (
-          currentTime.isBefore(downtimeEnd) &&
-          nextTime.isAfter(downtimeStart)
-        ) {
-          unplannedDowntime += calculateOverlap(
-            currentTime,
-            nextTime,
-            downtimeStart,
-            downtimeEnd
-          );
-        }
-      });
-
-      // Calculate overlap for microstops
-      filteredMicrostops.forEach((microstop) => {
-        const microstopStart = moment(microstop.Start);
-        const microstopEnd = moment(microstop.End);
-
-        if (
-          currentTime.isBefore(microstopEnd) &&
-          nextTime.isAfter(microstopStart)
-        ) {
-          microstopTime += calculateOverlap(
-            currentTime,
-            nextTime,
-            microstopStart,
-            microstopEnd
-          );
-        }
-      });
-
-      // Calculate breaks based on shifts
-      shiftModels.forEach((shift) => {
-        const shiftStartDate = moment(currentTime).format("YYYY-MM-DD");
-        const breakStart = moment.utc(
-          `${shiftStartDate} ${shift.break_start}`,
-          "YYYY-MM-DD HH:mm"
-        );
-        const breakEnd = moment.utc(
-          `${shiftStartDate} ${shift.break_end}`,
-          "YYYY-MM-DD HH:mm"
-        );
-
-        // Adjust for overnight shifts
-        if (breakEnd.isBefore(breakStart)) {
-          breakEnd.add(1, "day");
-        }
-
-        if (currentTime.isBefore(breakEnd) && nextTime.isAfter(breakStart)) {
-          breakTime += calculateOverlap(
-            currentTime,
-            nextTime,
-            breakStart,
-            breakEnd
-          );
-        }
-      });
+      );
 
       const totalNonProductionTime =
         breakTime + unplannedDowntime + plannedDowntime + microstopTime;
@@ -227,12 +168,112 @@ async function loadDataAndPrepareOEE(machineId) {
       currentTime = nextTime;
     }
 
+    // 6. Speichere die Daten im Cache und gib sie zurück
+    cache[machineId] = OEEData;
+
     oeeLogger.info(`Final OEE Data: ${JSON.stringify(OEEData)}`);
     return OEEData;
   } catch (error) {
     errorLogger.error(`Error loading or preparing OEE data: ${error.message}`);
     throw error;
   }
+}
+
+// 7. Hilfsfunktionen zur Berechnung der Downtimes
+function calculateDowntimes(
+  plannedDowntimes,
+  unplannedDowntimes,
+  microstops,
+  shiftModels,
+  currentTime,
+  nextTime,
+  callback
+) {
+  let plannedDowntime = 0;
+  let unplannedDowntime = 0;
+  let microstopTime = 0;
+  let breakTime = 0;
+
+  // Berechne geplante Ausfallzeiten
+  plannedDowntimes.forEach((downtime) => {
+    const downtimeStart = moment(downtime.Start);
+    const downtimeEnd = moment(downtime.End);
+    if (currentTime.isBefore(downtimeEnd) && nextTime.isAfter(downtimeStart)) {
+      plannedDowntime += calculateOverlap(
+        currentTime,
+        nextTime,
+        downtimeStart,
+        downtimeEnd
+      );
+    }
+  });
+
+  // Berechne ungeplante Ausfallzeiten
+  unplannedDowntimes.forEach((downtime) => {
+    const downtimeStart = moment(downtime.Start);
+    const downtimeEnd = moment(downtime.End);
+    if (currentTime.isBefore(downtimeEnd) && nextTime.isAfter(downtimeStart)) {
+      unplannedDowntime += calculateOverlap(
+        currentTime,
+        nextTime,
+        downtimeStart,
+        downtimeEnd
+      );
+    }
+  });
+
+  // Berechne Microstops
+  microstops.forEach((microstop) => {
+    const microstopStart = moment(microstop.Start);
+    const microstopEnd = moment(microstop.End);
+    if (
+      currentTime.isBefore(microstopEnd) &&
+      nextTime.isAfter(microstopStart)
+    ) {
+      microstopTime += calculateOverlap(
+        currentTime,
+        nextTime,
+        microstopStart,
+        microstopEnd
+      );
+    }
+  });
+
+  // Berechne Pausen basierend auf dem Schichtmodell
+  shiftModels.forEach((shift) => {
+    const shiftStartDate = moment(currentTime).format("YYYY-MM-DD");
+    const breakStart = moment.utc(
+      `${shiftStartDate} ${shift.break_start}`,
+      "YYYY-MM-DD HH:mm"
+    );
+    const breakEnd = moment.utc(
+      `${shiftStartDate} ${shift.break_end}`,
+      "YYYY-MM-DD HH:mm"
+    );
+
+    // Adjust for overnight shifts
+    if (breakEnd.isBefore(breakStart)) {
+      breakEnd.add(1, "day");
+    }
+
+    if (currentTime.isBefore(breakEnd) && nextTime.isAfter(breakStart)) {
+      breakTime += calculateOverlap(
+        currentTime,
+        nextTime,
+        breakStart,
+        breakEnd
+      );
+    }
+  });
+
+  callback(plannedDowntime, unplannedDowntime, microstopTime, breakTime);
+}
+
+// Berechne die Überlappung von Zeitintervallen
+function calculateOverlap(startTime, endTime, eventStart, eventEnd) {
+  const overlapStart = moment.max(startTime, eventStart);
+  const overlapEnd = moment.min(endTime, eventEnd);
+  return Math.max(0, overlapEnd.diff(overlapStart, "minutes"));
 }
 
 module.exports = {

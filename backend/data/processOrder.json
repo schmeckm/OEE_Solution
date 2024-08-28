@@ -14,8 +14,7 @@
         "targetPerformance": 100,
         "machine_id": "1",
         "ProcessOrderStatus": "REL",
-        "ActualProcessOrderStart": "2024-08-25T16:22:58.174Z",
-        "ActualProcessOrderEnd": "2024-08-25T16:37:46.925Z"
+        "ActualProcessOrderStart": "2024-07-14T06:22:58.174Z"
     },
     {
         "order_id": 2,

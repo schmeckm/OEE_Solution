@@ -1,14 +1,11 @@
-// Import required modules
-const axios = require("axios"); // For making HTTP requests
-const { oeeLogger, errorLogger } = require("../utils/logger"); // Custom loggers for OEE and error logging
-const { oeeApiUrl } = require("../config/config"); // OEE API URL from configuration
-const { loadDataAndPrepareOEE } = require("../src/downtimeManager"); // Function to load and prepare OEE data
-const {
-  checkForRunningOrder, // Function to check for a running order
-  loadProcessOrderDataByMachine, // Function to load process order data by machine
-} = require("../src/dataloader"); // Import functions from dataloader
+const axios = require("axios");
+const { oeeLogger, errorLogger } = require("../utils/logger");
+const dotenv = require("dotenv");
+const moment = require("moment");
 
-// Define OEE classification levels
+dotenv.config();
+
+const OEE_API_URL = process.env.OEE_API_URL || "http://localhost:3000/api/v1";
 const CLASSIFICATION_LEVELS = {
   WORLD_CLASS: 0.85,
   EXCELLENT: 0.7,
@@ -16,13 +13,44 @@ const CLASSIFICATION_LEVELS = {
   AVERAGE: 0.4,
 };
 
-// Define the OEECalculator class
-class OEECalculator {
-  constructor() {
-    this.oeeData = {}; // Object to store OEE data for each machine
+const cache = {}; // Cache-Objekt zur Speicherung der Daten
+const CACHE_DURATION = 5 * 60 * 1000; // 5 Minuten in Millisekunden
+
+async function fetchOEEDataFromAPI(machineId) {
+  const cacheKey = `OEEData_${machineId}`;
+
+  if (
+    cache[cacheKey] &&
+    Date.now() - cache[cacheKey].timestamp < CACHE_DURATION
+  ) {
+    return cache[cacheKey].data;
   }
 
-  // Reset OEE data to default values
+  try {
+    const response = await axios.get(
+      `${OEE_API_URL}/prepareOEE/oee/${machineId}`
+    );
+    const data = response.data;
+
+    cache[cacheKey] = {
+      data,
+      timestamp: Date.now(),
+    };
+
+    return data;
+  } catch (error) {
+    errorLogger.error(
+      `Failed to fetch OEE data from API for machineId ${machineId}: ${error.message}`
+    );
+    throw new Error("Could not fetch OEE data from API");
+  }
+}
+
+class OEECalculator {
+  constructor() {
+    this.oeeData = {};
+  }
+
   resetOEEData() {
     return {
       ProcessOrderNumber: null,
@@ -44,24 +72,24 @@ class OEECalculator {
       oee: 0,
       StartTime: null,
       EndTime: null,
+      plannedTakt: 0,
+      actualTakt: 0,
+      expectedEndTime: null,
     };
   }
 
-  // Initialize OEE data for a machine
   async init(machineId) {
     try {
       oeeLogger.info(`Initializing OEECalculator for machineId ${machineId}`);
 
-      // Load process order data by machine ID
-      const processOrderData = await loadProcessOrderDataByMachine(machineId);
-      if (processOrderData && processOrderData.length > 0) {
-        // Set OEE data using the first running order
-        this.setOEEData(processOrderData[0], machineId);
+      const OEEData = await fetchOEEDataFromAPI(machineId);
+      console.log("Fetched OEE Data:", OEEData);
+      if (OEEData) {
+        this.setOEEData(OEEData, machineId);
       } else {
-        oeeLogger.warn(`No running order found for machineId ${machineId}`);
+        oeeLogger.warn(`No OEE data found for machineId ${machineId}`);
       }
     } catch (error) {
-      // Log and throw an error if initialization fails
       errorLogger.error(
         `Error initializing OEECalculator for machineId ${machineId}: ${error.message}`
       );
@@ -69,70 +97,185 @@ class OEECalculator {
     }
   }
 
-  // Set OEE data for a machine using provided data and runtime is newly calculated
-  setOEEData(data, machineId) {
-    this.oeeData[machineId] = {
-      ...this.resetOEEData(), // Start with default values
-      ...data, // Override with provided data
-      runtime: data.setupTime + data.processingTime + data.teardownTime, // Calculate total runtime
-    };
-  }
+  setOEEData(OEEData, machineId) {
+    console.log("Data received:", OEEData);
+    const processOrder = OEEData.processOrder;
 
-  // Update specific metric data for a machine
-  updateData(metric, value, machineId) {
-    oeeLogger.info(
-      `Updating ${metric} with value: ${value} for machineId: ${machineId}`
+    if (!processOrder.Start || !processOrder.End) {
+      console.error("One or more required time fields are missing:", {
+        Start: processOrder.Start,
+        End: processOrder.End,
+        ActualProcessOrderStart: processOrder.ActualProcessOrderStart,
+        ActualProcessOrderEnd: processOrder.ActualProcessOrderEnd,
+      });
+      throw new Error("Required time fields are missing in the data");
+    }
+
+    const plannedStart = moment(processOrder.Start);
+    const plannedEnd = moment(processOrder.End);
+
+    let plannedTakt;
+    let actualTakt;
+    let remainingTime;
+    let expectedEndTime;
+
+    if (
+      !processOrder.ActualProcessOrderStart &&
+      !processOrder.ActualProcessOrderEnd
+    ) {
+      const plannedDurationMinutes = plannedEnd.diff(plannedStart, "minutes");
+      plannedTakt =
+        plannedDurationMinutes / processOrder.plannedProductionQuantity;
+      actualTakt = plannedTakt;
+      remainingTime = processOrder.plannedProductionQuantity * actualTakt;
+      expectedEndTime = plannedStart.add(remainingTime, "minutes");
+    } else if (
+      processOrder.ActualProcessOrderStart &&
+      !processOrder.ActualProcessOrderEnd
+    ) {
+      const actualStart = moment(processOrder.ActualProcessOrderStart);
+      const plannedDurationMinutes = plannedEnd.diff(actualStart, "minutes");
+      plannedTakt =
+        plannedDurationMinutes / processOrder.plannedProductionQuantity;
+      actualTakt = plannedTakt;
+      remainingTime =
+        (processOrder.plannedProductionQuantity -
+          processOrder.totalProductionQuantity) *
+        actualTakt;
+      expectedEndTime = actualStart.add(remainingTime, "minutes");
+    } else if (
+      processOrder.ActualProcessOrderStart &&
+      processOrder.ActualProcessOrderEnd
+    ) {
+      const actualStart = moment(processOrder.ActualProcessOrderStart);
+      const actualEnd = moment(processOrder.ActualProcessOrderEnd);
+      const actualDurationMinutes = actualEnd.diff(actualStart, "minutes");
+      plannedTakt =
+        plannedEnd.diff(plannedStart, "minutes") /
+        processOrder.plannedProductionQuantity;
+      actualTakt =
+        actualDurationMinutes / processOrder.plannedProductionQuantity;
+      remainingTime =
+        (processOrder.plannedProductionQuantity -
+          processOrder.totalProductionQuantity) *
+        actualTakt;
+      expectedEndTime = actualEnd.add(remainingTime, "minutes");
+    }
+
+    console.log("Planned Takt:", plannedTakt);
+    console.log("Actual Takt:", actualTakt);
+    console.log(
+      "Expected End Time:",
+      expectedEndTime
+        ? expectedEndTime.format("YYYY-MM-DDTHH:mm:ss.SSSZ")
+        : "N/A"
     );
-    if (!this.oeeData[machineId]) {
-      this.oeeData[machineId] = this.resetOEEData(); // Initialize if not already present
-    }
-    this.oeeData[machineId][metric] = value; // Update the specific metric
+
+    this.oeeData[machineId] = {
+      ...this.resetOEEData(),
+      ...processOrder,
+      runtime:
+        processOrder.setupTime +
+        processOrder.processingTime +
+        processOrder.teardownTime,
+      plannedTakt,
+      actualTakt,
+      expectedEndTime: expectedEndTime
+        ? expectedEndTime.format("YYYY-MM-DDTHH:mm:ss.SSSZ")
+        : null,
+    };
+
+    console.log("OEE Data:", this.oeeData[machineId]);
   }
 
-  // Validate input data for a machine's OEE calculation
-  validateInput(machineId) {
-    const {
-      plannedProductionQuantity,
-      runtime,
-      totalProductionQuantity,
-      totalProductionYield,
-      targetPerformance,
-    } = this.oeeData[machineId];
-
-    const errors = [];
-    // Validate various OEE metrics
-    if (runtime <= 0) errors.push("runtime must be greater than 0");
-    if (plannedProductionQuantity <= 0)
-      errors.push("plannedProductionQuantity must be greater than 0");
-    if (totalProductionQuantity < 0)
-      errors.push("totalProductionQuantity must be non-negative");
-    if (totalProductionYield < 0)
-      errors.push("totalProductionYield must be non-negative");
-    if (totalProductionYield > totalProductionQuantity)
-      errors.push(
-        "totalProductionYield cannot be greater than totalProductionQuantity"
-      );
-
-    // Log and throw an error if any validation fails
-    if (errors.length > 0) {
-      const errorMsg = `Invalid input data: ${errors.join(", ")}`;
-      errorLogger.warn(errorMsg);
-      throw new Error(errorMsg);
-    }
-  }
-
-  // Calculate OEE metrics for a machine
   async calculateMetrics(
     machineId,
     totalUnplannedDowntime,
     totalPlannedDowntime,
-    totalMicroStops
+    plannedProductionQuantity,
+    processOrder
   ) {
+    console.log("Debugging calculateMetrics:");
+    console.log("machineId:", machineId);
+    console.log("totalUnplannedDowntime:", totalUnplannedDowntime);
+    console.log("totalPlannedDowntime:", totalPlannedDowntime);
+    console.log("plannedProductionQuantity:", plannedProductionQuantity);
+    console.log("processOrder:", processOrder);
+
     if (!this.oeeData[machineId]) {
       throw new Error(`No data found for machineId: ${machineId}`);
     }
 
-    this.validateInput(machineId); // Validate input data
+    const {
+      ActualProcessOrderStart,
+      ActualProcessOrderEnd,
+      setupTime,
+      teardownTime,
+      MaterialDescription,
+      Start,
+      End,
+    } = processOrder;
+
+    if (!ActualProcessOrderStart && !Start) {
+      console.error(
+        "Error: At least ActualProcessOrderStart or Start is required"
+      );
+      throw new Error("At least ActualProcessOrderStart or Start is required");
+    }
+
+    let actualDurationMinutes;
+    let expectedEndTime;
+    let plannedTakt;
+    let actualTakt;
+
+    // Case 1: Neither ActualProcessOrderStart nor ActualProcessOrderEnd are present
+    if (!ActualProcessOrderStart && !ActualProcessOrderEnd) {
+      const plannedStart = moment(Start);
+      const plannedEnd = moment(End);
+      const plannedDurationMinutes = plannedEnd.diff(plannedStart, "minutes");
+
+      plannedTakt =
+        plannedDurationMinutes / processOrder.plannedProductionQuantity;
+      actualTakt = plannedTakt;
+      actualDurationMinutes = plannedDurationMinutes;
+      expectedEndTime = plannedEnd;
+    }
+    // Case 2: ActualProcessOrderStart is present but ActualProcessOrderEnd is missing
+    else if (ActualProcessOrderStart && !ActualProcessOrderEnd) {
+      const actualStart = moment(ActualProcessOrderStart);
+      const plannedEnd = moment(End);
+      const plannedDurationMinutes = plannedEnd.diff(actualStart, "minutes");
+
+      plannedTakt =
+        plannedDurationMinutes / processOrder.plannedProductionQuantity;
+      actualTakt = plannedTakt;
+      actualDurationMinutes = moment().diff(actualStart, "minutes");
+      expectedEndTime = plannedEnd;
+    }
+    // Case 3: Both ActualProcessOrderStart and ActualProcessOrderEnd are present
+    else if (ActualProcessOrderStart && ActualProcessOrderEnd) {
+      const actualStart = moment(ActualProcessOrderStart);
+      const actualEnd = moment(ActualProcessOrderEnd);
+      actualDurationMinutes = actualEnd.diff(actualStart, "minutes");
+
+      plannedTakt =
+        moment(End).diff(moment(Start), "minutes") /
+        processOrder.plannedProductionQuantity;
+      actualTakt =
+        actualDurationMinutes / processOrder.plannedProductionQuantity;
+      expectedEndTime = actualEnd;
+    }
+
+    console.log("Planned Takt:", plannedTakt);
+    console.log("Actual Takt:", actualTakt);
+    console.log(
+      "Expected End Time:",
+      expectedEndTime
+        ? expectedEndTime.format("YYYY-MM-DDTHH:mm:ss.SSSZ")
+        : "N/A"
+    );
+
+    this.validateInput(machineId);
 
     const {
       runtime,
@@ -142,16 +285,14 @@ class OEECalculator {
     } = this.oeeData[machineId];
 
     try {
-      const OEEData = await loadDataAndPrepareOEE(machineId); // Load OEE-related data
+      const OEEData = await fetchOEEDataFromAPI(machineId);
 
-      // Validate the structure of the OEEData
       if (!OEEData || !Array.isArray(OEEData.datasets)) {
         throw new Error(
-          "Invalid OEEData returned from loadDataAndPrepareOEE. Expected an object with a datasets array."
+          "Invalid OEEData returned from API. Expected an object with a datasets array."
         );
       }
 
-      // Calculate various OEE components
       const totalProductionQuantityTime = OEEData.datasets[0].data.reduce(
         (a, b) => a + b,
         0
@@ -165,20 +306,25 @@ class OEECalculator {
       const actualMicroStops =
         totalMicroStops || OEEData.datasets[4].data.reduce((a, b) => a + b, 0);
 
-      // Calculate availability, performance, and quality metrics
       const availability =
         (runtime - actualUnplannedDowntime - actualPlannedDowntime) / runtime;
       const performance = totalProductionQuantityTime / targetPerformance;
       const quality = totalProductionYield / totalProductionQuantity;
-      const oee = availability * performance * quality; // Calculate OEE
+      const oee = availability * performance * quality;
 
-      // Store the calculated metrics
       this.oeeData[machineId] = {
         ...this.oeeData[machineId],
         availability,
         performance,
         quality,
         oee,
+        actualDurationMinutes,
+        setupTime,
+        teardownTime,
+        MaterialDescription,
+        expectedEndTime: moment(expectedEndTime).format(
+          "YYYY-MM-DDTHH:mm:ss.SSSZ"
+        ),
       };
 
       oeeLogger.info(
@@ -194,7 +340,6 @@ class OEECalculator {
     }
   }
 
-  // Classify the OEE value for a machine based on predefined levels
   classifyOEE(machineId) {
     let oee;
     if (this.oeeData[machineId]) {
@@ -207,7 +352,6 @@ class OEECalculator {
       throw new Error(`OEE not calculated for machineId: ${machineId}`);
     }
 
-    // Return the OEE classification based on the calculated value
     if (oee >= CLASSIFICATION_LEVELS.WORLD_CLASS) return "World-Class";
     if (oee >= CLASSIFICATION_LEVELS.EXCELLENT) return "Excellent";
     if (oee >= CLASSIFICATION_LEVELS.GOOD) return "Good";
@@ -215,7 +359,6 @@ class OEECalculator {
     return "Below Average";
   }
 
-  // Retrieve the calculated metrics for a machine
   getMetrics(machineId) {
     if (!this.oeeData[machineId]) {
       throw new Error(`No metrics available for machineId: ${machineId}`);
@@ -224,5 +367,4 @@ class OEECalculator {
   }
 }
 
-// Export the OEECalculator class for use in other modules
 module.exports = OEECalculator;

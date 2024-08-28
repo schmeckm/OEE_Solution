@@ -166,6 +166,7 @@ async function processMetrics(machineId) {
     const processOrder = processOrderData[0]; // Assuming the first order is the one you need
 
     //here we are updating the plannedProductionQuantity in the oeeData object
+
     this.oeeData[machineId].plannedProductionQuantity =
       processOrder.plannedProductionQuantity;
 
@@ -187,7 +188,8 @@ async function processMetrics(machineId) {
       machineId,
       totalTimes.unplannedDowntime,
       totalTimes.plannedDowntime + totalTimes.breakTime + totalTimes.microstops,
-      plannedProductionQuantity // Pass the plannedProductionQuantity here
+      plannedProductionQuantity,
+      processOrder
     );
 
     const metrics = calculator.getMetrics(machineId);
