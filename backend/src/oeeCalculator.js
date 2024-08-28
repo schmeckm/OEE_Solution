@@ -69,7 +69,7 @@ class OEECalculator {
     }
   }
 
-  // Set OEE data for a machine using provided data
+  // Set OEE data for a machine using provided data and runtime is newly calculated
   setOEEData(data, machineId) {
     this.oeeData[machineId] = {
       ...this.resetOEEData(), // Start with default values

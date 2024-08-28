@@ -20,6 +20,7 @@ const structureRouter = require("./structure");
 const oeeLogsRouter = require("./oeeLogs");
 const calculateOEERouter = require("./calculateOEE");
 const oeeMetricsRouter = require("./oeeMetricsRoutes"); // Adjust path as needed
+const prepareOEERouter = require("./prepareOEE"); // Import the prepareOEE router
 
 /**
  * Registers the API routes with the provided Express application.
@@ -59,6 +60,7 @@ function registerApiRoutes(app) {
   app.use("/api/v1/ratings", ratingsRouter);
   app.use("/api/v1", oeeMetricsRouter);
   app.use("/api/v1/settings", settingRouter); // CRUD operations for Microstops
+  app.use("/api/v1/prepareOEE", prepareOEERouter); // Adjust path as needed
 }
 
 module.exports = registerApiRoutes;

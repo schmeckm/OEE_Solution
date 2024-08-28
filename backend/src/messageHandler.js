@@ -28,35 +28,42 @@ async function handleOeeMessage(decodedMessage, machineId) {
   );
 
   try {
+    // Initialize oeeData if not already initialized
     if (!this.oeeData) {
       this.oeeData = {};
     }
 
+    // Initialize oeeData for the specific machineId if not present
     if (!this.oeeData[machineId]) {
       this.oeeData[machineId] = {};
     }
 
     let validMetricProcessed = false;
 
+    // Define mandatory static metrics that should be sourced from process orders
     const mandatoryStaticMetrics = [
       "plannedProductionQuantity",
       "runtime",
       "targetPerformance",
     ];
 
-    const processOrderData = await loadProcessOrderData(); // Stelle sicher, dass dies async ist
+    // Load the process order data
+    const processOrderData = await loadProcessOrderData();
 
-    // Prüfen, ob processOrderData ein Array ist
+    // Check if processOrderData is an array
     if (!Array.isArray(processOrderData)) {
       throw new Error("Process order data is not an array");
     }
 
+    // Iterate over each metric in the decoded message
     for (const metricData of decodedMessage.metrics) {
       const { name, value } = metricData;
-      let metricSource = "undefined";
+      let metricSource = "undefined"; // Default source as undefined
       let finalValue = value;
 
+      // Check if the metric is defined in oeeConfig
       if (oeeConfig[name]) {
+        // Update metric from MQTT data if the metric is connected to the machine
         if (oeeConfig[name].machineConnect === true) {
           if (value !== undefined && value !== null && !isNaN(value)) {
             metricSource = "MQTT";
@@ -71,6 +78,7 @@ async function handleOeeMessage(decodedMessage, machineId) {
               `Metric ${name} has an invalid value: ${value}. Skipping.`
             );
           }
+          // Update metric from process order if it's a mandatory static metric
         } else if (mandatoryStaticMetrics.includes(name)) {
           const order = processOrderData.find(
             (order) => order.machine_id === machineId
@@ -115,6 +123,7 @@ async function handleOeeMessage(decodedMessage, machineId) {
         oeeLogger.warn(`Metric ${name} is not defined in oeeConfig.`);
       }
 
+      // Update the metrics matrix with the processed metric
       let metricEntry = metricsMatrix.find((entry) => entry.metric === name);
       if (metricEntry) {
         metricEntry.source = metricSource;
@@ -130,6 +139,7 @@ async function handleOeeMessage(decodedMessage, machineId) {
       }
     }
 
+    // Process valid metrics if any were processed
     if (validMetricProcessed) {
       await processMetrics(machineId);
       oeeLogger.debug(
@@ -165,13 +175,14 @@ async function handleOeeMessage(decodedMessage, machineId) {
  * @param {string} machineId - The machine ID.
  */
 async function handleCommandMessage(decodedMessage, machineId) {
-  //   console.log(
-  //     `handleCommandMessage called with decodedMessage: ${JSON.stringify(
-  //       decodedMessage
-  //     )}, machineId: ${machineId}`
-  //   );
+  // console.log(
+  // `handleCommandMessage called with decodedMessage: ${JSON.stringify(
+  // decodedMessage
+  // )}, machineId: ${machineId}`
+  // );
 
   try {
+    // Validate the format of the decoded message
     if (
       !decodedMessage ||
       !decodedMessage.metrics ||
@@ -180,16 +191,18 @@ async function handleCommandMessage(decodedMessage, machineId) {
       throw new Error("Invalid decodedMessage format");
     }
 
+    // Iterate over each command metric in the decoded message
     for (const metricData of decodedMessage.metrics) {
       const { name, value, type, alias } = metricData;
-      //   console.log(
-      //     `Received command: ${name}, Value: ${value}, Type: ${type}, Alias: ${JSON.stringify(
-      //       alias
-      //     )}, Machine ID: ${machineId}`
-      //   );
+      // console.log(
+      // `Received command: ${name}, Value: ${value}, Type: ${type}, Alias: ${JSON.stringify(
+      // alias
+      // )}, Machine ID: ${machineId}`
+      // );
 
       const startTime = Date.now();
 
+      // Handle different command types (Hold, Unhold, Start, End)
       switch (name) {
         case "Hold":
           console.log(`Command/Hold: ${name}`);
@@ -202,13 +215,12 @@ async function handleCommandMessage(decodedMessage, machineId) {
         case "Start":
           await handleProcessOrderStartCommand(value, machineId);
           console.log(`Command/Start: ${name}`);
-          // Hier könnte in Zukunft eine Funktion hinzugefügt werden, um den Prozessstart zu protokollieren.
+          // Future enhancement: add functionality to log the start of the process
           break;
-
         case "End":
           await handleProcessOrderEndCommand(value, machineId);
           console.log(`Command/End: ${name}`);
-          // Hier könnte in Zukunft eine Funktion hinzugefügt werden, um das Prozessende zu protokollieren.
+          // Future enhancement: add functionality to log the end of the process
           break;
         default:
           oeeLogger.warn(`Unknown command: ${name}`);

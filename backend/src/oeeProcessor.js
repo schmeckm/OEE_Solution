@@ -6,6 +6,11 @@ const {
   loadDataAndPrepareOEE,
   loadProcessOrderData,
 } = require("../src/downtimeManager");
+const {
+  loadMachineData,
+  loadProcessOrderDataByMachine,
+} = require("./dataLoader"); // Import the function from dataLoader.js
+
 const { influxdb } = require("../config/config");
 const OEECalculator = require("./oeeCalculator");
 const {
@@ -65,22 +70,6 @@ function logMetricBuffer() {
     });
   });
 }
-
-/**
- * Asynchronously loads machine data from machine.json.
- * @returns {Promise<Array>} A promise that resolves to an array of machine objects.
- */
-async function loadMachineData() {
-  const machineDataPath = path.join(__dirname, "../data/machine.json");
-  try {
-    const data = await fs.readFile(machineDataPath, "utf8");
-    return JSON.parse(data);
-  } catch (error) {
-    errorLogger.error(`Failed to load machine data : ${error.message}`);
-    return [];
-  }
-}
-
 /**
  * Retrieves the plant and area based on the MachineID.
  * @param {string} machineId - The ID of the machine.
@@ -88,13 +77,15 @@ async function loadMachineData() {
  */
 async function getPlantAndArea(machineId) {
   try {
-    const machines = await loadMachineData();
+    const machines = await loadMachineData(); // Use the existing function from dataLoader.js
+
     const machine = machines.find((m) => m.machine_id === machineId);
+
     if (machine) {
       return {
         plant: machine.Plant || "UnknownPlant",
         area: machine.area || "UnknownArea",
-        lineId: machine.name || "UnknownLine", // Adding lineId if present
+        lineId: machine.name || "UnknownLine",
       };
     } else {
       errorLogger.info(
@@ -126,10 +117,6 @@ async function getPlantAndArea(machineId) {
  * @param {string} machineId - The MachineID or Workcenter.
  */
 async function updateMetric(name, value, machineId) {
-  //   console.log(
-  //     `Updating metric: ${name} with value: ${value} for machine: ${machineId}`
-  //   );
-
   if (!metricBuffers.has(machineId)) {
     metricBuffers.set(machineId, {}); // Initialize buffer if it doesn't exist
   }
@@ -159,32 +146,37 @@ async function processMetrics(machineId) {
     let calculator = oeeCalculators.get(machineId);
     if (!calculator) {
       calculator = new OEECalculator();
+
+      // Initialize the OEECalculator for the machine if it doesn't exist
       await calculator.init(machineId);
       oeeCalculators.set(machineId, calculator);
     }
 
+    // Get the plant, area, and lineId for the machine
     const { plant, area, lineId } = await getPlantAndArea(machineId);
     const buffer = metricBuffers.get(machineId);
 
-    // Load the plannedProductionQuantity exclusively from the process order
-    const processOrder = loadProcessOrderData().find(
-      (order) =>
-        order.machine_id === machineId && order.ProcessOrderStatus === "REL"
-    );
+    // Use loadProcessOrderDataByMachine to load the process order data
+    const processOrderData = await loadProcessOrderDataByMachine(machineId);
 
-    if (!processOrder) {
+    if (!processOrderData || processOrderData.length === 0) {
       throw new Error(`No active process order found for machine ${machineId}`);
     }
 
-    const plannedProductionQuantity = processOrder.plannedProductionQuantity;
+    const processOrder = processOrderData[0]; // Assuming the first order is the one you need
+
+    //here we are updating the plannedProductionQuantity in the oeeData object
+    this.oeeData[machineId].plannedProductionQuantity =
+      processOrder.plannedProductionQuantity;
 
     const OEEData = loadDataAndPrepareOEE(machineId);
-
     if (!OEEData || !Array.isArray(OEEData.datasets)) {
       throw new Error(
         "Invalid OEEData returned from loadDataAndPrepareOEE. Expected an object with a datasets array."
       );
     }
+
+    const plannedProductionQuantity = processOrder.plannedProductionQuantity;
 
     const totalTimes = calculateTotalTimes(OEEData.datasets);
 
