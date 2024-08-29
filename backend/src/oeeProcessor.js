@@ -9,7 +9,7 @@ const {
 const {
   loadMachineData,
   loadProcessOrderDataByMachine,
-} = require("./dataLoader"); // Import the function from dataLoader.js
+} = require("./dataLoader");
 
 const { influxdb } = require("../config/config");
 const OEECalculator = require("./oeeCalculator");
@@ -22,10 +22,6 @@ const moment = require("moment-timezone");
 const oeeCalculators = new Map(); // Map to store OEE calculators per machine ID
 let metricBuffers = new Map(); // Buffer to store metrics per machine
 
-/**
- * Logs OEE metrics in a tabular format.
- * @param {Object} metrics - The metrics object from the OEECalculator.
- */
 function logTabularData(metrics) {
   const {
     oee,
@@ -33,8 +29,8 @@ function logTabularData(metrics) {
     performance,
     quality,
     plannedProductionQuantity,
-    actualProductionQuantity,
-    productionTime,
+    ProductionQuantity,
+    plannedDurationMinutes,
     setupTime,
     teardownTime,
   } = metrics;
@@ -48,19 +44,16 @@ function logTabularData(metrics) {
 | Quality (%)                        | ${quality.toFixed(2)}%  |
 | OEE (%)                            | ${oee.toFixed(2)}%  |
 | Planned Production Quantity        | ${plannedProductionQuantity}  |
-| Actual Production                  | ${actualProductionQuantity}  |
-| Production Time (Min)              | ${productionTime}  |
+| Actual Production                  | ${ProductionQuantity}  |
+| Production Time (Min)              | ${plannedDurationMinutes}  |
 | Setup Time (Min)                   | ${setupTime}       |
 | Teardown Time (Min)                | ${teardownTime}    |
 +------------------------------------+------------------+
     `;
 
-  oeeLogger.info(logTable);
+  console.info(logTable);
 }
 
-/**
- * Logs the current buffer state for all machines.
- */
 function logMetricBuffer() {
   oeeLogger.warn("Current state of metric buffers:");
   metricBuffers.forEach((buffer, machineId) => {
@@ -70,15 +63,10 @@ function logMetricBuffer() {
     });
   });
 }
-/**
- * Retrieves the plant and area based on the MachineID.
- * @param {string} machineId - The ID of the machine.
- * @returns {Promise<Object>} A promise that resolves to an object containing the plant and area.
- */
+
 async function getPlantAndArea(machineId) {
   try {
-    const machines = await loadMachineData(); // Use the existing function from dataLoader.js
-
+    const machines = await loadMachineData();
     const machine = machines.find((m) => m.machine_id === machineId);
 
     if (machine) {
@@ -109,39 +97,24 @@ async function getPlantAndArea(machineId) {
   }
 }
 
-/**
- * Updates a metric with a new value and processes it immediately if it has changed.
- * If the OEECalculator for the machine does not exist, it initializes one.
- * @param {string} name - The name of the metric.
- * @param {number} value - The value of the metric.
- * @param {string} machineId - The MachineID or Workcenter.
- */
 async function updateMetric(name, value, machineId) {
   if (!metricBuffers.has(machineId)) {
     metricBuffers.set(machineId, {}); // Initialize buffer if it doesn't exist
   }
-
+  //Store all data from messagehandler in the buffer
   const buffer = metricBuffers.get(machineId);
 
+  // Check and update the buffer with the new value if the value has been changed
   if (buffer[name] !== value) {
-    // Only update and recalculate if the metric has changed
     buffer[name] = value;
-
-    await processMetrics(machineId);
+    // Call the processMetrics function, passing the machineId and buffer as an argument
+    await processMetrics(machineId, buffer);
   }
-
   // Log the current buffer state after each update
   logMetricBuffer();
 }
 
-/**
- * Processes metrics, calculates OEE, and sends the data via WebSocket only if there are changes, for a specific MachineID.
- * Prevents multiple processes from running for the same machine simultaneously.
- * @param {string} machineId - The MachineID or Workcenter.
- */
-async function processMetrics(machineId) {
-  // We do not check processing here because metrics are only processed when they change
-
+async function processMetrics(machineId, buffer) {
   try {
     let calculator = oeeCalculators.get(machineId);
     if (!calculator) {
@@ -154,9 +127,17 @@ async function processMetrics(machineId) {
 
     // Get the plant, area, and lineId for the machine
     const { plant, area, lineId } = await getPlantAndArea(machineId);
-    const buffer = metricBuffers.get(machineId);
 
-    // Use loadProcessOrderDataByMachine to load the process order data
+    // Adding plant, area, and lineId to the calculator's oeeData
+    calculator.oeeData[machineId] = {
+      ...calculator.oeeData[machineId],
+      plant,
+      area,
+      lineId,
+      ...buffer, // Add the buffer data to the oeeData object
+    };
+
+    // Load the process order data
     const processOrderData = await loadProcessOrderDataByMachine(machineId);
 
     if (!processOrderData || processOrderData.length === 0) {
@@ -165,49 +146,47 @@ async function processMetrics(machineId) {
 
     const processOrder = processOrderData[0]; // Assuming the first order is the one you need
 
-    //here we are updating the plannedProductionQuantity in the oeeData object
-
-    this.oeeData[machineId].plannedProductionQuantity =
-      processOrder.plannedProductionQuantity;
-
+    // Prepare the OEE data
     const OEEData = loadDataAndPrepareOEE(machineId);
+
     if (!OEEData || !Array.isArray(OEEData.datasets)) {
       throw new Error(
         "Invalid OEEData returned from loadDataAndPrepareOEE. Expected an object with a datasets array."
       );
     }
 
-    const plannedProductionQuantity = processOrder.plannedProductionQuantity;
-
+    // Calculate the total times
     const totalTimes = calculateTotalTimes(OEEData.datasets);
 
+    // Validate the input data
     validateInputData(totalTimes, machineId);
 
-    // Use the plannedProductionQuantity from the process order in the OEE calculation
+    // Use the plannedProductionQuantity from the buffer to calculate metrics
     await calculator.calculateMetrics(
       machineId,
       totalTimes.unplannedDowntime,
       totalTimes.plannedDowntime + totalTimes.breakTime + totalTimes.microstops,
-      plannedProductionQuantity,
+      buffer.plannedProductionQuantity, // Use the value from the buffer
+      buffer.totalProductionQuantity,
+      buffer.totalProductionYield,
       processOrder
     );
 
+    // Retrieve the complete metrics
     const metrics = calculator.getMetrics(machineId);
+
+    // console.log(
+    //   "Metrics: ***********************************************************************",
+    //   metrics
+    // );
+
     if (!metrics) {
       throw new Error(
         `Metrics could not be calculated or are undefined for machineId: ${machineId}.`
       );
     }
 
-    const roundedMetrics = formatMetrics(
-      metrics,
-      machineId,
-      totalTimes,
-      plant,
-      area,
-      lineId
-    );
-    logTabularData(roundedMetrics);
+    logTabularData(metrics);
 
     if (influxdb.url && influxdb.token && influxdb.org && influxdb.bucket) {
       await writeOEEToInfluxDB(roundedMetrics);
@@ -223,11 +202,6 @@ async function processMetrics(machineId) {
   }
 }
 
-/**
- * Calculates the total times for production, downtime, and breaks from the dataset.
- * @param {Array} datasets - The array of datasets from OEE data.
- * @returns {Object} An object containing calculated total times.
- */
 function calculateTotalTimes(datasets) {
   return datasets.reduce(
     (totals, dataset, index) => {
@@ -263,11 +237,6 @@ function calculateTotalTimes(datasets) {
   );
 }
 
-/**
- * Validation function to ensure that the data is valid before calculations.
- * @param {Object} totalTimes - Object containing total production, downtime, and break times.
- * @param {string} machineId - The MachineID or Workcenter.
- */
 function validateInputData(totalTimes, machineId) {
   const { unplannedDowntime, plannedDowntime, productionTime } = totalTimes;
 
@@ -284,23 +253,13 @@ function validateInputData(totalTimes, machineId) {
   }
 }
 
-/**
- * Formats the metrics into a structured object for logging and database storage.
- * @param {Object} metrics - The metrics object from the OEECalculator.
- * @param {string} machineId - The MachineID or Workcenter.
- * @param {Object} totalTimes - Object containing total production, downtime, and break times.
- * @param {string} plant - The plant associated with the machine.
- * @param {string} area - The area associated with the machine.
- * @param {string} lineId - The lineId associated with the machine.
- * @returns {Object} Formatted metrics.
- */
 function formatMetrics(metrics, machineId, totalTimes, plant, area, lineId) {
   return {
     oee: metrics.oee,
     availability: metrics.availability,
     performance: metrics.performance,
     quality: metrics.quality,
-    level: metrics.classification, // Use the classification from OEECalculator
+    level: metrics.classification,
     plannedProductionQuantity: metrics.plannedProductionQuantity,
     actualProductionQuantity: metrics.actualProductionQuantity,
     productionTime: totalTimes.productionTime,
