@@ -177,11 +177,6 @@ async function processMetrics(machineId, buffer) {
         // Retrieve the complete metrics
         const metrics = calculator.getMetrics(machineId);
 
-        console.log(
-            "Metrics: ***********************************************************************",
-            metrics
-        );
-
         if (!metrics) {
             throw new Error(
                 `Metrics could not be calculated or are undefined for machineId: ${machineId}.`
