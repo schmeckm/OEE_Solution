@@ -2,10 +2,7 @@ const fs = require("fs").promises;
 const path = require("path");
 const { oeeLogger, errorLogger } = require("../utils/logger");
 const { writeOEEToInfluxDB } = require("../services/oeeMetricsService");
-const {
-    loadDataAndPrepareOEE,
-    loadProcessOrderData,
-} = require("../src/downtimeManager");
+const { loadDataAndPrepareOEE } = require("../src/downtimeManager");
 const {
     loadMachineData,
     loadProcessOrderDataByMachine,
