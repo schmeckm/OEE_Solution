@@ -50,11 +50,11 @@ function logTabularData(metrics) {
 +------------------------------------+------------------------------+
     `;
 
-    console.info(logTable);
+    oeeLogger.info(logTable);
 }
 
 function logMetricBuffer() {
-    oeeLogger.warn("Current state of metric buffers:");
+    oeeLogger.info("Current state of metric buffers:");
     metricBuffers.forEach((buffer, machineId) => {
         oeeLogger.warn(`Machine ID: ${machineId}`);
         Object.keys(buffer).forEach((metricName) => {
@@ -190,7 +190,7 @@ async function processMetrics(machineId, buffer) {
         sendWebSocketMessage("OEEData", OEEData);
         oeeLogger.info(`OEE Data: ${JSON.stringify(OEEData)}`);
     } catch (error) {
-        errorLogger.warn(
+        errorLogger.error(
             `Error calculating metrics for machine ${machineId}: ${error.message}`
         );
     }
