@@ -1,17 +1,12 @@
 const express = require("express");
 const router = express.Router();
-<<<<<<< HEAD
 const moment = require("moment-timezone");
-=======
->>>>>>> backup-branch
+
 const {
   loadProcessOrders,
   saveProcessOrders,
 } = require("../services/processOrderService");
-<<<<<<< HEAD
 const { dateSettings } = require("../config/config"); // Import the date settings from your config
-=======
->>>>>>> backup-branch
 
 /**
  * @swagger
@@ -38,7 +33,6 @@ const { dateSettings } = require("../config/config"); // Import the date setting
  *                 type: object
  */
 router.get("/", (req, res) => {
-<<<<<<< HEAD
   let data = loadProcessOrders(); // Load all process orders from the service
 
   // Format all date fields in the process orders
@@ -62,9 +56,6 @@ router.get("/", (req, res) => {
       : null,
   }));
 
-=======
-  const data = loadProcessOrders(); // Load all process orders from the service
->>>>>>> backup-branch
   res.json(data); // Return the list of process orders as a JSON response
 });
 
@@ -99,41 +90,26 @@ router.get("/", (req, res) => {
  *                 type: object
  */
 router.get("/rel", (req, res) => {
-<<<<<<< HEAD
   const mark = req.query.mark === "true";
   const machineId = req.query.machineId;
 
   let data = loadProcessOrders();
 
-=======
-  const mark = req.query.mark === "true"; // Check if the mark query parameter is set to true
-  const machineId = req.query.machineId; // Get the machineId from the query parameter
-
-  let data = loadProcessOrders(); // Load all process orders
-
   // Filter process orders by status REL and optionally by machineId
->>>>>>> backup-branch
   data = data.filter(
     (order) =>
       order.ProcessOrderStatus === "REL" &&
       (!machineId || order.machine_id === machineId)
   );
 
-<<<<<<< HEAD
-  if (mark) {
-    data = data.map((order) => {
-      order.marked = "X";
-=======
   // Optionally mark the filtered orders
   if (mark) {
     data = data.map((order) => {
       order.marked = "X"; // Set a mark, such as 'X'
->>>>>>> backup-branch
       return order;
     });
   }
 
-<<<<<<< HEAD
   // Format all date fields in the filtered process orders
   data = data.map((order) => ({
     ...order,
@@ -155,10 +131,7 @@ router.get("/rel", (req, res) => {
       : null,
   }));
 
-  res.json(data);
-=======
   res.json(data); // Return the filtered and optionally marked list of process orders
->>>>>>> backup-branch
 });
 
 /**
@@ -191,7 +164,6 @@ router.get("/rel", (req, res) => {
  *                   type: string
  */
 router.post("/", (req, res) => {
-<<<<<<< HEAD
   const data = loadProcessOrders();
   const newData = req.body;
 
@@ -218,13 +190,6 @@ router.post("/", (req, res) => {
   data.push(newData);
   saveProcessOrders(data);
   res.status(201).json({ message: "Process order added successfully" });
-=======
-  const data = loadProcessOrders(); // Load existing process orders
-  const newData = req.body; // Get the new process order data from the request body
-  data.push(newData); // Add the new process order to the list
-  saveProcessOrders(data); // Save the updated list of process orders
-  res.status(201).json({ message: "Process order added successfully" }); // Send a success response
->>>>>>> backup-branch
 });
 
 /**
@@ -264,7 +229,6 @@ router.post("/", (req, res) => {
  *         description: Process order not found.
  */
 router.put("/:id", (req, res) => {
-<<<<<<< HEAD
   const data = loadProcessOrders();
   const id = parseInt(req.params.id);
   const updatedData = req.body;
@@ -300,18 +264,6 @@ router.put("/:id", (req, res) => {
     res.status(200).json({ message: "Process order updated successfully" });
   } else {
     res.status(404).json({ message: "Process order not found" });
-=======
-  const data = loadProcessOrders(); // Load all process orders
-  const id = parseInt(req.params.id); // Get the process order ID from the URL parameter
-  const updatedData = req.body; // Get the updated data from the request body
-  const index = data.findIndex((item) => item.order_id === id); // Find the index of the process order to update
-  if (index !== -1) {
-    data[index] = updatedData; // Update the process order with the new data
-    saveProcessOrders(data); // Save the updated list of process orders
-    res.status(200).json({ message: "Process order updated successfully" }); // Send a success response
-  } else {
-    res.status(404).json({ message: "Process order not found" }); // Send a 404 response if the process order is not found
->>>>>>> backup-branch
   }
 });
 
@@ -343,7 +295,6 @@ router.put("/:id", (req, res) => {
  *         description: Process order not found.
  */
 router.delete("/:id", (req, res) => {
-<<<<<<< HEAD
   const data = loadProcessOrders();
   const id = parseInt(req.params.id);
   const newData = data.filter((item) => item.order_id !== id);
@@ -357,17 +308,3 @@ router.delete("/:id", (req, res) => {
 });
 
 module.exports = router;
-=======
-  const data = loadProcessOrders(); // Load all process orders
-  const id = parseInt(req.params.id); // Get the process order ID from the URL parameter
-  const newData = data.filter((item) => item.order_id !== id); // Filter out the process order to delete
-  if (data.length !== newData.length) {
-    saveProcessOrders(newData); // Save the updated list of process orders
-    res.status(200).json({ message: "Process order deleted successfully" }); // Send a success response
-  } else {
-    res.status(404).json({ message: "Process order not found" }); // Send a 404 response if the process order is not found
-  }
-});
-
-module.exports = router; // Export the router for use in other parts of the application
->>>>>>> backup-branch

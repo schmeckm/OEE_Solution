@@ -166,7 +166,9 @@ async function loadDataAndPrepareOEE(machineId) {
         oeeLogger.debug(`Final OEE Data: ${JSON.stringify(OEEData)}`);
         return OEEData;
     } catch (error) {
-        errorLogger.error(`Error loading or preparing OEE data: ${error.message}`);
+        errorLogger.error(
+            `Error loading or preparing OEE data: ${error.message}`
+        );
         throw error;
     }
 }
