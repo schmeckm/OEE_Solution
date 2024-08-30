@@ -1,317 +1,345 @@
-/**
- * @module OEECalculator
- * Module for calculating OEE (Overall Equipment Effectiveness) metrics.
- */
+const axios = require("axios");
+const { oeeLogger, errorLogger } = require("../utils/logger");
+const dotenv = require("dotenv");
+const moment = require("moment");
 
-const axios = require('axios');
-const { InfluxDB, Point } = require('@influxdata/influxdb-client');
-const { oeeLogger, errorLogger, defaultLogger } = require('../utils/logger');
-const { influxdb, oeeAsPercent, oeeApiUrl } = require('../config/config');
-const { loadDataAndPrepareOEE } = require('../src/downtimeManager');
-const { loadProcessOrderData } = require('../src/dataLoader');
+dotenv.config();
 
-// Constants
-/**
- * The maximum valid score threshold.
- * @constant {number}
- */
-const VALID_SCORE_THRESHOLD = 1.0;
+const OEE_API_URL = process.env.OEE_API_URL || "http://localhost:3000/api/v1";
 
-/**
- * The minimum valid score threshold.
- * @constant {number}
- */
-const MINIMUM_SCORE_THRESHOLD = 0.0;
-
-/**
- * Classification levels for OEE scores.
- * @constant {Object}
- */
 const CLASSIFICATION_LEVELS = {
-    WORLD_CLASS: 0.85,
-    EXCELLENT: 0.7,
-    GOOD: 0.6,
-    AVERAGE: 0.4,
+  WORLD_CLASS: 0.85,
+  EXCELLENT: 0.7,
+  GOOD: 0.6,
+  AVERAGE: 0.4,
 };
 
-/**
- * Class representing an OEE Calculator.
- */
+const cache = {};
+const CACHE_DURATION = 5 * 60 * 1000;
+
+async function fetchOEEDataFromAPI(machineId) {
+  const cacheKey = `OEEData_${machineId}`;
+
+  if (
+    cache[cacheKey] &&
+    Date.now() - cache[cacheKey].timestamp < CACHE_DURATION
+  ) {
+    return cache[cacheKey].data;
+  }
+
+  try {
+    const response = await axios.get(
+      `${OEE_API_URL}/prepareOEE/oee/${machineId}`
+    );
+    const data = response.data;
+
+    cache[cacheKey] = {
+      data,
+      timestamp: Date.now(),
+    };
+
+    return data;
+  } catch (error) {
+    errorLogger.error(
+      `Failed to fetch OEE data from API for machineId ${machineId}: ${error.message}`
+    );
+    throw new Error("Could not fetch OEE data from API");
+  }
+}
+
 class OEECalculator {
-    constructor() {
-        /**
-         * Stores OEE data for multiple machines.
-         * @type {Object.<string, Object>}
-         */
-        this.oeeData = {};
-    }
+  constructor() {
+    this.oeeData = {};
+  }
 
-    /**
-     * Resets the OEE data structure to its default values.
-     * @returns {Object} The default OEE data structure.
-     */
-    resetOEEData() {
-        return {
-            ProcessOrderNumber: null,
-            MaterialNumber: null,
-            MaterialDescription: null,
-            plannedProduction: 0,
-            runtime: 0,
-            actualPerformance: 0,
-            targetPerformance: 0,
-            goodProducts: 0,
-            totalProduction: 0,
-            unplannedDowntime: 600,
-            setupTime: 0,
-            processingTime: 0,
-            teardownTime: 0,
-            availability: 0,
-            performance: 0,
-            quality: 0,
-            oee: 0,
-            StartTime: null,
-            EndTime: null,
-        };
-    }
+  resetOEEData() {
+    return {
+      ProcessOrderNumber: null,
+      MaterialNumber: null,
+      MaterialDescription: null,
+      plannedProductionQuantity: 0,
+      runtime: 0,
+      actualPerformance: 0,
+      targetPerformance: 0,
+      totalProductionYield: 0,
+      totalProductionQuantity: 0,
+      unplannedDowntime: 0,
+      setupTime: 0,
+      processingTime: 0,
+      teardownTime: 0,
+      availability: 0,
+      performance: 0,
+      quality: 0,
+      oee: 0,
+      StartTime: null,
+      EndTime: null,
+      plannedTakt: 0,
+      actualTakt: 0,
+      expectedEndTime: null,
+    };
+  }
 
-    /**
-     * Initializes the OEE Calculator with data for a given machine.
-     * @param {string} machineId - The ID of the machine to initialize.
-     * @throws Will throw an error if no active process order with status 'REL' is found.
-     */
-    async init(machineId) {
-        try {
-            oeeLogger.info(`Initializing OEECalculator for machineId ${machineId}`);
-            const processOrderData = await loadProcessOrderData(machineId);
-            const filteredOrders = processOrderData.filter(order => order.ProcessOrderStatus === 'REL');
-            oeeLogger.info(`Filtered process orders for machineId ${machineId}: ${JSON.stringify(filteredOrders)}`);
-
-            if (!filteredOrders || filteredOrders.length === 0) {
-                throw new Error(`No active process order with status 'REL' found for machineId ${machineId}.`);
-            }
-            this.validateProcessOrderData(filteredOrders);
-            this.setOEEData(filteredOrders[0], machineId);
-            oeeLogger.info(`OEE Data set for machineId ${machineId}: ${JSON.stringify(this.oeeData[machineId])}`);
-        } catch (error) {
-            errorLogger.error(`Error initializing OEECalculator for machineId ${machineId}: ${error.message}`);
-            throw error;
-        }
-    }
-
-    /**
-     * Validates process order data for required fields.
-     * @param {Object[]} data - The process order data to validate.
-     * @throws Will throw an error if required fields are missing or invalid.
-     */
-    validateProcessOrderData(data) {
-        data.forEach(order => {
-            const requiredFields = ['ProcessOrderNumber', 'MaterialNumber', 'MaterialDescription', 'Start', 'End', 'setupTime', 'processingTime', 'teardownTime', 'totalPartsToBeProduced', 'goodProducts', 'totalProduction'];
-            requiredFields.forEach(field => {
-                if (!order[field]) {
-                    const errorMsg = `Invalid process order data: Missing ${field} in order ${JSON.stringify(order)}`;
-                    errorLogger.error(errorMsg);
-                    throw new Error(errorMsg);
-                }
-            });
-        });
-    }
-
-    /**
-     * Sets the OEE data for a specific machine.
-     * @param {Object} data - The data to set for the machine.
-     * @param {string} machineId - The ID of the machine.
-     */
-    setOEEData(data, machineId) {
-        if (!this.oeeData[machineId]) {
-            this.oeeData[machineId] = this.resetOEEData();
-        }
-
-        const {
-            ProcessOrderNumber,
-            MaterialNumber,
-            MaterialDescription,
-            setupTime,
-            processingTime,
-            teardownTime,
-            Start,
-            End,
-            totalPartsToBeProduced,
-            goodProducts,
-            totalProduction
-        } = data;
-
-        oeeLogger.debug(`Setting OEE Data for machineId ${machineId}: ProcessOrderNumber=${ProcessOrderNumber}, MaterialNumber=${MaterialNumber}, MaterialDescription=${MaterialDescription}`);
-
-        this.oeeData[machineId] = {
-            ...this.oeeData[machineId],
-            ProcessOrderNumber,
-            MaterialNumber,
-            MaterialDescription,
-            plannedProduction: setupTime + processingTime + teardownTime,
-            runtime: setupTime + processingTime + teardownTime,
-            targetPerformance: totalPartsToBeProduced,
-            goodProducts,
-            totalProduction,
-            setupTime,
-            processingTime,
-            teardownTime,
-            StartTime: Start,
-            EndTime: End,
-        };
-    }
-
-    /**
-     * Updates a specific metric for a given machine.
-     * @param {string} metric - The metric to update.
-     * @param {number} value - The value to update the metric with.
-     * @param {string} machineId - The ID of the machine.
-     */
-    updateData(metric, value, machineId) {
-        oeeLogger.debug(`Updating ${metric} with value: ${value} for machineId: ${machineId}`);
-        if (!this.oeeData[machineId]) {
-            this.oeeData[machineId] = this.resetOEEData();
-        }
-        this.oeeData[machineId][metric] = value;
-    }
-
-    /**
-     * Validates the input data for a machine before OEE calculation.
-     * @param {string} machineId - The ID of the machine.
-     * @throws Will throw an error if any input data is invalid.
-     */
-    validateInput(machineId) {
-        const { plannedProduction, runtime, targetPerformance, goodProducts, totalProduction } = this.oeeData[machineId];
-
-        if (runtime <= 0) throw new Error('Invalid input data: runtime must be greater than 0');
-        if (plannedProduction <= 0) throw new Error('Invalid input data: plannedProduction must be greater than 0');
-        if (totalProduction < 0) throw new Error('Invalid input data: totalProduction must be non-negative');
-        if (targetPerformance < 0) throw new Error('Invalid input data: targetPerformance must be non-negative');
-        if (goodProducts < 0) throw new Error('Invalid input data: goodProducts must be non-negative');
-        if (totalProduction > targetPerformance) throw new Error('Invalid input data: totalProduction cannot be greater than targetPerformance');
-        if (goodProducts > totalProduction) throw new Error('Invalid input data: goodProducts cannot be greater than totalProduction');
-    }
-
-    /**
-     * Calculates OEE metrics for a specific machine.
-     * @param {string} machineId - The ID of the machine.
-     * @param {number} totalUnplannedDowntime - The total unplanned downtime in minutes.
-     * @param {number} totalPlannedDowntime - The total planned downtime in minutes.
-     * @throws Will throw an error if the OEE calculation fails.
-     */
-    async calculateMetrics(machineId, totalUnplannedDowntime, totalPlannedDowntime) {
-        if (!this.oeeData[machineId]) {
-            throw new Error(`No data found for machineId: ${machineId}`);
-        }
-
-        this.validateInput(machineId);
-
-        const { plannedProduction, runtime, targetPerformance, goodProducts, totalProduction, ProcessOrderNumber, StartTime, EndTime, MaterialNumber, MaterialDescription } = this.oeeData[machineId];
-        oeeLogger.info(`Calculating metrics for ProcessOrderNumber: ${ProcessOrderNumber} on machineId: ${machineId}`);
-
-        try {
-            const OEEData = loadDataAndPrepareOEE(machineId);
-
-            if (!OEEData || !Array.isArray(OEEData.datasets)) {
-                throw new Error('Invalid OEEData returned from loadDataAndPrepareOEE. Expected an object with a datasets array.');
-            }
-
-            const totalProductionTime = OEEData.datasets[0].data.reduce((a, b) => a + b, 0);
-            const totalBreakTime = OEEData.datasets[1].data.reduce((a, b) => a + b, 0);
-            const actualUnplannedDowntime = totalUnplannedDowntime || OEEData.datasets[2].data.reduce((a, b) => a + b, 0);
-            const actualPlannedDowntime = totalPlannedDowntime || OEEData.datasets[3].data.reduce((a, b) => a + b, 0);
-
-            oeeLogger.debug(`Total production time: ${totalProductionTime}`);
-            oeeLogger.debug(`Total break time: ${totalBreakTime}`);
-            oeeLogger.debug(`Total unplanned downtime: ${actualUnplannedDowntime}`);
-            oeeLogger.debug(`Total planned downtime: ${actualPlannedDowntime}`);
-
-            oeeLogger.info(`Input values for machineId ${machineId} - plannedProduction: ${plannedProduction}, runtime: ${runtime}, targetPerformance: ${targetPerformance}, goodProducts: ${goodProducts}, totalProduction: ${totalProduction}, MaterialNumber: ${MaterialNumber}, MaterialDescription: ${MaterialDescription}`);
-
-            this.calculateOEE({
-                plannedProduction,
-                runtime,
-                targetPerformance,
-                goodProducts,
-                totalProduction,
-                actualUnplannedDowntime,
-                actualPlannedDowntime,
-                machineId,
-            });
-
-            oeeLogger.info(`Calculated OEE data for machineId ${machineId}: ${JSON.stringify(this.oeeData[machineId])}`);
-        } catch (error) {
-            errorLogger.warn(`Warning calculating metrics for machineId ${machineId}: ${error.message}`);
-            throw error;
-        }
-    }
-
-    /**
-     * Calculates the OEE for a specific machine based on the provided data.
-     * @param {Object} data - The data used for OEE calculation.
-     */
-    calculateOEE(data) {
-        const { plannedProduction, runtime, targetPerformance, goodProducts, totalProduction, actualUnplannedDowntime, actualPlannedDowntime, machineId } = data;
-        const operatingTime = runtime - (actualUnplannedDowntime / 60) - (actualPlannedDowntime / 60);
-
-        this.oeeData[machineId].availability = operatingTime / plannedProduction;
-        this.oeeData[machineId].performance = targetPerformance > 0 ? totalProduction / targetPerformance : 0;
-        this.oeeData[machineId].quality = totalProduction > 0 ? goodProducts / totalProduction : 0;
-        this.oeeData[machineId].oee = this.oeeData[machineId].availability * this.oeeData[machineId].performance * this.oeeData[machineId].quality * 100;
-
-        if (!isFinite(this.oeeData[machineId].oee)) {
-            throw new Error(`Calculated OEE is not finite: ${this.oeeData[machineId].oee}`);
-        }
-
-        this.oeeData[machineId].classification = this.classifyOEE(this.oeeData[machineId].oee / 100);
-    }
-
-    /**
-     * Classifies the OEE score into a category.
-     * @param {number} score - The OEE score.
-     * @returns {string} The classification of the OEE score.
-     * @throws Will throw an error if the score is out of bounds.
-     */
-    classifyOEE(score) {
-        if (score > VALID_SCORE_THRESHOLD || score < MINIMUM_SCORE_THRESHOLD) {
-            throw new Error(`Invalid input: score must be between ${MINIMUM_SCORE_THRESHOLD} and ${VALID_SCORE_THRESHOLD}`);
-        }
-        if (score >= CLASSIFICATION_LEVELS.WORLD_CLASS) return "World Class";
-        if (score >= CLASSIFICATION_LEVELS.EXCELLENT) return "Excellent";
-        if (score >= CLASSIFICATION_LEVELS.GOOD) return "Good";
-        if (score >= CLASSIFICATION_LEVELS.AVERAGE) return "Average";
-        return "Poor";
-    }
-
-    /**
-     * Retrieves the calculated OEE metrics for a specific machine.
-     * @param {string} machineId - The ID of the machine.
-     * @returns {Object} The OEE metrics for the machine.
-     */
-    getMetrics(machineId) {
-        return this.oeeData[machineId];
-    }
-}
-
-/**
- * Writes the OEE data to InfluxDB.
- * @async
- * @param {Object} metrics - The OEE metrics to write to the database.
- */
-
-/**
- * Writes the OEE data to InfluxDB via the API.
- * @async
- * @param {Object} metrics - The OEE metrics to send to the API.
- */
-async function writeOEEToInfluxDB(metrics) {
+  async init(machineId) {
     try {
-        const response = await axios.post(`${oeeApiUrl}/write-oee-metrics`, metrics);
-        return response.data; // Optional: return data from API if needed
+      oeeLogger.info(`Initializing OEECalculator for machineId ${machineId}`);
+
+      const OEEData = await fetchOEEDataFromAPI(machineId);
+      if (OEEData) {
+        this.setOEEData(OEEData, machineId);
+      } else {
+        oeeLogger.warn(`No OEE data found for machineId ${machineId}`);
+      }
     } catch (error) {
-        oeeLogger.error('Error sending OEE metrics to API:', error.response ? error.response.data : error.message);
-        throw error; // Rethrowing the error to be handled by the caller
+      errorLogger.error(
+        `Error initializing OEECalculator for machineId ${machineId}: ${error.message}`
+      );
+      throw error;
     }
+  }
+
+  setOEEData(OEEData, machineId) {
+    const processOrder = OEEData.processOrder;
+
+    if (!processOrder.Start || !processOrder.End) {
+      console.error("One or more required time fields are missing:", {
+        Start: processOrder.Start,
+        End: processOrder.End,
+        ActualProcessOrderStart: processOrder.ActualProcessOrderStart,
+        ActualProcessOrderEnd: processOrder.ActualProcessOrderEnd,
+      });
+      throw new Error("Required time fields are missing in the data");
+    }
+
+    const plannedStart = moment(processOrder.Start);
+    const plannedEnd = moment(processOrder.End);
+
+    let plannedTakt;
+    let actualTakt;
+    let remainingTime;
+    let expectedEndTime;
+
+    if (
+      !processOrder.ActualProcessOrderStart &&
+      !processOrder.ActualProcessOrderEnd
+    ) {
+      const plannedDurationMinutes = plannedEnd.diff(plannedStart, "minutes");
+      plannedTakt =
+        plannedDurationMinutes / processOrder.plannedProductionQuantity;
+      actualTakt = plannedTakt;
+      remainingTime = processOrder.plannedProductionQuantity * actualTakt;
+      expectedEndTime = plannedStart.add(remainingTime, "minutes");
+    } else if (
+      processOrder.ActualProcessOrderStart &&
+      !processOrder.ActualProcessOrderEnd
+    ) {
+      const actualStart = moment(processOrder.ActualProcessOrderStart);
+      const plannedDurationMinutes = plannedEnd.diff(actualStart, "minutes");
+      plannedTakt =
+        plannedDurationMinutes / processOrder.plannedProductionQuantity;
+      actualTakt = plannedTakt;
+      remainingTime =
+        (processOrder.plannedProductionQuantity -
+          processOrder.totalProductionQuantity) *
+        actualTakt;
+      expectedEndTime = plannedEnd;
+    } else if (
+      processOrder.ActualProcessOrderStart &&
+      processOrder.ActualProcessOrderEnd
+    ) {
+      const actualStart = moment(processOrder.ActualProcessOrderStart);
+      const actualEnd = moment(processOrder.ActualProcessOrderEnd);
+      const actualDurationMinutes = actualEnd.diff(actualStart, "minutes");
+      plannedTakt =
+        plannedEnd.diff(plannedStart, "minutes") /
+        processOrder.plannedProductionQuantity;
+      actualTakt =
+        actualDurationMinutes / processOrder.plannedProductionQuantity;
+      remainingTime =
+        (processOrder.plannedProductionQuantity -
+          processOrder.totalProductionQuantity) *
+        actualTakt;
+      expectedEndTime = actualEnd.add(remainingTime, "minutes");
+    }
+
+    this.oeeData[machineId] = {
+      ...this.resetOEEData(),
+      ...processOrder,
+      StartTime: processOrder.ActualProcessOrderStart || processOrder.Start,
+      EndTime: processOrder.ActualProcessOrderEnd || processOrder.End,
+      runtime:
+        processOrder.setupTime +
+        processOrder.processingTime +
+        processOrder.teardownTime,
+      plannedTakt,
+      actualTakt,
+      remainingTime,
+      expectedEndTime: expectedEndTime
+        ? expectedEndTime.format("YYYY-MM-DDTHH:mm:ss.SSSZ")
+        : null,
+    };
+  }
+
+  async calculateMetrics(
+    machineId,
+    totalUnplannedDowntime,
+    totalPlannedDowntime,
+    plannedProductionQuantity,
+    processOrder
+  ) {
+    if (!this.oeeData[machineId]) {
+      throw new Error(`No data found for machineId: ${machineId}`);
+    }
+
+    const {
+      ActualProcessOrderStart,
+      ActualProcessOrderEnd,
+      Start,
+      End,
+      setupTime,
+      processingTime,
+      teardownTime,
+      targetPerformance,
+      totalProductionYield,
+      totalProductionQuantity,
+      MaterialDescription,
+    } = processOrder;
+
+    if (!ActualProcessOrderStart && !Start) {
+      console.error(
+        "Error: At least ActualProcessOrderStart or Start is required"
+      );
+      throw new Error("At least ActualProcessOrderStart or Start is required");
+    }
+
+    const plannedStart = moment(Start);
+    const plannedEnd = moment(End);
+    const actualStart = moment(ActualProcessOrderStart || Start);
+    const actualEnd = ActualProcessOrderEnd
+      ? moment(ActualProcessOrderEnd)
+      : null;
+
+    let plannedTakt;
+    let actualTakt;
+    let remainingTime;
+    let expectedEndTime;
+
+    const plannedDurationMinutes = plannedEnd.diff(plannedStart, "minutes");
+
+    if (actualEnd) {
+      const actualDurationMinutes = actualEnd.diff(actualStart, "minutes");
+      plannedTakt = plannedDurationMinutes / plannedProductionQuantity;
+      actualTakt = actualDurationMinutes / plannedProductionQuantity;
+      remainingTime =
+        (plannedProductionQuantity - totalProductionQuantity) * actualTakt;
+      expectedEndTime = actualEnd.add(remainingTime, "minutes");
+    } else {
+      plannedTakt = plannedDurationMinutes / plannedProductionQuantity;
+      actualTakt = plannedTakt;
+      remainingTime =
+        (plannedProductionQuantity - totalProductionQuantity) * actualTakt;
+      expectedEndTime = actualStart.add(remainingTime, "minutes");
+    }
+
+    // Update OEE data with consistent logic
+    this.oeeData[machineId] = {
+      ...this.oeeData[machineId],
+      ...processOrder,
+      StartTime: actualStart.format("YYYY-MM-DDTHH:mm:ss.SSSZ"),
+      EndTime: (actualEnd || plannedEnd).format("YYYY-MM-DDTHH:mm:ss.SSSZ"),
+      runtime: setupTime + processingTime + teardownTime,
+      plannedTakt,
+      actualTakt,
+      remainingTime,
+      expectedEndTime: expectedEndTime
+        ? expectedEndTime.format("YYYY-MM-DDTHH:mm:ss.SSSZ")
+        : null,
+    };
+    console.log(
+      "Updated OEE Data for machineId",
+      machineId,
+      this.oeeData[machineId]
+    );
+
+    const { runtime, totalProductionYield, totalProductionQuantity } =
+      this.oeeData[machineId];
+
+    try {
+      const fetchdata = await fetchOEEDataFromAPI(machineId);
+      if (!fetchdata || !Array.isArray(fetchdata.datasets)) {
+        throw new Error(
+          "Invalid OEEData returned from API. Expected an object with a datasets array."
+        );
+      }
+
+      const totalProductionTime = fetchdata.datasets[0].data.reduce(
+        (a, b) => a + b,
+        0
+      );
+      const actualUnplannedDowntime =
+        totalUnplannedDowntime ||
+        fetchdata.datasets[2].data.reduce((a, b) => a + b, 0);
+      const actualPlannedDowntime =
+        totalPlannedDowntime ||
+        fetchdata.datasets[3].data.reduce((a, b) => a + b, 0);
+      const actualMicroStops =
+        totalMicroStops ||
+        fetchdata.datasets[4].data.reduce((a, b) => a + b, 0);
+
+      const availability =
+        (runtime - actualUnplannedDowntime - actualPlannedDowntime) / runtime;
+      const performance = totalProductionTime / targetPerformance;
+      const quality = totalProductionYield / totalProductionQuantity;
+      const oee = availability * performance * quality;
+
+      this.oeeData[machineId] = {
+        ...this.oeeData[machineId],
+        availability,
+        performance,
+        quality,
+        oee,
+        actualDurationMinutes: actualEnd
+          ? actualEnd.diff(actualStart, "minutes")
+          : null,
+        setupTime,
+        teardownTime,
+        MaterialDescription,
+        expectedEndTime: expectedEndTime
+          ? expectedEndTime.format("YYYY-MM-DDTHH:mm:ss.SSSZ")
+          : null,
+      };
+    } catch (error) {
+      errorLogger.warn(
+        `Error calculating metrics for machineId ${machineId}: ${error.message}`
+      );
+      throw error;
+    }
+  }
+
+  classifyOEE(machineId) {
+    let oee;
+    if (this.oeeData[machineId]) {
+      oee = this.oeeData[machineId].oee;
+    } else {
+      oee = undefined;
+    }
+
+    if (oee === undefined) {
+      throw new Error(`OEE not calculated for machineId: ${machineId}`);
+    }
+
+    if (oee >= CLASSIFICATION_LEVELS.WORLD_CLASS) return "World-Class";
+    if (oee >= CLASSIFICATION_LEVELS.EXCELLENT) return "Excellent";
+    if (oee >= CLASSIFICATION_LEVELS.GOOD) return "Good";
+    if (oee >= CLASSIFICATION_LEVELS.AVERAGE) return "Average";
+    return "Below Average";
+  }
+
+  getMetrics(machineId) {
+    if (!this.oeeData[machineId]) {
+      throw new Error(`No metrics available for machineId: ${machineId}`);
+    }
+    return this.oeeData[machineId];
+  }
 }
 
-// Export the OEECalculator class and writeOEEToInfluxDB function for use in other modules
-module.exports = { OEECalculator, writeOEEToInfluxDB };
+module.exports = OEECalculator;
