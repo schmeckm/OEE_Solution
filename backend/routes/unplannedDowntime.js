@@ -1,7 +1,20 @@
-const express = require('express');
-const { loadUnplannedDowntime, saveUnplannedDowntime, getUnplannedDowntimeByProcessOrderNumber, getUnplannedDowntimeByMachineId } = require('../services/unplannedDowntimeService');
+const express = require("express");
+const {
+  loadUnplannedDowntime,
+  saveUnplannedDowntime,
+  getUnplannedDowntimeByProcessOrderNumber,
+  getUnplannedDowntimeByMachineId,
+} = require("../services/unplannedDowntimeService");
+const moment = require("moment");
 
 const router = express.Router();
+
+// Utility function to calculate duration in minutes
+function calculateDurationInMinutes(start, end) {
+  const startTime = moment(start);
+  const endTime = moment(end);
+  return endTime.diff(startTime, "minutes");
+}
 
 /**
  * @swagger
@@ -27,9 +40,22 @@ const router = express.Router();
  *               items:
  *                 type: object
  */
-router.get('/', (req, res) => {
-    const data = loadUnplannedDowntime();
+router.get("/", async (req, res) => {
+  try {
+    let data = await loadUnplannedDowntime();
+
+    data = data.map((downtime) => ({
+      ...downtime,
+      durationInMinutes: calculateDurationInMinutes(
+        downtime.Start,
+        downtime.End
+      ),
+    }));
+
     res.json(data);
+  } catch (error) {
+    res.status(500).json({ message: "Error loading unplanned downtimes" });
+  }
 });
 
 /**
@@ -58,15 +84,33 @@ router.get('/', (req, res) => {
  *       404:
  *         description: No unplanned downtime found for the specified process order number.
  */
-router.get('/processorder/:processOrderNumber', async(req, res) => {
+router.get("/processorder/:processOrderNumber", async (req, res) => {
+  try {
     const processOrderNumber = req.params.processOrderNumber;
-    const data = await getUnplannedDowntimeByProcessOrderNumber(processOrderNumber);
+    let data = await getUnplannedDowntimeByProcessOrderNumber(
+      processOrderNumber
+    );
 
     if (data.length > 0) {
-        res.json(data);
+      data = data.map((downtime) => ({
+        ...downtime,
+        durationInMinutes: calculateDurationInMinutes(
+          downtime.Start,
+          downtime.End
+        ),
+      }));
+      res.json(data);
     } else {
-        res.status(404).json({ message: 'No unplanned downtime found for the specified process order number' });
+      res
+        .status(404)
+        .json({
+          message:
+            "No unplanned downtime found for the specified process order number",
+        });
     }
+  } catch (error) {
+    res.status(500).json({ message: "Error loading unplanned downtimes" });
+  }
 });
 
 /**
@@ -95,15 +139,30 @@ router.get('/processorder/:processOrderNumber', async(req, res) => {
  *       404:
  *         description: No unplanned downtime found for the specified machine ID.
  */
-router.get('/machine/:machineId', async(req, res) => {
+router.get("/machine/:machineId", async (req, res) => {
+  try {
     const machineId = req.params.machineId;
-    const data = await getUnplannedDowntimeByMachineId(machineId);
+    let data = await getUnplannedDowntimeByMachineId(machineId);
 
     if (data.length > 0) {
-        res.json(data);
+      data = data.map((downtime) => ({
+        ...downtime,
+        durationInMinutes: calculateDurationInMinutes(
+          downtime.Start,
+          downtime.End
+        ),
+      }));
+      res.json(data);
     } else {
-        res.status(404).json({ message: 'No unplanned downtime found for the specified machine ID' });
+      res
+        .status(404)
+        .json({
+          message: "No unplanned downtime found for the specified machine ID",
+        });
     }
+  } catch (error) {
+    res.status(500).json({ message: "Error loading unplanned downtimes" });
+  }
 });
 
 /**
@@ -130,15 +189,26 @@ router.get('/machine/:machineId', async(req, res) => {
  *       404:
  *         description: Unplanned downtime not found.
  */
-router.get('/:id', (req, res) => {
-    const data = loadUnplannedDowntime();
+router.get("/:id", async (req, res) => {
+  try {
+    let data = await loadUnplannedDowntime();
     const id = req.params.id;
-    const downtime = data.find(d => d.ID === id);
+    const downtime = data.find((d) => d.ID === id);
     if (downtime) {
-        res.json(downtime);
+      const downtimeWithDuration = {
+        ...downtime,
+        durationInMinutes: calculateDurationInMinutes(
+          downtime.Start,
+          downtime.End
+        ),
+      };
+      res.json(downtimeWithDuration);
     } else {
-        res.status(404).json({ message: 'Unplanned downtime not found' });
+      res.status(404).json({ message: "Unplanned downtime not found" });
     }
+  } catch (error) {
+    res.status(500).json({ message: "Error loading unplanned downtime" });
+  }
 });
 
 /**
@@ -170,12 +240,16 @@ router.get('/:id', (req, res) => {
  *                 message:
  *                   type: string
  */
-router.post('/', (req, res) => {
-    const data = loadUnplannedDowntime();
+router.post("/", async (req, res) => {
+  try {
+    const data = await loadUnplannedDowntime();
     const newData = req.body;
     data.push(newData);
-    saveUnplannedDowntime(data);
-    res.status(201).json({ message: 'Unplanned downtime added successfully' });
+    await saveUnplannedDowntime(data);
+    res.status(201).json({ message: "Unplanned downtime added successfully" });
+  } catch (error) {
+    res.status(500).json({ message: "Error saving unplanned downtime" });
+  }
 });
 
 /**
@@ -214,18 +288,24 @@ router.post('/', (req, res) => {
  *       404:
  *         description: Unplanned downtime not found.
  */
-router.put('/:id', (req, res) => {
-    const data = loadUnplannedDowntime();
+router.put("/:id", async (req, res) => {
+  try {
+    const data = await loadUnplannedDowntime();
     const id = req.params.id;
     const updatedData = req.body;
-    const index = data.findIndex(item => item.ID === id);
+    const index = data.findIndex((item) => item.ID === id);
     if (index !== -1) {
-        data[index] = updatedData;
-        saveUnplannedDowntime(data);
-        res.status(200).json({ message: 'Unplanned downtime updated successfully' });
+      data[index] = updatedData;
+      await saveUnplannedDowntime(data);
+      res
+        .status(200)
+        .json({ message: "Unplanned downtime updated successfully" });
     } else {
-        res.status(404).json({ message: 'Unplanned downtime not found' });
+      res.status(404).json({ message: "Unplanned downtime not found" });
     }
+  } catch (error) {
+    res.status(500).json({ message: "Error updating unplanned downtime" });
+  }
 });
 
 /**
@@ -255,16 +335,22 @@ router.put('/:id', (req, res) => {
  *       404:
  *         description: Unplanned downtime not found.
  */
-router.delete('/:id', (req, res) => {
-    let data = loadUnplannedDowntime();
+router.delete("/:id", async (req, res) => {
+  try {
+    let data = await loadUnplannedDowntime();
     const initialLength = data.length;
-    data = data.filter(item => item.ID !== req.params.id);
+    data = data.filter((item) => item.ID !== req.params.id);
     if (data.length !== initialLength) {
-        saveUnplannedDowntime(data);
-        res.status(200).json({ message: 'Unplanned downtime deleted successfully' });
+      await saveUnplannedDowntime(data);
+      res
+        .status(200)
+        .json({ message: "Unplanned downtime deleted successfully" });
     } else {
-        res.status(404).json({ message: 'Unplanned downtime not found' });
+      res.status(404).json({ message: "Unplanned downtime not found" });
     }
+  } catch (error) {
+    res.status(500).json({ message: "Error deleting unplanned downtime" });
+  }
 });
 
 module.exports = router;

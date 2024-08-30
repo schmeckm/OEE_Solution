@@ -14,7 +14,7 @@
         "machine_id": "2",
         "name": "Falcon12",
         "description": "Description of Falcon12",
-        "OEE": false
+        "OEE": true
     },
     {
         "Plant": "Basel",

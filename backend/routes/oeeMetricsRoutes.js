@@ -44,7 +44,7 @@ const router = express.Router();
  *                   MaterialDescription:
  *                     type: string
  *                     description: Description of the material.
- *                   plannedProduction:
+ *                   plannedProductionQuantity:
  *                     type: number
  *                     description: Planned production quantity.
  *                   plannedDowntime:
