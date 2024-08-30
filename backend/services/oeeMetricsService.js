@@ -13,20 +13,14 @@ async function writeOEEToInfluxDB(metrics) {
   try {
     const writeApi = getWriteApi(); // Retrieves the initialized InfluxDB write API
     const point = new Point("oee_metrics")
-      .tag("plant", metrics.processData.plant || "UnknownPlant")
-      .tag("area", metrics.processData.area || "UnknownArea")
-      .tag("machineId", metrics.processData.machineId || "UnknownMachine")
-      .tag(
-        "ProcessOrderNumber",
-        metrics.processData.ProcessOrderNumber || "UnknownOrder"
-      )
-      .tag(
-        "MaterialNumber",
-        metrics.processData.MaterialNumber || "UnknownMaterial"
-      )
+      .tag("plant", metrics.plant || "UnknownPlant")
+      .tag("area", metrics.area || "UnknownArea")
+      .tag("machineId", metrics.machineId || "UnknownMachine")
+      .tag("ProcessOrderNumber", metrics.ProcessOrderNumber || "UnknownOrder")
+      .tag("MaterialNumber", metrics.MaterialNumber || "UnknownMaterial")
       .tag(
         "MaterialDescription",
-        metrics.processData.MaterialDescription || "No Description"
+        metrics.MaterialDescription || "No Description"
       )
       .floatField("oee", metrics.oeeAsPercent ? metrics.oee : metrics.oee / 100)
       .floatField(
@@ -43,18 +37,18 @@ async function writeOEEToInfluxDB(metrics) {
       )
       .floatField(
         "plannedProductionQuantity",
-        metrics.processData.plannedProductionQuantity
+        metrics.plannedProductionQuantity
       )
-      .floatField("plannedDowntime", metrics.processData.plannedDowntime)
-      .floatField("unplannedDowntime", metrics.processData.unplannedDowntime)
-      .floatField("microstops", metrics.processData.microstops);
+      .floatField("plannedDowntime", metrics.plannedDowntime)
+      .floatField("unplannedDowntime", metrics.unplannedDowntime)
+      .floatField("microstops", metrics.microstops);
 
     writeApi.writePoint(point);
     await writeApi.flush(); // Ensure that the point is written to the database
 
     oeeLogger.info(
       `Successfully wrote OEE metrics for machine ID: ${
-        metrics.processData.machineId || "undefined"
+        metrics.machineId || "undefined"
       } to InfluxDB.`
     );
   } catch (error) {

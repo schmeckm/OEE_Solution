@@ -179,13 +179,13 @@ async function processMetrics(machineId, buffer) {
     logTabularData(metrics);
 
     if (influxdb.url && influxdb.token && influxdb.org && influxdb.bucket) {
-      await writeOEEToInfluxDB();
+      await writeOEEToInfluxDB(metrics);
       //formatMetrics(metrics, machineId, totalTimes, plant, area, lineId)
       oeeLogger.debug("Metrics written to InfluxDB.");
     }
 
-    //sendWebSocketMessage("OEEData", OEEData);
-    //oeeLogger.info(`OEE Data: ${JSON.stringify(OEEData)}`);
+    sendWebSocketMessage("OEEData", OEEData);
+    oeeLogger.error(`OEE Data: ${JSON.stringify(OEEData)}`);
   } catch (error) {
     errorLogger.error(
       `Error calculating metrics for machine ${machineId}: ${error.message}`
