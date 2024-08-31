@@ -8,10 +8,10 @@ dotenv.config();
 const OEE_API_URL = process.env.OEE_API_URL || "http://localhost:3000/api/v1";
 
 const CLASSIFICATION_LEVELS = {
-  WORLD_CLASS: 0.85,
-  EXCELLENT: 0.7,
-  GOOD: 0.6,
-  AVERAGE: 0.4,
+  WORLD_CLASS: 85,
+  EXCELLENT: 70,
+  GOOD: 60,
+  AVERAGE: 40,
 };
 
 const cache = {};
@@ -188,6 +188,7 @@ class OEECalculator {
     ProductionYield,
     processOrder
   ) {
+    // Check if data exists for the given machineId
     if (!this.oeeData[machineId]) {
       throw new Error(`No data found for machineId: ${machineId}`);
     }
@@ -217,34 +218,36 @@ class OEECalculator {
       ? moment(ActualProcessOrderEnd)
       : null;
 
-    let plannedTakt;
-    let actualTakt;
-    let remainingTime;
-    let expectedEndTime;
-
     const plannedDurationMinutes = plannedEnd.diff(plannedStart, "minutes");
+    let plannedTakt, actualTakt, remainingTime, expectedEndTime;
 
     if (actualEnd) {
       const actualDurationMinutes = actualEnd.diff(actualStart, "minutes");
       plannedTakt = plannedDurationMinutes / plannedProductionQuantity;
       actualTakt = actualDurationMinutes / ProductionQuantity;
       remainingTime =
-        (plannedProductionQuantity - totalProductionQuantity) * actualTakt;
+        (plannedProductionQuantity - ProductionQuantity) * actualTakt;
       expectedEndTime = actualEnd.add(remainingTime, "minutes");
     } else {
       plannedTakt = plannedDurationMinutes / plannedProductionQuantity;
-      actualTakt = plannedDurationMinutes / ProductionQuantity;
+      actualTakt =
+        ProductionQuantity > 0
+          ? plannedDurationMinutes / ProductionQuantity
+          : null;
       remainingTime =
-        (plannedProductionQuantity - totalProductionQuantity) * actualTakt;
+        (plannedProductionQuantity - ProductionQuantity) *
+        (actualTakt || plannedTakt);
       expectedEndTime = actualStart.add(remainingTime, "minutes");
     }
 
-    // Update OEE data with consistent logic and formatted dates
+    // Berechnung des Ausschusses (Scrap)
+    const scrap = totalProductionQuantity - ProductionYield;
+
     this.oeeData[machineId] = {
       ...this.oeeData[machineId],
       ...processOrder,
-      StartTime: actualStart.format("YYYY-MM-DDTHH:mm:ss.SSSZ"),
-      EndTime: (actualEnd || plannedEnd).format("YYYY-MM-DDTHH:mm:ss.SSSZ"),
+      StartTime: processOrder.ActualProcessOrderStart || processOrder.Start,
+      EndTime: processOrder.ActualProcessOrderEnd || processOrder.End,
       runtime: setupTime + processingTime + teardownTime,
       ProductionQuantity,
       ProductionYield,
@@ -255,63 +258,51 @@ class OEECalculator {
       expectedEndTime: expectedEndTime
         ? expectedEndTime.format("YYYY-MM-DDTHH:mm:ss.SSSZ")
         : null,
+      scrap, // Fügen Sie die Scrap-Berechnung hinzu
     };
 
-    try {
-      const fetchdata = await fetchOEEDataFromAPI(machineId);
-      if (!fetchdata || !Array.isArray(fetchdata.datasets)) {
-        throw new Error(
-          "Invalid OEEData returned from API. Expected an object with a datasets array."
-        );
-      }
+    console.log(
+      `Updated OEE Data for Machine ${machineId}:`,
+      this.oeeData[machineId]
+    );
 
-      const totalProductionTime = fetchdata.datasets[0].data.reduce(
-        (a, b) => a + b,
-        0
-      );
-      const actualUnplannedDowntime =
-        totalUnplannedDowntime ||
-        fetchdata.datasets[2].data.reduce((a, b) => a + b, 0);
-      const actualPlannedDowntime =
-        totalPlannedDowntime ||
-        fetchdata.datasets[3].data.reduce((a, b) => a + b, 0);
+    // Verfügbarkeit als Prozentsatz
+    const availability =
+      ((this.oeeData[machineId].runtime - totalUnplannedDowntime) /
+        this.oeeData[machineId].runtime) *
+      100;
 
-      // Ensure that totalMicroStops is defined before using it
-      const actualMicroStops =
-        typeof totalMicroStops !== "undefined"
-          ? totalMicroStops
-          : fetchdata.datasets[4].data.reduce((a, b) => a + b, 0);
+    // Leistung als Prozentsatz
+    const performance = actualTakt ? (plannedTakt / actualTakt) * 100 : 0;
 
-      const availability =
-        (this.oeeData[machineId].runtime -
-          actualUnplannedDowntime -
-          actualPlannedDowntime) /
-        this.oeeData[machineId].runtime;
-      const performance = totalProductionTime / plannedProductionQuantity;
-      const quality = ProductionYield / totalProductionQuantity;
-      const oee = availability * performance * quality;
+    // Qualität als Prozentsatz
+    const quality = (ProductionYield / totalProductionQuantity) * 100;
 
-      this.oeeData[machineId] = {
-        ...this.oeeData[machineId],
-        availability,
-        performance,
-        quality,
-        oee,
-        actualDurationMinutes: actualEnd
-          ? actualEnd.diff(actualStart, "minutes")
-          : null,
-        setupTime,
-        teardownTime,
-        expectedEndTime: expectedEndTime
-          ? expectedEndTime.format("YYYY-MM-DDTHH:mm:ss.SSSZ")
-          : null,
-      };
-    } catch (error) {
-      errorLogger.warn(
-        `Error processing OEE data for machineId ${machineId}: ${error.message}`
-      );
-      throw error;
-    }
+    // OEE als Prozentsatz berechnen
+    const oee = (availability * performance * quality) / 10000;
+
+    this.oeeData[machineId] = {
+      ...this.oeeData[machineId],
+      availability,
+      performance,
+      quality,
+      oee,
+      actualDurationMinutes: actualEnd
+        ? actualEnd.diff(actualStart, "minutes")
+        : null,
+      setupTime,
+      teardownTime,
+    };
+
+    // Rufen Sie die OEE-Klassifizierung auf und speichern oder nutzen Sie das Ergebnis
+    const classification = this.classifyOEE(machineId);
+
+    // Speichern Sie die Klassifizierung im oeeData-Objekt
+    this.oeeData[machineId].classification = classification;
+
+    console.log(
+      `OEE Classification for machine ${machineId}: ${classification}`
+    );
   }
 
   classifyOEE(machineId) {

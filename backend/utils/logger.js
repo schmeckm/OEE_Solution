@@ -2,6 +2,7 @@ const winston = require("winston");
 const DailyRotateFile = require("winston-daily-rotate-file");
 const path = require("path");
 const dotenv = require("dotenv");
+
 // Load the .env file
 dotenv.config();
 
@@ -29,22 +30,22 @@ const logToFile = process.env.LOG_TO_FILE === "true";
  * @param {Object} info - Log information.
  * @returns {Object|boolean} Log information or false if the level is not included.
  */
-const customFilter = winston.format((info) => {
-  return logLevels.includes(info.level) ? info : false;
-});
+const customFilter = winston.format((info) =>
+  logLevels.includes(info.level) ? info : false
+);
 
 /**
  * Helper function to create a log transport.
  * @param {string} type - Type of transport ('console' or 'file').
  * @param {string} [filename] - Filename for file transport.
- * @returns {Object} - Configured transport.
+ * @returns {Object|null} - Configured transport or null if not applicable.
  */
 const createTransport = (type, filename) => {
   if (type === "console" && logToConsole) {
     return new winston.transports.Console({
-      level: logLevels[0], // Set the lowest level from LOG_LEVELS
+      level: logLevels[0],
       format: winston.format.combine(
-        customFilter(), // Apply custom filter
+        customFilter(),
         winston.format.colorize(),
         winston.format.timestamp(),
         logFormat
@@ -58,9 +59,9 @@ const createTransport = (type, filename) => {
       datePattern: "YYYY-MM-DD",
       maxSize: "20m",
       maxFiles: `${retentionDays}d`,
-      level: logLevels[0], // Set the lowest level from LOG_LEVELS
+      level: logLevels[0],
       format: winston.format.combine(
-        customFilter(), // Apply custom filter
+        customFilter(),
         winston.format.timestamp(),
         logFormat
       ),
@@ -77,25 +78,37 @@ const createTransport = (type, filename) => {
  */
 const createLogger = (logFilename = "app") => {
   const transports = [];
+  const exceptionHandlers = [];
+  const rejectionHandlers = [];
 
   if (logToConsole) {
-    transports.push(createTransport("console"));
+    const consoleTransport = createTransport("console");
+    if (consoleTransport) {
+      transports.push(consoleTransport);
+    }
   }
 
   if (logToFile) {
-    transports.push(createTransport("file", logFilename));
+    const fileTransport = createTransport("file", logFilename);
+    if (fileTransport) {
+      transports.push(fileTransport);
+      exceptionHandlers.push(createTransport("file", "exceptions"));
+      rejectionHandlers.push(createTransport("file", "rejections"));
+    }
   }
 
   return winston.createLogger({
-    level: logLevels[0], // Set the lowest level based on LOG_LEVELS from .env
+    level: logLevels[0],
     format: winston.format.combine(
-      customFilter(), // Apply custom filter
+      customFilter(),
       winston.format.timestamp(),
       winston.format.json()
     ),
     transports,
-    exceptionHandlers: createTransport("file", "exceptions"),
-    rejectionHandlers: createTransport("file", "rejections"),
+    exceptionHandlers:
+      exceptionHandlers.length > 0 ? exceptionHandlers : undefined,
+    rejectionHandlers:
+      rejectionHandlers.length > 0 ? rejectionHandlers : undefined,
   });
 };
 

@@ -1,21 +1,17 @@
-const fs = require("fs").promises;
 const path = require("path");
 const { oeeLogger, errorLogger } = require("../utils/logger");
 const { writeOEEToInfluxDB } = require("../services/oeeMetricsService");
-
 const {
   loadMachineData,
   loadDataAndPrepareOEE,
   loadProcessOrderDataByMachine,
 } = require("./dataLoader");
-
 const { influxdb } = require("../config/config");
 const OEECalculator = require("./oeeCalculator");
 const {
   setWebSocketServer,
   sendWebSocketMessage,
 } = require("../websocket/webSocketUtils");
-const moment = require("moment-timezone");
 
 const oeeCalculators = new Map(); // Map to store OEE calculators per machine ID
 let metricBuffers = new Map(); // Buffer to store metrics per machine
@@ -30,27 +26,56 @@ function logTabularData(metrics) {
     plannedProductionQuantity,
     ProductionQuantity,
     plannedDurationMinutes,
+    plannedTakt,
+    actualTakt,
     setupTime,
     teardownTime,
+    classification,
   } = metrics;
-
   const logTable = `
-+---------------------------------------+---------------------------+
-| Metric                             | Value                        | 
-+------------------------------------+------------------------------+
-| Machine                            | ${lineId}                    |
-| Availability (%)                   | ${availability.toFixed(2)}%  |
-| Performance (%)                    | ${performance.toFixed(2)}%   |
-| Quality (%)                        | ${quality.toFixed(2)}%       |
-| OEE (%)                            | ${oee.toFixed(2)}%           |
-| Planned Production Quantity        | ${plannedProductionQuantity} |
-| Actual Production                  | ${ProductionQuantity}        |
-| Production Time (Min)              | ${plannedDurationMinutes}    |
-| Setup Time (Min)                   | ${setupTime}                 |
-| Teardown Time (Min)                | ${teardownTime}              |
-+------------------------------------+------------------------------+
-    `;
-
+  +-----------------------------------------------+---------------------+
+  | Metric                                        | Value               | 
+  +-----------------------------------------------+---------------------+
+  | Machine                                       | ${lineId.padEnd(2)}|
+  | Availability (%)                              | ${availability
+    .toFixed(2)
+    .padStart(6)}%         |
+  | Performance (%)                               | ${performance
+    .toFixed(2)
+    .padStart(6)}%         |
+  | Quality (%)                                   | ${quality
+    .toFixed(2)
+    .padStart(6)}%         |
+  | OEE (%)                                       | ${oee
+    .toFixed(2)
+    .padStart(6)}%         |
+  | Classification                                | ${classification.padEnd(
+    2
+  )}     |
+  | Planned Production Quantity                   | ${plannedProductionQuantity
+    .toString()
+    .padStart(6)}          |
+  | Actual Production Quantity                    | ${ProductionQuantity.toString().padStart(
+    6
+  )}          |
+  | Production Time (Min)                         | ${plannedDurationMinutes
+    .toString()
+    .padStart(6)}          |
+  | Setup Time (Min)                              | ${setupTime
+    .toString()
+    .padStart(6)}          |
+  | Teardown Time (Min)                           | ${teardownTime
+    .toString()
+    .padStart(6)}          |
+  | Planned Takt (Min/unit)                       | ${plannedTakt
+    .toFixed(2)
+    .padStart(6)}          |
+  | Actual Takt (Min/unit)                        | ${actualTakt
+    .toFixed(2)
+    .padStart(6)}          |
+  +-----------------------------------------------+--------------------+
+  `;
+  oeeLogger.log(logTable);
   console.log(logTable);
 }
 
@@ -104,18 +129,12 @@ async function updateMetric(name, value, machineId) {
 
   const buffer = metricBuffers.get(machineId);
 
-  // Log the buffer state before updating
   oeeLogger.info(`Updating buffer for machine ${machineId}:`, buffer);
 
-  // Check and update the buffer with the new value if the value has been changed
   if (buffer[name] !== value) {
     buffer[name] = value;
-    // Log the buffer state after updating
-    oeeLogger.info(`Buffer after update for machine ${machineId}:`, buffer);
-    // Call the processMetrics function, passing the machineId and buffer as an argument
     await processMetrics(machineId, buffer);
   }
-  // Log the current buffer state after each update
   logMetricBuffer();
 }
 
@@ -138,8 +157,6 @@ async function processMetrics(machineId, buffer) {
       ...buffer, // Add the buffer data to the oeeData object
     };
 
-    console.log(buffer);
-
     const processOrderData = await loadProcessOrderDataByMachine(machineId);
 
     if (!processOrderData || processOrderData.length === 0) {
@@ -147,9 +164,8 @@ async function processMetrics(machineId, buffer) {
     }
 
     const processOrder = processOrderData[0];
-    const OEEData = await loadDataAndPrepareOEE(machineId); // Ensure this is awaited
+    const OEEData = await loadDataAndPrepareOEE(machineId);
 
-    // Validate and log the OEEData
     validateOEEData(OEEData);
 
     const totalTimes = calculateTotalTimes(OEEData.datasets);
@@ -160,15 +176,13 @@ async function processMetrics(machineId, buffer) {
       machineId,
       totalTimes.unplannedDowntime,
       totalTimes.plannedDowntime + totalTimes.breakTime + totalTimes.microstops,
-      buffer.plannedProductionQuantity || 0, // Default to 0 if undefined
+      buffer.plannedProductionQuantity || 0,
       buffer.totalProductionQuantity || 0,
       buffer.totalProductionYield || 0,
       processOrder
     );
 
     const metrics = calculator.getMetrics(machineId);
-
-    console.log(metrics);
 
     if (!metrics) {
       throw new Error(
@@ -179,13 +193,20 @@ async function processMetrics(machineId, buffer) {
     logTabularData(metrics);
 
     if (influxdb.url && influxdb.token && influxdb.org && influxdb.bucket) {
-      await writeOEEToInfluxDB(metrics);
-      //formatMetrics(metrics, machineId, totalTimes, plant, area, lineId)
+      //await writeOEEToInfluxDB(metrics);
+      const formattedMetrics = formatMetrics(
+        metrics,
+        machineId,
+        totalTimes,
+        plant,
+        area,
+        lineId
+      );
       oeeLogger.debug("Metrics written to InfluxDB.");
     }
 
     sendWebSocketMessage("OEEData", OEEData);
-    oeeLogger.error(`OEE Data: ${JSON.stringify(OEEData)}`);
+    oeeLogger.info(`OEE Data: ${JSON.stringify(OEEData)}`);
   } catch (error) {
     errorLogger.error(
       `Error calculating metrics for machine ${machineId}: ${error.message}`
@@ -248,36 +269,6 @@ function validateOEEData(OEEData) {
   if (!OEEData || !Array.isArray(OEEData.datasets) || !OEEData.labels) {
     throw new Error("Invalid OEEData format.");
   }
-}
-
-function formatMetrics(metrics, machineId, totalTimes, plant, area, lineId) {
-  return {
-    oee: metrics.oee,
-    availability: metrics.availability,
-    performance: metrics.performance,
-    quality: metrics.quality,
-    level: metrics.classification,
-    plannedProductionQuantity: metrics.plannedProductionQuantity,
-    actualProductionQuantity: metrics.actualProductionQuantity,
-    productionTime: totalTimes.productionTime,
-    setupTime: metrics.setupTime,
-    teardownTime: metrics.teardownTime,
-    processData: {
-      ProcessOrderNumber: metrics.ProcessOrderNumber,
-      StartTime: metrics.StartTime,
-      EndTime: metrics.EndTime,
-      plannedProductionQuantity: metrics.plannedProductionQuantity,
-      plannedDowntime: totalTimes.plannedDowntime,
-      unplannedDowntime: totalTimes.unplannedDowntime,
-      microstops: totalTimes.microstops,
-      MaterialNumber: metrics.MaterialNumber,
-      MaterialDescription: metrics.MaterialDescription,
-      machineId,
-      plant,
-      area,
-      lineId,
-    },
-  };
 }
 
 module.exports = { updateMetric, processMetrics, setWebSocketServer };
