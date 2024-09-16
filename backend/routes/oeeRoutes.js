@@ -4,8 +4,17 @@ const router = express.Router();
 
 /**
  * @swagger
+ * tags:
+ *   name: Realtime OEE by Line
+ *   description: API for reading OEE from Line
+ */
+
+/**
+ * @swagger
  * /oee/{machineId}:
  *   get:
+ *     tags: 
+ *       - Realtime OEE by Line
  *     summary: Get current OEE metrics for a machine
  *     description: Retrieve the current OEE metrics from the buffer for the specified machine.
  *     parameters:
@@ -18,10 +27,17 @@ const router = express.Router();
  *     responses:
  *       200:
  *         description: A JSON object containing the OEE metrics.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 oee:
+ *                   type: number
+ *                   description: The calculated OEE value
  *       404:
  *         description: Machine OEE data not found.
  */
-
 
 router.get('/oee/:machineId', async(req, res) => {
     const { machineId } = req.params;
@@ -39,7 +55,5 @@ router.get('/oee/:machineId', async(req, res) => {
         res.status(500).json({ error: 'Internal Server Error' });
     }
 });
-
-
 
 module.exports = router;
