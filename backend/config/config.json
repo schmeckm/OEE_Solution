@@ -5,6 +5,12 @@
         "username": "your_mqtt_username",
         "password": "your_mqtt_password"
     },
+    "classificationLevels": {
+        "WORLD_CLASS": 85,
+        "EXCELLENT": 70,
+        "GOOD": 60,
+        "AVERAGE": 40
+    },
     "tls": {
         "key": null,
         "cert": null,
