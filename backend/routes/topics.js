@@ -43,13 +43,12 @@ const router = express.Router();
  *               items:
  *                 type: string
  */
-router.get('/topics', async(req, res) => {
+router.get('/', async(req, res) => {
     try {
-        const { plant, area, line } = req.query;
-        const topics = await generateTopics(plant, area, line);
+        const topics = await generateTopics(req.query.plant, req.query.area, req.query.line);
         res.json(topics);
     } catch (error) {
-        res.status(500).json({ message: error.message });
+        res.status(500).json({ error: 'Internal Server Error' });
     }
 });
 
